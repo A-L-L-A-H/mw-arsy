@@ -645,6 +645,7 @@ dependencies = [
 name = "dockpanel-agent"
 version = "2.242.1"
 dependencies = [
+ "async-trait",
  "axum",
  "axum-server",
  "base64",
@@ -655,7 +656,7 @@ dependencies = [
  "instant-acme",
  "jsonwebtoken",
  "libc",
- "rand 0.9.5",
+ "rand 0.10.2",
  "rcgen",
  "reqwest",
  "rustix",
