@@ -4,6 +4,7 @@ pub mod ai_diagnosis;
 pub mod alert_engine;
 pub mod alert_runbook_defaults;
 pub mod autoscaler;
+pub mod policy_engine;
 pub mod rca_agent;
 pub mod gitops_controller;
 pub mod alert_runbooks;
