@@ -1,7 +1,7 @@
 use rmcp::handler::server::wrapper::Parameters;
 use rmcp::model::{Implementation, ServerCapabilities, ServerInfo};
 use rmcp::{schemars, tool, tool_handler, tool_router, ServerHandler};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::backend_client;
 
@@ -172,6 +172,165 @@ pub struct IncidentListParams {
     /// Filter by incident status.
     #[serde(default)]
     pub status: Option<String>,
+}
+
+/// Mutating tool parameter types
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct CreateSiteParams {
+    /// Domain name for the site.
+    pub domain: String,
+    /// Runtime: "static", "php", "nodejs", "python", "proxy".
+    pub runtime: String,
+    /// PHP version (e.g., "8.3") — required for PHP runtime.
+    #[serde(default)]
+    pub php_version: Option<String>,
+    /// Node.js version — required for Node.js runtime.
+    #[serde(default)]
+    pub nodejs_version: Option<String>,
+    /// Python version — required for Python runtime.
+    #[serde(default)]
+    pub python_version: Option<String>,
+    /// Container port for proxy runtime.
+    #[serde(default)]
+    pub container_port: Option<u16>,
+    /// SSL mode: "none", "acme", "provided".
+    #[serde(default)]
+    pub ssl_mode: Option<String>,
+    /// SSL email for ACME.
+    #[serde(default)]
+    pub ssl_email: Option<String>,
+    /// Registered certificate alias for "provided" SSL.
+    #[serde(default)]
+    pub ssl_certificate: Option<String>,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct UpdateSiteParams {
+    /// The site's UUID.
+    pub site_id: String,
+    /// PHP version (e.g., "8.3").
+    #[serde(default)]
+    pub php_version: Option<String>,
+    /// Node.js version.
+    #[serde(default)]
+    pub nodejs_version: Option<String>,
+    /// Python version.
+    #[serde(default)]
+    pub python_version: Option<String>,
+    /// Container port for proxy runtime.
+    #[serde(default)]
+    pub container_port: Option<u16>,
+    /// Memory limit in MB.
+    #[serde(default)]
+    pub memory_mb: Option<u64>,
+    /// CPU limit as percentage (1-100).
+    #[serde(default)]
+    pub cpu_percent: Option<u64>,
+    /// Max upload size in MB.
+    #[serde(default)]
+    pub max_upload_mb: Option<u64>,
+    /// Enable/disable site.
+    #[serde(default)]
+    pub enabled: Option<bool>,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct DeleteSiteParams {
+    /// The site's UUID.
+    pub site_id: String,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct CreateAppParams {
+    /// App name (will be prefixed with "dockpanel-").
+    pub name: String,
+    /// Docker image reference (e.g., "nginx:latest", "ghcr.io/user/repo:tag").
+    pub image: String,
+    /// Container port to expose.
+    pub container_port: u16,
+    /// Environment variables.
+    #[serde(default)]
+    pub env_vars: std::collections::HashMap<String, String>,
+    /// Memory limit in MB.
+    #[serde(default)]
+    pub memory_mb: Option<u64>,
+    /// CPU limit as percentage (1-100).
+    #[serde(default)]
+    pub cpu_percent: Option<u64>,
+    /// SSL mode: "none", "acme", "provided".
+    #[serde(default)]
+    pub ssl_mode: Option<String>,
+    /// SSL email for ACME.
+    #[serde(default)]
+    pub ssl_email: Option<String>,
+    /// Registered certificate alias for "provided" SSL.
+    #[serde(default)]
+    pub ssl_certificate: Option<String>,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct UpdateAppParams {
+    /// The Docker container ID.
+    pub container_id: String,
+    /// New image reference.
+    #[serde(default)]
+    pub image: Option<String>,
+    /// Environment variables to update.
+    #[serde(default)]
+    pub env_vars: Option<std::collections::HashMap<String, String>>,
+    /// Memory limit in MB.
+    #[serde(default)]
+    pub memory_mb: Option<u64>,
+    /// CPU limit as percentage (1-100).
+    #[serde(default)]
+    pub cpu_percent: Option<u64>,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct DeleteAppParams {
+    /// The Docker container ID.
+    pub container_id: String,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct CreateDatabaseParams {
+    /// Database name.
+    pub name: String,
+    /// Engine: "postgresql" or "mysql".
+    pub engine: String,
+    /// Site UUID to attach to (optional).
+    #[serde(default)]
+    pub site_id: Option<String>,
+    /// Stack UUID to attach to (optional).
+    #[serde(default)]
+    pub stack_id: Option<String>,
+    /// Memory limit in MB.
+    #[serde(default)]
+    pub memory_mb: Option<u64>,
+    /// CPU limit as percentage (1-100).
+    #[serde(default)]
+    pub cpu_percent: Option<u64>,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct DeleteDatabaseParams {
+    /// The database's UUID.
+    pub database_id: String,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct DeployGitParams {
+    /// Git deploy configuration UUID.
+    pub deploy_id: String,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct ScaleAppParams {
+    /// The Docker container ID.
+    pub container_id: String,
+    /// Desired number of replicas.
+    pub replicas: u32,
 }
 
 #[tool_router]
@@ -473,6 +632,194 @@ impl DockPanelMcp {
     #[tool(description = "Get anonymized telemetry stats this instance has recorded about its own usage. Requires an admin-scoped key.")]
     async fn get_telemetry_stats(&self) -> Result<String, String> {
         get_json("/api/telemetry/stats").await
+    }
+
+    // ── Mutating tools ────────────────────────────────────────────────────
+
+    #[tool(description = "Create a new site. Requires admin-scoped key with write scope.")]
+    async fn create_site(
+        &self,
+        Parameters(params): Parameters<CreateSiteParams>,
+    ) -> Result<String, String> {
+        let token = backend_client::load_token()?;
+        let client = reqwest::Client::new();
+        let url = format!("{}/api/sites", backend_client::base_url()?);
+        let resp = client.post(&url).bearer_auth(&token).json(&params).send().await
+            .map_err(|e| format!("Request failed: {e}"))?;
+        let status = resp.status();
+        let text = resp.text().await.unwrap_or_default();
+        if !status.is_success() {
+            return Err(format!("Create site failed ({status}): {text}"));
+        }
+        Ok(text)
+    }
+
+    #[tool(description = "Update an existing site. Requires admin-scoped key with write scope.")]
+    async fn update_site(
+        &self,
+        Parameters(params): Parameters<UpdateSiteParams>,
+    ) -> Result<String, String> {
+        let site_id = params.site_id.clone();
+        let token = backend_client::load_token()?;
+        let client = reqwest::Client::new();
+        let url = format!("{}/api/sites/{}", backend_client::base_url()?, urlencoding::encode(&site_id));
+        let mut json = serde_json::to_value(&params).map_err(|e| e.to_string())?;
+        json.as_object_mut().unwrap().remove("site_id");
+        let resp = client.put(&url).bearer_auth(&token).json(&json).send().await
+            .map_err(|e| format!("Request failed: {e}"))?;
+        let status = resp.status();
+        let text = resp.text().await.unwrap_or_default();
+        if !status.is_success() {
+            return Err(format!("Update site failed ({status}): {text}"));
+        }
+        Ok(text)
+    }
+
+    #[tool(description = "Delete a site. Requires admin-scoped key with write scope.")]
+    async fn delete_site(
+        &self,
+        Parameters(params): Parameters<DeleteSiteParams>,
+    ) -> Result<String, String> {
+        let token = backend_client::load_token()?;
+        let client = reqwest::Client::new();
+        let url = format!("{}/api/sites/{}", backend_client::base_url()?, urlencoding::encode(&params.site_id));
+        let resp = client.delete(&url).bearer_auth(&token).send().await
+            .map_err(|e| format!("Request failed: {e}"))?;
+        let status = resp.status();
+        let text = resp.text().await.unwrap_or_default();
+        if !status.is_success() {
+            return Err(format!("Delete site failed ({status}): {text}"));
+        }
+        Ok(text)
+    }
+
+    #[tool(description = "Create a new Docker app. Requires admin-scoped key with write scope.")]
+    async fn create_app(
+        &self,
+        Parameters(params): Parameters<CreateAppParams>,
+    ) -> Result<String, String> {
+        let token = backend_client::load_token()?;
+        let client = reqwest::Client::new();
+        let url = format!("{}/api/apps", backend_client::base_url()?);
+        let resp = client.post(&url).bearer_auth(&token).json(&params).send().await
+            .map_err(|e| format!("Request failed: {e}"))?;
+        let status = resp.status();
+        let text = resp.text().await.unwrap_or_default();
+        if !status.is_success() {
+            return Err(format!("Create app failed ({status}): {text}"));
+        }
+        Ok(text)
+    }
+
+    #[tool(description = "Update a Docker app (image, env vars, resources). Requires admin-scoped key with write scope.")]
+    async fn update_app(
+        &self,
+        Parameters(params): Parameters<UpdateAppParams>,
+    ) -> Result<String, String> {
+        let container_id = params.container_id.clone();
+        let token = backend_client::load_token()?;
+        let client = reqwest::Client::new();
+        let url = format!("{}/api/apps/{}", backend_client::base_url()?, urlencoding::encode(&container_id));
+        let mut json = serde_json::to_value(&params).map_err(|e| e.to_string())?;
+        json.as_object_mut().unwrap().remove("container_id");
+        let resp = client.put(&url).bearer_auth(&token).json(&json).send().await
+            .map_err(|e| format!("Request failed: {e}"))?;
+        let status = resp.status();
+        let text = resp.text().await.unwrap_or_default();
+        if !status.is_success() {
+            return Err(format!("Update app failed ({status}): {text}"));
+        }
+        Ok(text)
+    }
+
+    #[tool(description = "Delete a Docker app. Requires admin-scoped key with write scope.")]
+    async fn delete_app(
+        &self,
+        Parameters(params): Parameters<DeleteAppParams>,
+    ) -> Result<String, String> {
+        let token = backend_client::load_token()?;
+        let client = reqwest::Client::new();
+        let url = format!("{}/api/apps/{}", backend_client::base_url()?, urlencoding::encode(&params.container_id));
+        let resp = client.delete(&url).bearer_auth(&token).send().await
+            .map_err(|e| format!("Request failed: {e}"))?;
+        let status = resp.status();
+        let text = resp.text().await.unwrap_or_default();
+        if !status.is_success() {
+            return Err(format!("Delete app failed ({status}): {text}"));
+        }
+        Ok(text)
+    }
+
+    #[tool(description = "Create a new database. Requires admin-scoped key with write scope.")]
+    async fn create_database(
+        &self,
+        Parameters(params): Parameters<CreateDatabaseParams>,
+    ) -> Result<String, String> {
+        let token = backend_client::load_token()?;
+        let client = reqwest::Client::new();
+        let url = format!("{}/api/databases", backend_client::base_url()?);
+        let resp = client.post(&url).bearer_auth(&token).json(&params).send().await
+            .map_err(|e| format!("Request failed: {e}"))?;
+        let status = resp.status();
+        let text = resp.text().await.unwrap_or_default();
+        if !status.is_success() {
+            return Err(format!("Create database failed ({status}): {text}"));
+        }
+        Ok(text)
+    }
+
+    #[tool(description = "Delete a database. Requires admin-scoped key with write scope.")]
+    async fn delete_database(
+        &self,
+        Parameters(params): Parameters<DeleteDatabaseParams>,
+    ) -> Result<String, String> {
+        let token = backend_client::load_token()?;
+        let client = reqwest::Client::new();
+        let url = format!("{}/api/databases/{}", backend_client::base_url()?, urlencoding::encode(&params.database_id));
+        let resp = client.delete(&url).bearer_auth(&token).send().await
+            .map_err(|e| format!("Request failed: {e}"))?;
+        let status = resp.status();
+        let text = resp.text().await.unwrap_or_default();
+        if !status.is_success() {
+            return Err(format!("Delete database failed ({status}): {text}"));
+        }
+        Ok(text)
+    }
+
+    #[tool(description = "Trigger a Git Deploy. Requires admin-scoped key with write scope.")]
+    async fn deploy_git(
+        &self,
+        Parameters(params): Parameters<DeployGitParams>,
+    ) -> Result<String, String> {
+        let token = backend_client::load_token()?;
+        let client = reqwest::Client::new();
+        let url = format!("{}/api/git-deploys/{}/deploy", backend_client::base_url()?, urlencoding::encode(&params.deploy_id));
+        let resp = client.post(&url).bearer_auth(&token).json(&serde_json::json!({})).send().await
+            .map_err(|e| format!("Request failed: {e}"))?;
+        let status = resp.status();
+        let text = resp.text().await.unwrap_or_default();
+        if !status.is_success() {
+            return Err(format!("Git deploy failed ({status}): {text}"));
+        }
+        Ok(text)
+    }
+
+    #[tool(description = "Scale a Docker app to a specific number of replicas. Requires admin-scoped key with write scope.")]
+    async fn scale_app(
+        &self,
+        Parameters(params): Parameters<ScaleAppParams>,
+    ) -> Result<String, String> {
+        let token = backend_client::load_token()?;
+        let client = reqwest::Client::new();
+        let url = format!("{}/api/apps/{}/scale", backend_client::base_url()?, urlencoding::encode(&params.container_id));
+        let resp = client.post(&url).bearer_auth(&token).json(&serde_json::json!({"replicas": params.replicas})).send().await
+            .map_err(|e| format!("Request failed: {e}"))?;
+        let status = resp.status();
+        let text = resp.text().await.unwrap_or_default();
+        if !status.is_success() {
+            return Err(format!("Scale app failed ({status}): {text}"));
+        }
+        Ok(text)
     }
 }
 
