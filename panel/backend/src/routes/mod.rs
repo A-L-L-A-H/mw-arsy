@@ -51,6 +51,7 @@ pub mod iac;
 pub mod image_scans;
 pub mod sboms;
 pub mod passkeys;
+pub mod autoscaler;
 pub mod prometheus;
 pub mod rca;
 pub mod gitops;
@@ -1655,6 +1656,8 @@ pub fn router() -> Router<AppState> {
         .nest("/api/rca", rca::router())
         // GitOps Fleet Sync Controller
         .nest("/api/gitops", gitops::router())
+        // Horizontal Autoscaler
+        .nest("/api/autoscaler", autoscaler::router())
         // SSH Keys
         .route("/api/ssh-keys", get(system::list_ssh_keys).post(system::add_ssh_key))
         .route("/api/ssh-keys/{fingerprint}", delete(system::remove_ssh_key))
