@@ -1,4 +1,4 @@
-# Contributing to DockPanel
+# Contributing to ARSY
 
 Thanks for your interest in contributing! This guide covers development setup, code style, and the PR process.
 
@@ -14,8 +14,8 @@ Thanks for your interest in contributing! This guide covers development setup, c
 ### Getting Started
 
 ```bash
-git clone https://github.com/ovexro/dockpanel.git
-cd dockpanel
+git clone https://github.com/A-L-L-A-H/mw-arsy.git
+cd arsy
 
 # Enable the repo's git hooks (secrets scan, version consistency,
 # npm audit + cargo audit). See scripts/hooks/README.md.
@@ -23,18 +23,18 @@ git config core.hooksPath scripts/hooks
 cargo install cargo-audit   # otherwise the Rust half of the audit gate only warns
 
 # Start PostgreSQL
-docker run -d --name dockpanel-postgres \
-  -e POSTGRES_USER=dockpanel \
-  -e POSTGRES_PASSWORD=dockpanel \
-  -e POSTGRES_DB=dockpanel \
+docker run -d --name arsy-postgres \
+  -e POSTGRES_USER=arsy \
+  -e POSTGRES_PASSWORD=arsy \
+  -e POSTGRES_DB=arsy \
   -p 5450:5432 postgres:16
 
 # Create config
-sudo mkdir -p /etc/dockpanel
-cat <<EOF | sudo tee /etc/dockpanel/api.env
-DATABASE_URL=postgresql://dockpanel:dockpanel@127.0.0.1:5450/dockpanel
+sudo mkdir -p /etc/arsy
+cat <<EOF | sudo tee /etc/arsy/api.env
+DATABASE_URL=postgresql://arsy:arsy@127.0.0.1:5450/arsy
 JWT_SECRET=$(openssl rand -hex 32)
-AGENT_SOCKET=/var/run/dockpanel/agent.sock
+AGENT_SOCKET=/var/run/arsy/agent.sock
 AGENT_TOKEN=$(uuidgen)
 LISTEN_ADDR=127.0.0.1:3080
 EOF
@@ -46,8 +46,8 @@ cargo build --release --manifest-path panel/cli/Cargo.toml
 cd panel/frontend && npm install && npx vite build && cd ../..
 
 # Run (agent needs root for system operations)
-sudo ./panel/agent/target/release/dockpanel-agent &
-./panel/backend/target/release/dockpanel-api &
+sudo ./panel/agent/target/release/arsy-agent &
+./panel/backend/target/release/arsy-api &
 cd panel/frontend && npm run dev
 ```
 
@@ -99,7 +99,7 @@ panel/
 
 ## Filing Issues
 
-- **Bug reports**: Include OS, DockPanel version, steps to reproduce, and relevant logs (`journalctl -u dockpanel-api -n 50`).
+- **Bug reports**: Include OS, ARSY version, steps to reproduce, and relevant logs (`journalctl -u arsy-api -n 50`).
 - **Feature requests**: Describe the use case, not just the solution.
 
 ## Key Files

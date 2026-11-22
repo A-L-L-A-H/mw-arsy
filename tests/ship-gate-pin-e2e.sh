@@ -22,7 +22,7 @@
 #   S2  THE TEST THAT WOULD HAVE CAUGHT IT COULD NOT FAIL. The end-to-end lab
 #       test drives the real `test_sftp`/`upload_sftp` against a chrooted sshd,
 #       and would have caught the reverted transport instantly. It returned early
-#       when `DOCKPANEL_SFTP_LAB` was unset — so a run that executed NOTHING
+#       when `ARSY_SFTP_LAB` was unset — so a run that executed NOTHING
 #       printed the same `ok` as a run that proved the transport, and the summary
 #       counted it as a pass. A test that cannot run must not be able to report
 #       success. Now `#[ignore]`d (a counted, visible state in the summary's
@@ -208,23 +208,23 @@ else
 
   # B2. The early return is the actual defect. Named as the ABSENCE it is.
   # The `,? *` is not decoration. rustfmt adds a TRAILING COMMA when it wraps an
-  # argument list, so the un-wrapped text reads `std::env::var("DOCKPANEL_SFTP_LAB",)`
+  # argument list, so the un-wrapped text reads `std::env::var("ARSY_SFTP_LAB",)`
   # and a pattern demanding `" *\)` misses it. Writing this suite ABOUT #383 I still
   # shipped #383 into it, and only mutation-testing the arm in the wrapped spelling
   # caught it. Un-wrapping is half the fix; tolerating what the formatter LEAVES
   # BEHIND is the other half.
-  if hasE "$LABU" 'let Ok\( *[a-z_]+ *\) *= *std::env::var\( *"DOCKPANEL_SFTP_LAB" *,? *\) *else'; then
-    bad "B2 the lab test still returns early when DOCKPANEL_SFTP_LAB is unset — it can pass having executed nothing"
+  if hasE "$LABU" 'let Ok\( *[a-z_]+ *\) *= *std::env::var\( *"ARSY_SFTP_LAB" *,? *\) *else'; then
+    bad "B2 the lab test still returns early when ARSY_SFTP_LAB is unset — it can pass having executed nothing"
   else
     ok "B2 the lab test does not return early on a missing lab"
   fi
 
   # B3. And say positively what it DOES do, so a third behaviour that is neither
   # cannot satisfy B2 by being absent (the v2.95.2 lesson: name the transport).
-  if hasE "$LABU" 'std::env::var\( *"DOCKPANEL_SFTP_LAB" *\) *\. *expect'; then
+  if hasE "$LABU" 'std::env::var\( *"ARSY_SFTP_LAB" *\) *\. *expect'; then
     ok "B3 it expects the variable, so running it without a lab panics rather than passing"
   else
-    bad "B3 the lab test does not expect() DOCKPANEL_SFTP_LAB — B2 alone would be satisfied by deleting the read entirely"
+    bad "B3 the lab test does not expect() ARSY_SFTP_LAB — B2 alone would be satisfied by deleting the read entirely"
   fi
 fi
 

@@ -5,8 +5,8 @@ use crate::safe_cmd::safe_command;
 use std::path::PathBuf;
 use std::time::Duration;
 
-const WALG_DIR: &str = "/var/lib/dockpanel/wal-g";
-const WALG_BIN: &str = "/var/lib/dockpanel/wal-g/wal-g";
+const WALG_DIR: &str = "/var/lib/arsy/wal-g";
+const WALG_BIN: &str = "/var/lib/arsy/wal-g/wal-g";
 const WALG_VERSION: &str = "v2.0.1"; // Pinned version for reproducibility
 
 /// Check if WAL-G binary is installed

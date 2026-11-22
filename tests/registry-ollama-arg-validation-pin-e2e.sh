@@ -2,11 +2,11 @@
 # registry-ollama-arg-validation-pin-e2e.sh — s439
 #
 # Pins the docker_apps.rs registry_login/ollama_pull/ollama_delete finding
-# named in [[project_dockpanel_tech_debt_p4]] (long-standing INFO carry: "exec
+# named in [[project_arsy_tech_debt_p4]] (long-standing INFO carry: "exec
 # denylist substring theater... registry_login/ollama_pull accept an
 # arbitrary host") and confirmed still open at HEAD (v2.194.0, ab9a205)
 # before this fix. Same DiD shape as the s438 nginx.rs/remote_backup.rs
-# closure ([[project_dockpanel_tech_debt_p176]]): every one of these 4
+# closure ([[project_arsy_tech_debt_p176]]): every one of these 4
 # handlers passes an admin-supplied string straight into a `docker`/`ollama`
 # CLI argument via `safe_command(...).args([...])` (no shell, so classic `;`/
 # `|` injection is not reachable — args() passes each token verbatim), but
@@ -153,7 +153,7 @@ fi
 # `remove_image` allowed every character `docker rmi --help` needs, so
 # `DELETE /apps/images/--help` ran that flag and returned success:true with
 # no guard at all — 0 hits for `rmi` in this suite before the fix.
-# [[project_dockpanel_tech_debt_p185]] §D.
+# [[project_arsy_tech_debt_p185]] §D.
 
 REMOVE_IMG=$(flat "$(fnbody "$APPS_SRC" "remove_image")")
 if [ -z "$REMOVE_IMG" ]; then
@@ -179,11 +179,11 @@ fi
 # file, same "an admin-reachable docker verb takes an unsafe flag" shape:
 # `-a` on `image prune` reaches every image not backing a running container,
 # not just dangling ones — including git-deploy rollback targets
-# (`dockpanel-git-<name>:<hash>`, no pull fallback) and manual snapshots
-# (`dockpanel-snapshot:*`), neither re-pullable. The project's own C4 rule
+# (`arsy-git-<name>:<hash>`, no pull fallback) and manual snapshots
+# (`arsy-snapshot:*`), neither re-pullable. The project's own C4 rule
 # for the UNATTENDED reclaim (`tests/unattended-host-scope-pin-e2e.sh`)
 # already forbids this; this handler is the MANUAL button and had no such
-# guard. [[project_dockpanel_tech_debt_p185]] §E.
+# guard. [[project_arsy_tech_debt_p185]] §E.
 
 PRUNE=$(flat "$(fnbody "$APPS_SRC" "prune_images_all")")
 if [ -z "$PRUNE" ]; then
@@ -195,8 +195,8 @@ else
   else
     ok "F1 prune_images_all never passes -a"
   fi
-  if has "$PRUNE" 'label!=dockpanel\.managed=true'; then
-    ok "F2 prune_images_all filters on the same dockpanel.managed label as the scoped reclaim"
+  if has "$PRUNE" 'label!=arsy\.managed=true'; then
+    ok "F2 prune_images_all filters on the same arsy.managed label as the scoped reclaim"
   else
     bad "F2 prune_images_all has no label filter — diverges from the scoped reclaim's own C4 precedent"
   fi

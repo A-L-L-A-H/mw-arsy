@@ -118,9 +118,9 @@ pub async fn emit_event(pool: &PgPool, event_type: &str, data: serde_json::Value
             let result = pinned
                 .post(&webhook_url)
                 .header("Content-Type", "application/json")
-                .header("X-DockPanel-Event", &event_type)
-                .header("X-DockPanel-Delivery", &delivery_id)
-                .header("X-DockPanel-Signature", format!("sha256={signature}"))
+                .header("X-ARSY-Event", &event_type)
+                .header("X-ARSY-Delivery", &delivery_id)
+                .header("X-ARSY-Signature", format!("sha256={signature}"))
                 .body(payload_str.clone())
                 .send()
                 .await;

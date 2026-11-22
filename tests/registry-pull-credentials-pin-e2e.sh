@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # registry-pull-credentials-pin-e2e.sh — s447
 #
-# Pins the docker_apps.rs finding named in [[project_dockpanel_tech_debt_p185]]
+# Pins the docker_apps.rs finding named in [[project_arsy_tech_debt_p185]]
 # §C: `GET /apps/registries` read a literal `/root/.docker/config.json`, but
 # every `docker` CLI invocation runs through `safe_command`, which points
 # `DOCKER_CONFIG` at `crate::safe_cmd::DOCKER_CONFIG_DIR`
-# (`/var/lib/dockpanel/docker`) — so a login always landed somewhere the
+# (`/var/lib/arsy/docker`) — so a login always landed somewhere the
 # route never looked, and the panel's "Configured registries" list was
 # always empty. Separately, every bollard `create_image` pull (template
 # deploy, app update, change-image, and compose deploy) passed

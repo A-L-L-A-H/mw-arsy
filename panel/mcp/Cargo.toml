@@ -1,12 +1,12 @@
 [package]
-name = "dockpanel-mcp"
+name = "arsy-mcp"
 version = "2.242.1"
 license = "AGPL-3.0-only"
 edition = "2024"
-description = "MCP server exposing read-only DockPanel introspection to AI agents"
+description = "MCP server exposing read-only ARSY introspection to AI agents"
 
 [[bin]]
-name = "dockpanel-mcp"
+name = "arsy-mcp"
 path = "src/main.rs"
 
 [profile.release]

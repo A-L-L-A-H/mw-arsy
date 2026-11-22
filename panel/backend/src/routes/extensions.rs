@@ -453,7 +453,7 @@ pub async fn test_webhook(
         "timestamp": timestamp,
         "delivery_id": delivery_id,
         "data": {
-            "message": "This is a test event from DockPanel.",
+            "message": "This is a test event from ARSY.",
             "extension": name,
             "triggered_by": claims.email,
         },
@@ -500,9 +500,9 @@ pub async fn test_webhook(
     let result = client
         .post(&webhook_url)
         .header("Content-Type", "application/json")
-        .header("X-DockPanel-Event", "test")
-        .header("X-DockPanel-Delivery", &delivery_id)
-        .header("X-DockPanel-Signature", format!("sha256={signature}"))
+        .header("X-ARSY-Event", "test")
+        .header("X-ARSY-Delivery", &delivery_id)
+        .header("X-ARSY-Signature", format!("sha256={signature}"))
         .body(payload_str.clone())
         .send()
         .await;

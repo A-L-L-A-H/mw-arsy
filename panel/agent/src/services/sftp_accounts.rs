@@ -3,7 +3,7 @@
 //! Each SFTP-enabled site gets its own Linux uid/gid (allocated by the panel,
 //! `sites.sftp_uid`/`sftp_gid`), which becomes the REAL owner of
 //! `/var/www/{domain}` — the actual per-tenant isolation. A separate jail tree
-//! under `/var/dockpanel-sftp/{domain}` is the OpenSSH `ChrootDirectory`
+//! under `/var/arsy-sftp/{domain}` is the OpenSSH `ChrootDirectory`
 //! (root-owned, as OpenSSH requires); its one `content/` subdirectory is
 //! bind-mounted (a dedicated systemd `.mount` unit, not `/etc/fstab`) onto the
 //! real, UNMOVED `/var/www/{domain}` — no nginx/PHP-FPM/WP-CLI/CMS-installer
@@ -23,13 +23,13 @@ use sha_crypt::{PasswordHasher, ShaCrypt};
 /// created once, by name (no fixed gid needed; useradd/sshd both accept names).
 pub const SFTP_GROUP: &str = "sftp_sites";
 
-const SSHD_DROPIN: &str = "/etc/ssh/sshd_config.d/99-dockpanel-sftp.conf";
+const SSHD_DROPIN: &str = "/etc/ssh/sshd_config.d/99-arsy-sftp.conf";
 
 /// Where the panel records which domain owns an allocated uid — read by
 /// [`crate::services::ownership::sftp_user`] before any teardown touches a
 /// real Linux account. Kept outside both the chroot jail and `/var/www` so
 /// the SFTP user's own session can never reach or edit it.
-pub const OWNER_MARKER_DIR: &str = "/etc/dockpanel/sftp-owners";
+pub const OWNER_MARKER_DIR: &str = "/etc/arsy/sftp-owners";
 
 pub fn sftp_username(uid: i32) -> String {
     format!("sftp{uid}")
@@ -40,7 +40,7 @@ pub fn sftp_groupname(gid: i32) -> String {
 }
 
 fn jail_root(domain: &str) -> String {
-    format!("/var/dockpanel-sftp/{domain}")
+    format!("/var/arsy-sftp/{domain}")
 }
 
 fn jail_content_dir(domain: &str) -> String {
@@ -132,7 +132,7 @@ pub async fn provision(domain: &str, uid: i32, gid: i32) -> Result<(), String> {
     }
 
     // 3. Jail tree: root-owned boundary (OpenSSH requires this, not
-    // configurable), empty content/ mountpoint. `/var/dockpanel-sftp` is a
+    // configurable), empty content/ mountpoint. `/var/arsy-sftp` is a
     // brand-new top-level directory this feature creates on first use, so a
     // plain `std::fs::create_dir_all` here hits the same EROFS the vmail
     // directory does in `routes/mail.rs`: ProtectSystem=strict namespaces the
@@ -160,7 +160,7 @@ pub async fn provision(domain: &str, uid: i32, gid: i32) -> Result<(), String> {
     let unit_name = mount_unit_name(&content_dir).await?;
     let unit = format!(
         "[Unit]\n\
-         Description=DockPanel SFTP jail content mount: {domain}\n\
+         Description=ARSY SFTP jail content mount: {domain}\n\
          \n\
          [Mount]\n\
          What={site_dir}\n\
@@ -407,7 +407,7 @@ async fn ensure_sshd_dropin() -> Result<(), String> {
         return Ok(());
     }
     let block = format!(
-        "# Managed by DockPanel — per-site SFTP jails (GH #108). Do not edit by hand;\n\
+        "# Managed by ARSY — per-site SFTP jails (GH #108). Do not edit by hand;\n\
          # regenerated the next time a site's SFTP account is enabled/disabled.\n\
          Match Group {SFTP_GROUP}\n\
          \tChrootDirectory %h\n\

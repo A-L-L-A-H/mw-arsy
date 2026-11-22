@@ -38,7 +38,7 @@ run_test() {
 
 # Test 1: Configure GitOps controller
 test_gitops_configure() {
-    local payload='{"enabled": true, "git_repo_url": "https://github.com/user/dockpanel-gitops.git", "git_branch": "main", "sync_interval_seconds": 300, "dry_run": true, "auto_reconcile": false, "prune_orphaned": false}'
+    local payload='{"enabled": true, "git_repo_url": "https://github.com/user/arsy-gitops.git", "git_branch": "main", "sync_interval_seconds": 300, "dry_run": true, "auto_reconcile": false, "prune_orphaned": false}'
     
     local response=$(curl -s -X PUT \
         -H "Authorization: Bearer ${ADMIN_TOKEN}" \

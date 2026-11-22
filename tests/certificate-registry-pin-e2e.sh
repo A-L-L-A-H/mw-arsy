@@ -258,7 +258,7 @@ has "F9 a parked write says it is parked" "$PROV" 'response["parked"]=serde_json
 FL=$(flat "$L")
 ROOT=$(printf '%s' "$FL" | /usr/bin/grep -oE 'SSL_REGISTRY_DIR:&str="[^"]+"' | head -1 | sed 's/.*="//; s/"$//')
 eq "F10-control the registry root was extracted" "$([ -n "$ROOT" ] && echo yes || echo no)" "yes"
-case "$ROOT" in /etc/dockpanel/ssl/*|/etc/dockpanel/ssl) bad "F10 the registry root sits INSIDE the per-domain tree ($ROOT) — every walker would call an alias a domain";; /etc/dockpanel/*) ok "F10 the registry root is a sibling under the agent's writable tree ($ROOT)";; *) bad "F10 the registry root is outside the agent's writable tree ($ROOT)";; esac
+case "$ROOT" in /etc/arsy/ssl/*|/etc/arsy/ssl) bad "F10 the registry root sits INSIDE the per-domain tree ($ROOT) — every walker would call an alias a domain";; /etc/arsy/*) ok "F10 the registry root is a sibling under the agent's writable tree ($ROOT)";; *) bad "F10 the registry root is outside the agent's writable tree ($ROOT)";; esac
 RP=$(body "$L" registry_paths 3); has "F10 registry paths are built from the root, never the per-domain tree" "$(flat "$RP")" 'SSL_REGISTRY_DIR'
 FR=$(flat "$R")
 REGB=$(body "$R" register 60); FREGB=$(flat "$REGB")

@@ -3,7 +3,7 @@
 #
 # panel/agent/src/routes/git_build.rs's pre_build_hook (POST /git/pre-build-hook)
 # ran a whitelisted-by-literal-string command via `sh -c` directly on the host,
-# as root (dockpanel-agent.service carries no User= directive). The whitelist
+# as root (arsy-agent.service carries no User= directive). The whitelist
 # blocked shell-injection into the command STRING but did nothing about the
 # named commands themselves being standard supply-chain-RCE vectors — every
 # one of npm/yarn/pnpm/pip/composer/bundle/cargo runs installer/build hooks
@@ -12,7 +12,7 @@
 # subsequent repo push AND every transitive dependency to run as root on the
 # panel host, unattended. First identified s244, re-verified open at s428
 # after 50 sessions during which an audit-coverage blind spot (backend-only
-# candidate enumeration, see feedback_dockpanel_audit_scope) kept it off every
+# candidate enumeration, see feedback_arsy_audit_scope) kept it off every
 # rotation pick.
 #
 # THE FIX: delete the host-exec route entirely. The same whitelisted string is
@@ -160,7 +160,7 @@ echo "== J. frontend copy no longer promises a host-side effect =="
 
 hasNot "$FRONTEND" 'Runs in the git repo directory before docker build' \
   "the old (now false) 'runs before docker build, on the host' copy is gone"
-has    "$FRONTEND" 'Only applies when DockPanel generates the Dockerfile for you' \
+has    "$FRONTEND" 'Only applies when ARSY generates the Dockerfile for you' \
   "the field's copy now matches what it actually does"
 
 echo

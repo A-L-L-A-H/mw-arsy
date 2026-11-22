@@ -19,7 +19,7 @@
 //! keeps working unchanged (port publishing does not care which bridge-driver
 //! network a container is on — `compose.rs`'s services already prove this),
 //! and reaches the sidecar at `tcp://<alias>:<port>`. The sidecar is labelled
-//! `dockpanel.sidecar_of=<app>`, never `dockpanel.app.template`, so
+//! `arsy.sidecar_of=<app>`, never `arsy.app.template`, so
 //! `list_deployed_apps`'s existing filter excludes it without any change —
 //! the operator manages exactly one thing.
 
@@ -67,18 +67,18 @@ impl SidecarDef {
 }
 
 /// The private bridge network an app's sidecar (if any) lives on. A prefix
-/// distinct from `CONTAINER_NAME_PREFIX` ("dockpanel-app-"), so it can never
+/// distinct from `CONTAINER_NAME_PREFIX` ("arsy-app-"), so it can never
 /// collide with an app's own container name.
 pub fn network_name(app_name: &str) -> String {
-    format!("dockpanel-appnet-{app_name}")
+    format!("arsy-appnet-{app_name}")
 }
 
 /// The sidecar's own container name — a namespace disjoint from
-/// `dockpanel-app-*`, so no app name can ever collide with it (every app name
+/// `arsy-app-*`, so no app name can ever collide with it (every app name
 /// is already refused if it starts with that prefix; this one starts with a
 /// different prefix entirely, not a suffix of it).
 fn container_name(app_name: &str) -> String {
-    format!("dockpanel-sidecar-{app_name}")
+    format!("arsy-sidecar-{app_name}")
 }
 
 /// Create the app's private network if it does not already exist, deploy the
@@ -105,7 +105,7 @@ pub async fn deploy(
             .create_network(CreateNetworkOptions {
                 name: network.as_str(),
                 driver: "bridge",
-                labels: HashMap::from([("dockpanel.managed", "true")]),
+                labels: HashMap::from([("arsy.managed", "true")]),
                 ..Default::default()
             })
             .await
@@ -174,8 +174,8 @@ pub async fn deploy(
             endpoints_config: endpoints,
         }),
         labels: Some(HashMap::from([
-            ("dockpanel.managed".to_string(), "true".to_string()),
-            ("dockpanel.sidecar_of".to_string(), app_name.to_string()),
+            ("arsy.managed".to_string(), "true".to_string()),
+            ("arsy.sidecar_of".to_string(), app_name.to_string()),
         ])),
         ..Default::default()
     };
@@ -275,11 +275,11 @@ pub async fn teardown(app_name: &str) {
             let ours = info
                 .labels
                 .as_ref()
-                .and_then(|l| l.get("dockpanel.managed"))
+                .and_then(|l| l.get("arsy.managed"))
                 .map(|v| v == "true")
                 .unwrap_or(false);
             if !ours {
-                tracing::warn!("Not removing network {network}: no dockpanel.managed label");
+                tracing::warn!("Not removing network {network}: no arsy.managed label");
                 return;
             }
         }

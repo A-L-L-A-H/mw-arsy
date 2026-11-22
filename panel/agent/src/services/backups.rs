@@ -2,12 +2,12 @@ use std::path::{Path, PathBuf};
 use crate::safe_cmd::safe_command;
 use crate::services::database_backup;
 
-const BACKUP_DIR: &str = "/var/backups/dockpanel";
+const BACKUP_DIR: &str = "/var/backups/arsy";
 const WEBROOT: &str = "/var/www";
 
 /// Where database dumps are staged while an archive is being built or unpacked.
 /// Must live under a path the agent unit lists in `ReadWritePaths`.
-const STAGING_ROOT: &str = "/var/backups/dockpanel/.staging";
+const STAGING_ROOT: &str = "/var/backups/arsy/.staging";
 
 // The three roots below are indirected through functions ONLY so the unit tests
 // can run hermetically under a temp directory: the real paths need root and a
@@ -21,7 +21,7 @@ fn backups_root() -> PathBuf { PathBuf::from(BACKUP_DIR) }
 fn staging_root() -> PathBuf { PathBuf::from(STAGING_ROOT) }
 
 #[cfg(test)]
-fn test_root() -> PathBuf { std::env::temp_dir().join("dockpanel-agent-tests") }
+fn test_root() -> PathBuf { std::env::temp_dir().join("arsy-agent-tests") }
 #[cfg(test)]
 fn webroot_root() -> PathBuf { test_root().join("www") }
 #[cfg(test)]
@@ -29,14 +29,14 @@ fn backups_root() -> PathBuf { test_root().join("backups") }
 #[cfg(test)]
 fn staging_root() -> PathBuf { test_root().join("backups/.staging") }
 
-/// Directory inside the archive that holds everything DockPanel adds to a site
+/// Directory inside the archive that holds everything ARSY adds to a site
 /// backup beyond the webroot itself. Deliberately NOT under `./` so it is a
 /// distinct top-level member and can be extracted (and excluded) on its own.
-const PAYLOAD_DIR: &str = ".dockpanel-backup";
+const PAYLOAD_DIR: &str = ".arsy-backup";
 
 /// Make the whole backup tree root-only, repairing what is already on disk.
 ///
-/// Everything under `/var/backups/dockpanel` is a restorable copy of something
+/// Everything under `/var/backups/arsy` is a restorable copy of something
 /// secret: the panel's own database — which carries `servers.agent_token` in
 /// CLEARTEXT, and that token is both the Bearer credential for every
 /// authenticated agent endpoint and the HMAC key the agent verifies its own
@@ -156,25 +156,25 @@ mod backup_perm_tests {
     fn a_world_readable_backup_tree_is_repaired() {
         let root = isolated_root();
         std::fs::create_dir_all(root.join("db")).unwrap();
-        std::fs::write(root.join("dockpanel-db-x.sql.gz"), b"dump").unwrap();
+        std::fs::write(root.join("arsy-db-x.sql.gz"), b"dump").unwrap();
         std::fs::write(root.join("db/nested.sql.gz"), b"dump").unwrap();
         // Exactly what the three writers leave behind today.
         for (p, m) in [
             (root.clone(), 0o755),
             (root.join("db"), 0o755),
-            (root.join("dockpanel-db-x.sql.gz"), 0o644),
+            (root.join("arsy-db-x.sql.gz"), 0o644),
             (root.join("db/nested.sql.gz"), 0o644),
         ] {
             std::fs::set_permissions(&p, std::fs::Permissions::from_mode(m)).unwrap();
         }
         // The arm can only mean something if the tree really is exposed first.
-        assert_eq!(mode_of(&root.join("dockpanel-db-x.sql.gz")), 0o644, "setup did not land");
+        assert_eq!(mode_of(&root.join("arsy-db-x.sql.gz")), 0o644, "setup did not land");
 
         secure_tree_at(&root);
 
         assert_eq!(mode_of(&root), 0o700, "the backup root is still traversable");
         assert_eq!(mode_of(&root.join("db")), 0o700, "a nested backup dir is still traversable");
-        assert_eq!(mode_of(&root.join("dockpanel-db-x.sql.gz")), 0o600, "the panel dump is still world-readable");
+        assert_eq!(mode_of(&root.join("arsy-db-x.sql.gz")), 0o600, "the panel dump is still world-readable");
         assert_eq!(mode_of(&root.join("db/nested.sql.gz")), 0o600, "a nested dump is still world-readable");
         let _ = std::fs::remove_dir_all(&root);
     }
@@ -560,7 +560,7 @@ pub fn list_backups(domain: &str) -> Result<Vec<BackupInfo>, String> {
     Ok(backups)
 }
 
-/// Extract the DockPanel payload out of an archive into `stage`, if it has one.
+/// Extract the ARSY payload out of an archive into `stage`, if it has one.
 ///
 /// Returns `Ok(None)` for an archive that predates the payload (every archive
 /// made before v2.34.0) — that is a normal, expected shape, not an error.
@@ -623,7 +623,7 @@ async fn extract_payload(archive: &str, stage: &Path) -> Result<Option<Manifest>
 
     if manifest.schema > MANIFEST_SCHEMA {
         return Err(format!(
-            "Backup was made by a newer DockPanel (manifest schema {}, this agent understands {MANIFEST_SCHEMA}). Update this server before restoring it.",
+            "Backup was made by a newer ARSY (manifest schema {}, this agent understands {MANIFEST_SCHEMA}). Update this server before restoring it.",
             manifest.schema
         ));
     }
@@ -695,7 +695,7 @@ async fn restore_inner(
 
     // 2. Restore the files. Full overwrite ensures a clean restore;
     //    --no-same-owner prevents uid/gid hijacking. The payload is excluded so
-    //    a site restored from a v1 archive does not gain a .dockpanel-backup
+    //    a site restored from a v1 archive does not gain a .arsy-backup
     //    directory full of database dumps under its document root.
     let output = tokio::time::timeout(
         std::time::Duration::from_secs(300),
@@ -1114,9 +1114,9 @@ mod db_payload_tests {
         let info = create_backup(site.domain(), &[]).await.expect("backup");
 
         for attempt in [
-            ".dockpanel-backup/db/x.sql.gz",
-            "./.dockpanel-backup/db/x.sql.gz",
-            ".dockpanel-backup",
+            ".arsy-backup/db/x.sql.gz",
+            "./.arsy-backup/db/x.sql.gz",
+            ".arsy-backup",
         ] {
             let err = restore_single_file(site.domain(), &info.filename, attempt)
                 .await

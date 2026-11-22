@@ -13,8 +13,8 @@
 // that admin registered, not only the one the CLI runs on — no narrower scope
 // exists yet (`iac_tokens.scopes` is an unused column that could start one).
 
-const API_ENV_PATH: &str = "/etc/dockpanel/api.env";
-const TOKEN_PATH: &str = "/etc/dockpanel/backend.token";
+const API_ENV_PATH: &str = "/etc/arsy/api.env";
+const TOKEN_PATH: &str = "/etc/arsy/backend.token";
 
 pub fn load_token() -> Result<String, String> {
     let not_configured = || {

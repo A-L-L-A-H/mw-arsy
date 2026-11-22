@@ -1,6 +1,6 @@
 //! A standalone WebAuthn client+authenticator, independent of the server's own
 //! implementation, that drives the REAL passkey HTTP ceremony end to end
-//! against a running dockpanel-api — the harness §G4 of
+//! against a running arsy-api — the harness §G4 of
 //! `tests/passkey-ceremony-pin-e2e.sh` named as the missing proof for the
 //! `uv_capable` fix: "needs a `uv` column and a virtual-authenticator harness
 //! to prove the flip."
@@ -30,7 +30,7 @@
 //! Run via `tests/passkey-uv-enforcement-e2e.sh`, which builds and invokes
 //! this binary against a live local instance — matching how
 //! `nginx-headers-pin-e2e.sh`/`update-rollback-pin-e2e.sh` are this repo's
-//! other EXECUTE-class pin suites, per `reference_dockpanel_ops`.
+//! other EXECUTE-class pin suites, per `reference_arsy_ops`.
 
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use p256::ecdsa::{signature::Signer, Signature, SigningKey, VerifyingKey};
@@ -206,9 +206,9 @@ fn rp_id_hash_for(origin_host: &str) -> [u8; 32] {
 
 #[tokio::main]
 async fn main() {
-    let base = std::env::var("DOCKPANEL_TEST_BASE_URL").unwrap_or_else(|_| "http://127.0.0.1:3080".into());
-    let email = std::env::var("DOCKPANEL_TEST_EMAIL").unwrap_or_else(|_| "admin@dockpanel.dev".into());
-    let password = std::env::var("DOCKPANEL_TEST_PASSWORD").unwrap_or_else(|_| "testpassword".into());
+    let base = std::env::var("ARSY_TEST_BASE_URL").unwrap_or_else(|_| "http://127.0.0.1:3080".into());
+    let email = std::env::var("ARSY_TEST_EMAIL").unwrap_or_else(|_| "admin@moonwitness.dev".into());
+    let password = std::env::var("ARSY_TEST_PASSWORD").unwrap_or_else(|_| "testpassword".into());
     // Matches get_rp_id_from_headers' Origin-header fallback (this box has no
     // BASE_URL configured) — an explicit Origin makes the derivation
     // deterministic instead of depending on how the HTTP client fills Host.
@@ -226,7 +226,7 @@ async fn main() {
 
     let token = match login(&base, &origin, &email, &password).await {
         Ok(t) => t,
-        Err(e) => { eprintln!("FATAL: could not log in ({e}) — is dockpanel-api running at {base}?"); std::process::exit(2); }
+        Err(e) => { eprintln!("FATAL: could not log in ({e}) — is arsy-api running at {base}?"); std::process::exit(2); }
     };
     let ctx = Ctx { base: base.clone(), origin: origin.clone(), client: reqwest::Client::new(), token };
 

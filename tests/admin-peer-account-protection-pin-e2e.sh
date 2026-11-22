@@ -48,7 +48,7 @@
 #
 # Position arms (B2/C2/D2/E2), not just presence, because a check that
 # exists in the function but runs AFTER the mutation is a check that does
-# nothing — the same lesson project_dockpanel_tech_debt_p178's
+# nothing — the same lesson project_arsy_tech_debt_p178's
 # registry_login mutation drew: a text-presence arm alone cannot tell
 # "guarded" from "guarded too late".
 

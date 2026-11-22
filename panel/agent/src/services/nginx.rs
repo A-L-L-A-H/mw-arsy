@@ -429,7 +429,7 @@ pub async fn retrofit_static_denies() {
         if path.extension().and_then(|e| e.to_str()) != Some("conf") {
             continue;
         }
-        if path.file_name().and_then(|n| n.to_str()) == Some("dockpanel-panel.conf") {
+        if path.file_name().and_then(|n| n.to_str()) == Some("arsy-panel.conf") {
             continue;
         }
         let Ok(body) = std::fs::read_to_string(&path) else { continue };
@@ -797,14 +797,14 @@ pub fn render_site_config(
             config
                 .ssl_cert
                 .as_deref()
-                .unwrap_or(&format!("/etc/dockpanel/ssl/{domain}/fullchain.pem")),
+                .unwrap_or(&format!("/etc/arsy/ssl/{domain}/fullchain.pem")),
         );
         ctx.insert(
             "ssl_key",
             config
                 .ssl_key
                 .as_deref()
-                .unwrap_or(&format!("/etc/dockpanel/ssl/{domain}/privkey.pem")),
+                .unwrap_or(&format!("/etc/arsy/ssl/{domain}/privkey.pem")),
         );
     }
 
@@ -976,7 +976,7 @@ mod tests {
     // inline in five writers there was nothing a test could hold.
 
     fn scratch(name: &str) -> std::path::PathBuf {
-        let dir = std::env::temp_dir().join(format!("dockpanel-vhost-target-{name}"));
+        let dir = std::env::temp_dir().join(format!("arsy-vhost-target-{name}"));
         std::fs::remove_dir_all(&dir).ok();
         std::fs::create_dir_all(&dir).expect("scratch dir");
         dir

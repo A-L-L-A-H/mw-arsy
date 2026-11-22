@@ -5,7 +5,7 @@ mod tools;
 use rmcp::transport::streamable_http_server::session::local::LocalSessionManager;
 use rmcp::transport::streamable_http_server::{StreamableHttpServerConfig, StreamableHttpService};
 
-const MCP_ENV_PATH: &str = "/etc/dockpanel/mcp.env";
+const MCP_ENV_PATH: &str = "/etc/arsy/mcp.env";
 const DEFAULT_LISTEN_ADDR: &str = "127.0.0.1:3081";
 
 /// Mirrors `api.env`'s `LISTEN_ADDR=` convention (`scripts/setup.sh`) so an
@@ -45,7 +45,7 @@ async fn main() {
     // regardless of which Host header they send.
     let config = StreamableHttpServerConfig::default().disable_allowed_hosts();
     let service = StreamableHttpService::new(
-        || Ok(tools::DockPanelMcp),
+        || Ok(tools::ArsyMcp),
         LocalSessionManager::default().into(),
         config,
     );
@@ -66,7 +66,7 @@ async fn main() {
         }
     };
 
-    tracing::info!("dockpanel-mcp listening on {addr} (/mcp)");
+    tracing::info!("arsy-mcp listening on {addr} (/mcp)");
     if let Err(e) = axum::serve(listener, router).await {
         tracing::error!("Server error: {e}");
         std::process::exit(1);

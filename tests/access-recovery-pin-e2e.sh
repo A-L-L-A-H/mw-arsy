@@ -14,7 +14,7 @@
 #       `register` (the sibling door) inserted BOTH columns all along — the
 #       ASYMMETRY between two implementations of one step was the bug (#307).
 #
-#   R2  A SECOND IP WHITELIST WROTE A FILE NOTHING READ. `/etc/dockpanel/
+#   R2  A SECOND IP WHITELIST WROTE A FILE NOTHING READ. `/etc/arsy/
 #       panel-whitelist.conf` had exactly two references in the whole repository:
 #       its own writer and its own read-back-for-display. No nginx include, no
 #       template, nothing compiled in. Its card sat ABOVE the real control on the
@@ -244,7 +244,7 @@ inserts_in() {
 # exactly what this stream no longer contains — so the anchor is the code.
 retention_window() {
   code_lines "$1" | perl -0777 -ne '
-    if (/audit_dir = "\/var\/lib\/dockpanel\/audit"/g) {
+    if (/audit_dir = "\/var\/lib\/arsy\/audit"/g) {
       my $s = pos($_); my $i = index($_, "{", $s); my $d = 0;
       for (my $j = $i; $j < length($_); $j++) {
         my $c = substr($_, $j, 1);
@@ -373,7 +373,7 @@ for f in $CONF_CANDS; do
   if [ "$(conf_refs "$f")" -gt 0 ]; then conf=$((conf+1)); fi
 done
 if [ "$conf" -eq 0 ]; then
-  ok "B2 nothing writes or reads /etc/dockpanel/panel-whitelist.conf"
+  ok "B2 nothing writes or reads /etc/arsy/panel-whitelist.conf"
 else
   bad "B2 $conf file(s) still touch panel-whitelist.conf — the file no enforcement path ever consumed"
 fi
@@ -748,7 +748,7 @@ PINNED=(
   "$BE/services/auto_healer.rs|-F|ErrorKind::NotFound"
   "$BE/services/auto_healer.rs|-F|NOT ARMED"
   "$BE/services/auto_healer.rs|-F|audit_failed"
-  "$BE/services/auto_healer.rs|-F|audit_dir = \"/var/lib/dockpanel/audit\""
+  "$BE/services/auto_healer.rs|-F|audit_dir = \"/var/lib/arsy/audit\""
   "$BE/routes/users.rs|-F|INSERT INTO users"
   "$BE/routes/reseller_dashboard.rs|-F|INSERT INTO users"
   "$BE/routes/whmcs.rs|-F|INSERT INTO users"
@@ -837,7 +837,7 @@ fi
 # H2 — B2. A live writer of the file nothing consumed.
 cat > "$FIXDIR/wlconf.rs" <<'FIX'
 // the tombstone may name panel-whitelist.conf; the writer below is the defect
-std::fs::write("/etc/dockpanel/panel-whitelist.conf", body)?;
+std::fs::write("/etc/arsy/panel-whitelist.conf", body)?;
 FIX
 if [ "$(conf_refs "$FIXDIR/wlconf.rs")" -gt 0 ]; then
   ok "H2 B2's file scan still fires when panel-whitelist.conf is really written in code"
@@ -861,7 +861,7 @@ fi
 cat > "$FIXDIR/ret.rs" <<'FIX'
 // Clean old audit log files (>365 days) — this narration must not be the anchor
 fn sweep() {
-    let audit_dir = "/var/lib/dockpanel/audit";
+    let audit_dir = "/var/lib/arsy/audit";
     if let Ok(entries) = std::fs::read_dir(audit_dir) {
         let mut audit_failed: Vec<String> = Vec::new();
         for entry in entries.flatten() {

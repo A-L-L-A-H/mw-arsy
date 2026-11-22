@@ -420,8 +420,8 @@ async fn pdns_local_addresses() -> Option<String> {
 
 /// The panel's PostgreSQL password, parsed out of the API's env file.
 ///
-/// `setup.sh` writes `DATABASE_URL=postgresql://dockpanel:<pw>@127.0.0.1:<port>/dockpanel`
-/// to `/etc/dockpanel/api.env` (mode 600, and the agent runs as root). Env vars
+/// `setup.sh` writes `DATABASE_URL=postgresql://arsy:<pw>@127.0.0.1:<port>/arsy`
+/// to `/etc/arsy/api.env` (mode 600, and the agent runs as root). Env vars
 /// are checked first so a non-standard deployment can still override.
 async fn panel_db_password() -> Option<String> {
     fn password_from_url(url: &str) -> Option<String> {
@@ -439,7 +439,7 @@ async fn panel_db_password() -> Option<String> {
         return Some(pw);
     }
 
-    let env_file = tokio::fs::read_to_string("/etc/dockpanel/api.env").await.ok()?;
+    let env_file = tokio::fs::read_to_string("/etc/arsy/api.env").await.ok()?;
     env_file
         .lines()
         .find_map(|l| l.trim().strip_prefix("DATABASE_URL="))
@@ -490,12 +490,12 @@ async fn pdns_failure_detail() -> String {
 /// it at unit start — but `apt-get purge pdns-server` (see the uninstaller)
 /// deletes the directory, which detaches that bind mount for the remaining life
 /// of the agent process. A direct `tokio::fs::write` then fails EROFS on every
-/// reinstall until the agent restarts. Staging through `/var/lib/dockpanel` (a
+/// reinstall until the agent restarts. Staging through `/var/lib/arsy` (a
 /// live ReadWritePaths entry) and moving the file into place with `install`
 /// sidesteps the detached mount entirely — and keeps the embedded API key off
 /// both the process argv and a world-readable config.
 async fn write_pdns_conf(contents: &str) -> Result<(), ApiErr> {
-    const STAGED: &str = "/var/lib/dockpanel/pdns.conf.staged";
+    const STAGED: &str = "/var/lib/arsy/pdns.conf.staged";
 
     // The staged copy carries the generated API key (and, on the pgsql path, the
     // database password), so create it 0600 rather than letting the umask decide
@@ -630,7 +630,7 @@ async fn install_powerdns(body: axum::body::Bytes) -> Result<Json<serde_json::Va
         let db_exists = tokio::time::timeout(
             Duration::from_secs(120),
             safe_command("docker")
-                .args(["exec", "dockpanel-postgres", "psql", "-U", "dockpanel", "-lqt"])
+                .args(["exec", "arsy-postgres", "psql", "-U", "arsy", "-lqt"])
                 .output()
         ).await
             .ok()
@@ -642,7 +642,7 @@ async fn install_powerdns(body: axum::body::Bytes) -> Result<Json<serde_json::Va
             let _ = tokio::time::timeout(
                 Duration::from_secs(120),
                 safe_command("docker")
-                    .args(["exec", "dockpanel-postgres", "psql", "-U", "dockpanel", "-c", "CREATE DATABASE pdns;"])
+                    .args(["exec", "arsy-postgres", "psql", "-U", "arsy", "-c", "CREATE DATABASE pdns;"])
                     .output()
             ).await;
 
@@ -653,7 +653,7 @@ async fn install_powerdns(body: axum::body::Bytes) -> Result<Json<serde_json::Va
                 let _ = tokio::time::timeout(
                     Duration::from_secs(120),
                     safe_command_unsandboxed("sh", &[])
-                        .args(["-c", &format!("cat {} | docker exec -i dockpanel-postgres psql -U dockpanel -d pdns", schema_path)])
+                        .args(["-c", &format!("cat {} | docker exec -i arsy-postgres psql -U arsy -d pdns", schema_path)])
                         .output()
                 ).await;
             }
@@ -662,7 +662,7 @@ async fn install_powerdns(body: axum::body::Bytes) -> Result<Json<serde_json::Va
 
     // 4. Build the backend-specific config
     let mut pdns_conf = if use_sqlite {
-        format!(r#"# DockPanel PowerDNS configuration (SQLite backend)
+        format!(r#"# ARSY PowerDNS configuration (SQLite backend)
 launch=gsqlite3
 gsqlite3-database=/var/lib/powerdns/pdns.sqlite3
 
@@ -688,16 +688,16 @@ default-soa-content=ns1.@ hostmaster.@ 0 10800 3600 604800 3600
         // credential from the API's env file instead.
         let pdns_db_password = panel_db_password().await.ok_or_else(|| err(
             StatusCode::INTERNAL_SERVER_ERROR,
-            "Could not read the panel database password from /etc/dockpanel/api.env — \
+            "Could not read the panel database password from /etc/arsy/api.env — \
              install PowerDNS with the SQLite backend instead, or repair DATABASE_URL",
         ))?;
 
-        format!(r#"# DockPanel PowerDNS configuration
+        format!(r#"# ARSY PowerDNS configuration
 launch=gpgsql
 gpgsql-host=127.0.0.1
 gpgsql-port=5450
 gpgsql-dbname=pdns
-gpgsql-user=dockpanel
+gpgsql-user=arsy
 gpgsql-password={pdns_db_password}
 
 # HTTP API
@@ -1261,7 +1261,7 @@ async fn install_waf() -> Result<Json<serde_json::Value>, ApiErr> {
     }
 
     // 4. Write base ModSecurity config
-    let modsec_conf = r#"# ModSecurity base config (managed by DockPanel)
+    let modsec_conf = r#"# ModSecurity base config (managed by ARSY)
 SecRuleEngine DetectionOnly
 SecRequestBodyAccess On
 SecRequestBodyLimit 13107200

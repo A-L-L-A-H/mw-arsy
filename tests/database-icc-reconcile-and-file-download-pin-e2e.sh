@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
-# Regression pins for the s455 dockpanel-fanout run over
+# Regression pins for the s455 arsy-fanout run over
 # panel/agent/src/services/database.rs + panel/agent/src/routes/database.rs
-# (workflow wf_42ca36ed-5e2; project_dockpanel_tech_debt ledger p194).
+# (workflow wf_42ca36ed-5e2; project_arsy_tech_debt ledger p194).
 #
 #   D1  `reconcile_network_icc` (the one-time pre-s242 ICC-hardening migration
-#       for the shared `dockpanel-db` bridge) aborted on the FIRST reconnect
+#       for the shared `arsy-db` bridge) aborted on the FIRST reconnect
 #       failure — the network was already torn down and recreated by that
 #       point, so every container LATER in the batch than the failure was
 #       left with ZERO network attachment (its published port stops
 #       routing) and no server-side record of which containers were
 #       orphaned. Live-proven against a real, fully disposable Docker
-#       network (never the real `dockpanel-db`): two real containers
+#       network (never the real `arsy-db`): two real containers
 #       straddling a deliberately-unconnectable id both ended up reconnected
 #       after the fix, and the aggregated error named exactly the bad id.
 #   D2  `routes/files.rs::download_file` read an entire file into a `Vec<u8>`

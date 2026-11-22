@@ -181,7 +181,7 @@ async fn login_audit() -> Result<Json<serde_json::Value>, ApiErr> {
     Ok(Json(serde_json::json!({ "entries": entries })))
 }
 
-/// POST /security/panel-jail/setup — Create DockPanel Fail2Ban jail.
+/// POST /security/panel-jail/setup — Create ARSY Fail2Ban jail.
 async fn setup_panel_jail() -> Result<Json<serde_json::Value>, ApiErr> {
     security::setup_panel_jail().await
         .map_err(|e| err(StatusCode::INTERNAL_SERVER_ERROR, &e))?;
@@ -252,7 +252,7 @@ async fn forensic_snapshot() -> Result<Json<serde_json::Value>, ApiErr> {
     use crate::safe_cmd::safe_command;
 
     let ts = chrono::Utc::now().format("%Y%m%d_%H%M%S");
-    let dir = format!("/var/lib/dockpanel/forensics/snapshot-{ts}");
+    let dir = format!("/var/lib/arsy/forensics/snapshot-{ts}");
     let _ = std::fs::create_dir_all(&dir);
 
     // Capture running processes
@@ -313,7 +313,7 @@ async fn forensic_snapshot() -> Result<Json<serde_json::Value>, ApiErr> {
     let _ = std::fs::write(format!("{dir}/etc_passwd.txt"), &passwd);
 
     // Capture active terminal recordings
-    let recordings = std::fs::read_dir("/var/lib/dockpanel/recordings")
+    let recordings = std::fs::read_dir("/var/lib/arsy/recordings")
         .map(|d| d.filter_map(|e| e.ok()).map(|e| e.file_name().to_string_lossy().to_string()).collect::<Vec<_>>())
         .unwrap_or_default();
     let _ = std::fs::write(format!("{dir}/active_recordings.txt"), recordings.join("\n"));
@@ -327,11 +327,11 @@ async fn forensic_snapshot() -> Result<Json<serde_json::Value>, ApiErr> {
     })))
 }
 
-/// POST /security/db-backup — Backup DockPanel's own PostgreSQL database (Feature 2).
+/// POST /security/db-backup — Backup ARSY's own PostgreSQL database (Feature 2).
 async fn db_backup() -> Result<Json<serde_json::Value>, ApiErr> {
     use crate::safe_cmd::safe_command;
 
-    let backup_dir = "/var/backups/dockpanel";
+    let backup_dir = "/var/backups/arsy";
     let _ = std::fs::create_dir_all(backup_dir);
     // This dump is the panel's entire database — users, sessions, api_keys and
     // `servers.agent_token` in cleartext. It must not be readable by anything
@@ -339,12 +339,12 @@ async fn db_backup() -> Result<Json<serde_json::Value>, ApiErr> {
     let _ = std::fs::set_permissions(backup_dir, std::fs::Permissions::from_mode(0o700));
 
     let ts = chrono::Utc::now().format("%Y%m%d_%H%M%S");
-    let filename = format!("{backup_dir}/dockpanel-db-{ts}.sql.gz");
+    let filename = format!("{backup_dir}/arsy-db-{ts}.sql.gz");
 
     // pg_dump via Docker exec, capture output, then compress with gzip subprocess
     // No shell interpolation — all args passed directly
     let dump_output = safe_command("docker")
-        .args(["exec", "dockpanel-postgres", "pg_dump", "-U", "dockpanel", "dockpanel"])
+        .args(["exec", "arsy-postgres", "pg_dump", "-U", "arsy", "arsy"])
         .output()
         .await
         .map_err(|e| err(StatusCode::INTERNAL_SERVER_ERROR, &format!("pg_dump failed: {e}")))?;
@@ -398,7 +398,7 @@ async fn db_backup() -> Result<Json<serde_json::Value>, ApiErr> {
     if let Ok(entries) = std::fs::read_dir(backup_dir) {
         let mut files: Vec<_> = entries
             .filter_map(|e| e.ok())
-            .filter(|e| e.file_name().to_string_lossy().starts_with("dockpanel-db-"))
+            .filter(|e| e.file_name().to_string_lossy().starts_with("arsy-db-"))
             .collect();
         files.sort_by_key(|e| std::cmp::Reverse(e.file_name()));
         for old in files.iter().skip(7) {
@@ -407,7 +407,7 @@ async fn db_backup() -> Result<Json<serde_json::Value>, ApiErr> {
     }
 
     let size = std::fs::metadata(&filename).map(|m| m.len()).unwrap_or(0);
-    tracing::info!("DockPanel DB backup created: {filename} ({size} bytes)");
+    tracing::info!("ARSY DB backup created: {filename} ({size} bytes)");
 
     Ok(Json(serde_json::json!({
         "filename": filename,
@@ -439,7 +439,7 @@ async fn db_backup() -> Result<Json<serde_json::Value>, ApiErr> {
 // path and requires zero hits, so do not write the literal here even to explain the
 // removal — describing it, as above, is deliberate. See lesson #340.
 
-/// Where a canary can actually be planted on a DockPanel host.
+/// Where a canary can actually be planted on a ARSY host.
 ///
 /// The four this endpoint used to advertise — `/etc`, `/root`, `/home`,
 /// `/var/www` — were never a set this process could write. The unit runs under
@@ -461,18 +461,18 @@ async fn db_backup() -> Result<Json<serde_json::Value>, ApiErr> {
 /// which makes them better tripwires than a home directory nobody can watch.
 pub const CANARY_PLANT_PATHS: [(&str, &str); 4] = [
     (
-        "/etc/dockpanel/.dockpanel-canary",
+        "/etc/arsy/.arsy-canary",
         "Panel credential directory canary",
     ),
     (
-        "/var/lib/dockpanel/.dockpanel-canary",
+        "/var/lib/arsy/.arsy-canary",
         "Panel state directory canary",
     ),
     (
-        "/var/backups/dockpanel/.dockpanel-canary",
+        "/var/backups/arsy/.arsy-canary",
         "Panel database backup canary",
     ),
-    ("/var/www/.dockpanel-canary", "Web root canary"),
+    ("/var/www/.arsy-canary", "Web root canary"),
 ];
 
 /// POST /security/canary/setup — Create canary files in sensitive directories (Feature 12).
@@ -495,7 +495,7 @@ async fn canary_setup() -> Result<Json<serde_json::Value>, ApiErr> {
         );
 
         // The parent is inside ReadWritePaths but need not exist yet —
-        // /var/backups/dockpanel is created by the database-backup task, which an
+        // /var/backups/arsy is created by the database-backup task, which an
         // operator may never have run.
         if let Some(parent) = std::path::Path::new(path).parent() {
             let _ = std::fs::create_dir_all(parent);

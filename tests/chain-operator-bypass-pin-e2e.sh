@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Regression pins for the s429 dockpanel-fanout follow-up: a cron/shell-command
+# Regression pins for the s429 arsy-fanout follow-up: a cron/shell-command
 # chaining bypass (root RCE) and an unauthenticated Dozzle-sidecar access gap.
 #
 # 1. CRON/SHELL-COMMAND CHAINING BYPASS (CRITICAL). is_safe_cron_command
@@ -38,7 +38,7 @@
 #
 # These are SOURCE pins and need no running panel.
 #
-# 3. THE #1 FIX WAS ITSELF INCOMPLETE (s430 dockpanel-fanout completeness
+# 3. THE #1 FIX WAS ITSELF INCOMPLETE (s430 arsy-fanout completeness
 #    critic, CRITICAL, found HOURS after the fix above shipped). `;` and `|`
 #    were closed but the third POSIX chaining operator, bare `&`, was never
 #    checked by either function — "id&whoami" passed both gates clean, with

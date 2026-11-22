@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Regression pins for the s430 dockpanel-fanout run on panel/agent/src/routes/
+# Regression pins for the s430 arsy-fanout run on panel/agent/src/routes/
 # volume_backup.rs + services/volume_backup.rs + backend backup_orchestrator.rs
 # — two findings, upheld by an independent skeptic before either fix landed.
 #
@@ -7,7 +7,7 @@
 #    endpoint was a flat `SELECT * FROM volume_backups ... LIMIT/OFFSET`
 #    gated only by `AdminUser` — no server_id/user_id scope at all — unlike
 #    its own sibling `list_db_backups` two functions above it, which has
-#    always scoped by `s.user_id`. DockPanel is multi-tenant at the admin
+#    always scoped by `s.user_id`. ARSY is multi-tenant at the admin
 #    tier (any admin can promote another user to `role='admin'` via
 #    `PUT /api/users/{id}`, a routine action, not an edge case), so every
 #    OTHER admin's container/volume names, filenames, sizes, sha256 hashes,
@@ -89,7 +89,7 @@ echo "== C. Real docker verification (already executed at fix time, not re-run e
 echo "     (a) empty tar.gz  -> exit 3, volume untouched   [verified s430]"
 echo "     (b) real tar.gz   -> exit 0, restores correctly [verified s430]"
 echo "     (c) truncated tar.gz -> exit 3, volume untouched (regression control) [verified s430]"
-ok "documented — see project_dockpanel_tech_debt_p165.md for the full docker transcript"
+ok "documented — see project_arsy_tech_debt_p165.md for the full docker transcript"
 
 echo
 printf 'passed %d, failed %d\n' "$PASS" "$FAIL"

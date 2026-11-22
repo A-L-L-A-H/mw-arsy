@@ -6,9 +6,9 @@
 # session JWT on every AuthUser-gated handler — the missing half that let the
 # CLI (panel/cli/src/backend_client.rs) restore a site's DATABASE as well as
 # its files, which the agent alone structurally cannot do (no DB
-# credentials). Full design: project_dockpanel_tech_debt_p198. Full account
+# credentials). Full design: project_arsy_tech_debt_p198. Full account
 # of what shipped, including three fixes a 3-lens adversarial skeptic
-# workflow caught before shipping: project_dockpanel_tech_debt_p206.
+# workflow caught before shipping: project_arsy_tech_debt_p206.
 #
 # What the skeptic caught, each pinned below:
 #   §A5 — a bad/expired key must NOT use the `session_invalid()` marker (that
@@ -34,7 +34,7 @@
 # Live-fire proof, not just these source pins: a throwaway Vultr VPS ran the
 # real published v2.220.0 install, swapped in these locally-built api+cli
 # binaries, and drove every one of the above through the CLI's own restore
-# command — see project_dockpanel_tech_debt_p206 for the full transcript
+# command — see project_arsy_tech_debt_p206 for the full transcript
 # (marker-row DB restore, revoked-key-then-remint, the files-only-metadata/
 # real-DB-dump-in-archive scenario that reproduced the false "Restore
 # failed" bug pre-fix, and an admin's key restoring a site owned by a

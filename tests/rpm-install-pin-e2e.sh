@@ -170,7 +170,7 @@ code_prod() { code_lines "$1" | awk 'fin { next } { print } /#\[cfg\(test\)\]/ {
 # symbol missing from bodies that plainly contain it.
 fn_body() { code_lines "$1" | awk -v pat="fn $2(" 'fin { next } index($0, pat) { inside=1 } inside { print; if ($0 == "}") fin = 1 }'; }
 
-UNIT=panel/agent/dockpanel-agent.service
+UNIT=panel/agent/arsy-agent.service
 SETUP=scripts/setup.sh
 UPDATE=scripts/update.sh
 AGENT_SRC=panel/agent/src
@@ -229,7 +229,7 @@ RWP=$(code_lines "$UNIT" | sed -n 's/^ReadWritePaths=//p' | head -1)
 if [ -z "$RWP" ]; then
   bad "$UNIT has no ReadWritePaths= line — this check cannot see the sandbox at all"
 else
-  # Paths present on any Linux box before DockPanel touches it, or created by
+  # Paths present on any Linux box before ARSY touches it, or created by
   # the package manager as a dependency of a step that must already have run.
   ALWAYS='/var/www /var/log /opt /etc/systemd/system /etc/nginx'
   unguarded=""
@@ -239,7 +239,7 @@ else
     # Created up-front by the installer? Match a real mkdir, not a passing mention.
     if has_code "$SETUP" -E -e "mkdir -p( -m [0-7]+)? [^#]*(^| )${p}( |$)"; then continue; fi
     case "$p" in
-      /etc/dockpanel|/var/run/dockpanel|/var/backups/dockpanel|/var/lib/dockpanel) continue ;;
+      /etc/arsy|/var/run/arsy|/var/backups/arsy|/var/lib/arsy) continue ;;
     esac
     unguarded="$unguarded $p"
   done

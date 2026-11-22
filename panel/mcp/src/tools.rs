@@ -7,14 +7,14 @@ use crate::backend_client;
 
 /// v1's ~40-tool read-only catalogue (session 1 shipped 3 to prove the
 /// pipeline end to end; this session fills in the rest — see the design doc
-/// `/home/ovidiu/dockpanel-mcp-design.md` §3, §7). Every tool is a thin GET
+/// `/home/ovidiu/arsy-mcp-design.md` §3, §7). Every tool is a thin GET
 /// proxy onto the existing REST API: no new business logic, no new response
 /// shapes — the panel API's own JSON is passed through as-is. Zero mutating
 /// or destructive tools (the Coolify sequencing, forced by the
 /// audit-attribution fix this crate's own migration shipped alongside
 /// session 1, before any write-capable tool could exist safely).
 #[derive(Clone)]
-pub struct DockPanelMcp;
+pub struct ArsyMcp;
 
 // `Result<String, String>` (rather than a plain `String` with an "Error: ..."
 // prefix folded into the Ok text) so `#[tool]`'s generated code sets the MCP
@@ -243,7 +243,7 @@ pub struct DeleteSiteParams {
 
 #[derive(Debug, Deserialize, Serialize, schemars::JsonSchema)]
 pub struct CreateAppParams {
-    /// App name (will be prefixed with "dockpanel-").
+    /// App name (will be prefixed with "arsy-").
     pub name: String,
     /// Docker image reference (e.g., "nginx:latest", "ghcr.io/user/repo:tag").
     pub image: String,
@@ -334,10 +334,10 @@ pub struct ScaleAppParams {
 }
 
 #[tool_router]
-impl DockPanelMcp {
+impl ArsyMcp {
     // ── Sites & apps ────────────────────────────────────────────────────
 
-    #[tool(description = "List every site hosted on this DockPanel instance (domain, runtime, status).")]
+    #[tool(description = "List every site hosted on this ARSY instance (domain, runtime, status).")]
     async fn list_sites(&self) -> Result<String, String> {
         get_json("/api/sites").await
     }
@@ -412,7 +412,7 @@ impl DockPanelMcp {
 
     // ── Servers & fleet ─────────────────────────────────────────────────
 
-    #[tool(description = "List every server registered to this DockPanel fleet (hostname, region, agent status).")]
+    #[tool(description = "List every server registered to this ARSY fleet (hostname, region, agent status).")]
     async fn list_servers(&self) -> Result<String, String> {
         get_json("/api/servers").await
     }
@@ -824,7 +824,7 @@ impl DockPanelMcp {
 }
 
 #[tool_handler]
-impl ServerHandler for DockPanelMcp {
+impl ServerHandler for ArsyMcp {
     fn get_info(&self) -> ServerInfo {
         // `Implementation::from_build_env()` (what `ServerInfo::new` fills this
         // field with by default) expands `env!()` inside rmcp's OWN compiled
@@ -832,9 +832,9 @@ impl ServerHandler for DockPanelMcp {
         // by an actual handshake, not assumed. Set it explicitly from this
         // crate's own build env instead.
         ServerInfo::new(ServerCapabilities::builder().enable_tools().build())
-            .with_server_info(Implementation::new("dockpanel-mcp", env!("CARGO_PKG_VERSION")))
+            .with_server_info(Implementation::new("arsy-mcp", env!("CARGO_PKG_VERSION")))
             .with_instructions(
-                "DockPanel MCP server with full read/write tool catalogue. Every call \
+                "ARSY MCP server with full read/write tool catalogue. Every call \
                  is attributed in the panel's own audit log to the API key configured for this \
                  MCP server. Mutating tools require an admin-scoped API key with write scope.\n\n\
                  READ-ONLY TOOLS (40): list_sites, get_site, list_apps, get_app_logs, get_app_stats,\

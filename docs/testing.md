@@ -1,4 +1,4 @@
-# How DockPanel Is Tested
+# How ARSY Is Tested
 
 > **Reflects v2.242.1.** The version stamp, the template count and every
 > assertion total on this page are checked against the source by
@@ -9,7 +9,7 @@ Most projects describe their testing as a list of things that pass. This page is
 mostly a list of things that failed — because that is the part that tells you
 whether the testing is real.
 
-DockPanel is tested in three layers: unit tests and audits on every commit,
+ARSY is tested in three layers: unit tests and audits on every commit,
 regression pins that hold each past defect down, and — the layer this page is
 really about — **behavioural drills on throwaway servers, where a journey is
 driven all the way to the point where a user would get value from it.**
@@ -59,7 +59,7 @@ nobody had asked of this product before: does a message actually travel?
 
 The agent runs under `ProtectSystem=strict`. Its `ReadWritePaths` list was not
 careless — it named `/etc/postfix`, `/etc/dovecot`, `/var/spool/postfix`,
-`/var/vmail`, `/etc/dockpanel`, every mail path the installer touches except the
+`/var/vmail`, `/etc/arsy`, every mail path the installer touches except the
 one that is not under a directory: `/etc/opendkim.conf`, a bare file at the top
 of `/etc`. The installer died at that line, so the DKIM key tables, the milter
 socket directory and the service enable never ran.
@@ -86,7 +86,7 @@ The proof, before and after, on the same box with the same command:
 
 ```
 BEFORE  DKIM-Signature: (absent)     Authentication-Results: (absent)
-AFTER   DKIM-Signature: v=1; a=rsa-sha256; d=…; s=dockpanel; …
+AFTER   DKIM-Signature: v=1; a=rsa-sha256; d=…; s=arsy; …
         Authentication-Results: dkim=pass (2048-bit key)
 ```
 
@@ -126,7 +126,7 @@ which the previous check could see:
 
 | | |
 |---|---|
-| The installer printed | `DockPanel installed successfully!` and `Panel URL: https://…` |
+| The installer printed | `ARSY installed successfully!` and `Panel URL: https://…` |
 | What was true | no certificate, unreachable from any browser, **502 even from the box itself** |
 
 **Two firewalls, and the installer configured the one that was not enforcing.**
@@ -175,7 +175,7 @@ installed and running.
 
 ### Four supported distros that could not install — v2.37.0
 
-The README, the docs and the website all said DockPanel ran on CentOS 9+,
+The README, the docs and the website all said ARSY ran on CentOS 9+,
 Rocky 9+, Fedora 39+ and Amazon Linux 2023. The release smoke-test matrix
 contained Debian and Ubuntu images and nothing else. So the RPM half of the
 support claim rested on no evidence whatsoever — and when four throwaway boxes
@@ -636,6 +636,6 @@ of trust, and the honest basis for that trust is not a feature list. It is
 whether the people building it drive the thing to the point where it either
 works or does not, and then say which.
 
-Every defect on this page was found by DockPanel's own maintainers, before a user
+Every defect on this page was found by ARSY's own maintainers, before a user
 reported it, by installing the software on a real server and using it. They are
 published here for the same reason they were fixed.

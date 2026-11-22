@@ -43,7 +43,7 @@ eq()  { [ "$2" = "$3" ] && ok "$1" || bad "$1" "expected '$3', got '$2'"; }
 ge()  { [ "$2" -ge "$3" ] 2>/dev/null && ok "$1" || bad "$1" "expected at least $3, got '$2'"; }
 
 # ugrep's --ignore-files shim honours .gitignore, so every count below uses the
-# real binary explicitly (dockpanel-ops-p2, s357).
+# real binary explicitly (arsy-ops-p2, s357).
 G=/usr/bin/grep
 
 MAIL=panel/backend/src/routes/mail.rs

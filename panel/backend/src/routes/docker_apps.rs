@@ -198,7 +198,7 @@ pub async fn deploy(
     .map_err(|e| internal_error("container policy check", e))?;
 
     if let Some((max_containers, max_memory, max_cpu, allowed_images)) = &policy {
-        // Check container count via agent (count dockpanel-managed containers
+        // Check container count via agent (count arsy-managed containers
         // this CALLER owns — every other admin's containers on the same box
         // used to count against this one's cap; see count_owned_by).
         // Fail CLOSED on the target: an agent error OR a malformed (non-array)
@@ -478,7 +478,7 @@ pub async fn deploy(
         if let Some(ref domain) = deploy_domain {
             emit("dns", "Creating DNS record", "in_progress", None);
 
-            // Extract parent domain (e.g., "mail.dockpanel.dev" → "dockpanel.dev")
+            // Extract parent domain (e.g., "mail.moonwitness.dev" → "moonwitness.dev")
             let parts: Vec<&str> = domain.splitn(3, '.').collect();
             let parent_domain = if parts.len() >= 3 {
                 format!("{}.{}", parts[parts.len() - 2], parts[parts.len() - 1])
@@ -639,7 +639,7 @@ pub async fn deploy(
                 // Dozzle's own docs before relying on it) or a forward-proxy
                 // header scheme, neither achievable through this template's
                 // env_vars alone. nginx auth_basic in front of the domain
-                // closes it at the layer DockPanel already controls, reusing
+                // closes it at the layer ARSY already controls, reusing
                 // the same htpasswd mechanism Sites' own password-protect
                 // feature uses (routes/sites.rs::add_password_protect) —
                 // called here directly against the agent since a docker app
@@ -831,8 +831,8 @@ pub async fn deploy(
 // ── Deploy preflight (the guidance layer's Docker-apps vertical) ────────────
 
 /// The prefix the agent adds when it names an app's container
-/// (`docker_apps::deploy`: `format!("dockpanel-app-{name}")`).
-const CONTAINER_NAME_PREFIX: &str = "dockpanel-app-";
+/// (`docker_apps::deploy`: `format!("arsy-app-{name}")`).
+const CONTAINER_NAME_PREFIX: &str = "arsy-app-";
 
 #[derive(serde::Deserialize)]
 pub struct AppPreflightQuery {
@@ -863,10 +863,10 @@ async fn gather_app_facts(
 
     let mut facts = HostFacts::default();
 
-    // Containers DockPanel manages: their names and published ports.
+    // Containers ARSY manages: their names and published ports.
     //
-    // The agent reports the CONTAINER name, which carries the `dockpanel-app-`
-    // prefix the deploy adds (`dockpanel-app-pg-ok`), while the user types the
+    // The agent reports the CONTAINER name, which carries the `arsy-app-`
+    // prefix the deploy adds (`arsy-app-pg-ok`), while the user types the
     // bare app name (`pg-ok`). Comparing the two directly makes the collision
     // check permanently inert — it was, until a fresh box showed a duplicate name
     // reported as available. Strip the prefix so both the comparison and the
@@ -1338,7 +1338,7 @@ pub async fn update_app(
         // returns, success or failure, or a refused/failed update would leave
         // a container that never actually stopped marked expected-stopped
         // forever, silently suppressing its next genuine crash.
-        // [[project_dockpanel_tech_debt_p185]] carry G.
+        // [[project_arsy_tech_debt_p185]] carry G.
         let container_name = resolve_container_name(&agent, &cid).await;
         if let Some(ref name) = container_name {
             expected_stops::record(
@@ -1378,7 +1378,7 @@ pub async fn update_app(
                         "Moved app data onto persistent storage",
                         "done",
                         Some(format!(
-                            "This app was deployed before DockPanel gave it a persistent \
+                            "This app was deployed before ARSY gave it a persistent \
                              volume, so its data lived inside the container and would have \
                              been lost on this update. It has been copied to durable storage \
                              and will survive future updates: {}",
@@ -1401,7 +1401,7 @@ pub async fn update_app(
                         "Repaired file ownership on the app's data",
                         "done",
                         Some(format!(
-                            "DockPanel v2.111.0 to v2.113.1 moved this app's data onto \
+                            "ARSY v2.111.0 to v2.113.1 moved this app's data onto \
                              persistent storage but left every file owned by root, so an app \
                              that does not run as root could not write it — if this one has \
                              been failing to start since it was last updated, that is why. \
@@ -1562,7 +1562,7 @@ pub async fn update_env(
         // healer's 120s tick must be blind to the recreate's own gap from the
         // moment it opens, and a row left behind after a refused/failed call
         // would suppress this container's next genuine crash forever.
-        // [[project_dockpanel_tech_debt_p185]] carry G.
+        // [[project_arsy_tech_debt_p185]] carry G.
         let container_name = resolve_container_name(&agent, &cid).await;
         if let Some(ref name) = container_name {
             expected_stops::record(
@@ -1666,7 +1666,7 @@ pub async fn update_image(
     let result = tokio::spawn(async move {
         // Recorded BEFORE the recreate starts and cleared unconditionally
         // once the call returns, same reasoning as `update_app`/`update_env`
-        // above. [[project_dockpanel_tech_debt_p185]] carry G.
+        // above. [[project_arsy_tech_debt_p185]] carry G.
         let container_name = resolve_container_name(&agent, &cid).await;
         if let Some(ref name) = container_name {
             expected_stops::record(
@@ -2330,7 +2330,7 @@ pub async fn gpu_info(
 // ─── Container Isolation Policies (Admin) ──────────────────────
 
 // A container already carries its owner — `deploy_app` stamps the deploying
-// admin's id onto the `dockpanel.user.id` label, and `list_deployed_apps`
+// admin's id onto the `arsy.user.id` label, and `list_deployed_apps`
 // reads it straight back onto `DeployedApp.user_id` for every `/apps`
 // response. Nothing about that primitive was missing; two counters below just
 // summed the whole array instead of consulting it. A container with no label

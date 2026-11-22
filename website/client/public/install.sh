@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
-# DockPanel Quick Installer
-# Usage: curl -sL https://dockpanel.dev/install.sh | bash
+# ARSY Quick Installer
+# Usage: curl -sL https://moonwitness.dev/install.sh | bash
 #
 # Modes:
 #   Default:              Clone repo, download pre-built binaries (fast, no Rust needed)
@@ -9,8 +9,8 @@
 #
 set -euo pipefail
 
-VERSION="${DOCKPANEL_VERSION:-main}"
-INSTALL_DIR="/opt/dockpanel"
+VERSION="${ARSY_VERSION:-main}"
+INSTALL_DIR="/opt/arsy"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -18,7 +18,7 @@ BOLD='\033[1m'
 NC='\033[0m'
 
 echo ""
-echo -e "${GREEN}${BOLD}DockPanel Installer${NC}"
+echo -e "${GREEN}${BOLD}ARSY Installer${NC}"
 echo -e "  Free, self-hosted server management panel"
 echo ""
 
@@ -58,9 +58,9 @@ if [ -d "$INSTALL_DIR/.git" ]; then
         exit 1
     fi
 else
-    echo -e "${GREEN}[+]${NC} Downloading DockPanel..."
+    echo -e "${GREEN}[+]${NC} Downloading ARSY..."
     rm -rf "$INSTALL_DIR"
-    git clone --quiet --depth 1 -b "$VERSION" https://github.com/ovexro/dockpanel.git "$INSTALL_DIR"
+    git clone --quiet --depth 1 -b "$VERSION" https://github.com/A-L-L-A-H/mw-arsy.git "$INSTALL_DIR"
 fi
 
 # Default to pre-built binaries unless BUILD_FROM_SOURCE=1

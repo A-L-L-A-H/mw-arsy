@@ -15,7 +15,7 @@ use tokio_stream::StreamExt;
 /// Named once because three places have to agree: the deploy that creates the
 /// directory, the prefix check that keeps a volume from escaping it, and the
 /// removal that decides whether this container is entitled to delete it.
-pub const APP_DATA_DIR: &str = "/var/lib/dockpanel/apps";
+pub const APP_DATA_DIR: &str = "/var/lib/arsy/apps";
 
 /// What `deploy_app` puts in front of an app's name to make its container name.
 ///
@@ -23,7 +23,7 @@ pub const APP_DATA_DIR: &str = "/var/lib/dockpanel/apps";
 /// and every recreate path has an `info.name` (the container) in hand while every path
 /// that touches data needs the app. Confusing the two is what put a migrated app's data
 /// somewhere the panel could not find it — see `app_data_name`.
-pub const CONTAINER_NAME_PREFIX: &str = "dockpanel-app-";
+pub const CONTAINER_NAME_PREFIX: &str = "arsy-app-";
 
 // ── Container auto-update detection ────────────────────────────────
 
@@ -542,7 +542,7 @@ static TEMPLATE_CMD: &[(&str, &[&str])] = &[
         &[
             "sh",
             "-c",
-            "mkdir -p /etc/vector && cat > /etc/vector/vector.yaml <<'EOF'\nsources:\n  docker_logs:\n    type: docker_logs\n    endpoints:\n      - \"unix:///var/run/docker.sock\"\n    include_labels:\n      - \"dockpanel.managed\"\nsinks:\n  stdout:\n    type: console\n    encoding: json\n    target: stdout\n    inputs:\n      - docker_logs\nEOF\nvector --config-dir /etc/vector",
+            "mkdir -p /etc/vector && cat > /etc/vector/vector.yaml <<'EOF'\nsources:\n  docker_logs:\n    type: docker_logs\n    endpoints:\n      - \"unix:///var/run/docker.sock\"\n    include_labels:\n      - \"arsy.managed\"\nsinks:\n  stdout:\n    type: console\n    encoding: json\n    target: stdout\n    inputs:\n      - docker_logs\nEOF\nvector --config-dir /etc/vector",
         ],
     ),
     // Garage: image ships no config at /etc/garage, bare `garage` prints help and exits 0.
@@ -552,7 +552,7 @@ static TEMPLATE_CMD: &[(&str, &[&str])] = &[
         &[
             "sh",
             "-c",
-            "mkdir -p /etc/garage && cat > /etc/garage/garage.toml <<'EOF'\n# Garage single-node configuration for DockPanel\ndir = \"/var/lib/garage/meta\"\ndata_dir = \"/var/lib/garage/data\"\n\n[api]\nbind = \":3900\"\n\n[admin]\n# Admin token will be generated on first run if not set\n# token = \"\"\n\n[cluster]\n# Single node cluster\nnode_id = 1\n\n[consul]\n# Disable consul for single-node\n\n[web]\n# Disable web UI for now\nEOF\ngarage server",
+            "mkdir -p /etc/garage && cat > /etc/garage/garage.toml <<'EOF'\n# Garage single-node configuration for ARSY\ndir = \"/var/lib/garage/meta\"\ndata_dir = \"/var/lib/garage/data\"\n\n[api]\nbind = \":3900\"\n\n[admin]\n# Admin token will be generated on first run if not set\n# token = \"\"\n\n[cluster]\n# Single node cluster\nnode_id = 1\n\n[consul]\n# Disable consul for single-node\n\n[web]\n# Disable web UI for now\nEOF\ngarage server",
         ],
     ),
     // Authelia: bare `authelia` prints help and exits 0. Needs a config file and database.
@@ -562,7 +562,7 @@ static TEMPLATE_CMD: &[(&str, &[&str])] = &[
         &[
             "sh",
             "-c",
-            "mkdir -p /config && cat > /config/configuration.yml <<'EOF'\n# Authelia starter config for DockPanel\ntheme: light\njwt_secret: \"$(openssl rand -hex 32)\"\ndefault_redirection_url: \"https://authelia.example.com\"\n\nserver:\n  host: 0.0.0.0\n  port: 9091\n  path: \"\"\n\nlog:\n  level: info\n\n# SQLite backend for simplicity - replace with PostgreSQL for production\ntotp:\n  issuer: authelia\n\nauthentication_backend:\n  file:\n    path: /config/users_database.yml\n    password:\n      algorithm: argon2id\n      iterations: 1\n      salt_length: 16\n      parallelism: 8\n      memory: 64\n\naccess_control:\n  default_policy: deny\n  rules:\n    - domain: example.com\n      policy: bypass\n\nsession:\n  name: authelia_session\n  secret: \"$(openssl rand -hex 32)\"\n  expiration: 1h\n  inactivity: 5m\n  remember_me_duration: 1M\n\nregulation:\n  max_login_attempts: 3\n  find_time: 5m\n  ban_time: 30m\n\nnotifier:\n  filesystem:\n    filename: /config/notification.txt\nEOF\nauthelia --config /config/configuration.yml",
+            "mkdir -p /config && cat > /config/configuration.yml <<'EOF'\n# Authelia starter config for ARSY\ntheme: light\njwt_secret: \"$(openssl rand -hex 32)\"\ndefault_redirection_url: \"https://authelia.example.com\"\n\nserver:\n  host: 0.0.0.0\n  port: 9091\n  path: \"\"\n\nlog:\n  level: info\n\n# SQLite backend for simplicity - replace with PostgreSQL for production\ntotp:\n  issuer: authelia\n\nauthentication_backend:\n  file:\n    path: /config/users_database.yml\n    password:\n      algorithm: argon2id\n      iterations: 1\n      salt_length: 16\n      parallelism: 8\n      memory: 64\n\naccess_control:\n  default_policy: deny\n  rules:\n    - domain: example.com\n      policy: bypass\n\nsession:\n  name: authelia_session\n  secret: \"$(openssl rand -hex 32)\"\n  expiration: 1h\n  inactivity: 5m\n  remember_me_duration: 1M\n\nregulation:\n  max_login_attempts: 3\n  find_time: 5m\n  ban_time: 30m\n\nnotifier:\n  filesystem:\n    filename: /config/notification.txt\nEOF\nauthelia --config /config/configuration.yml",
         ],
     ),
 ];
@@ -576,7 +576,7 @@ static TEMPLATE_CMD: &[(&str, &[&str])] = &[
 /// image's own default apply.
 fn catalogue_cmd_for(labels: Option<&HashMap<String, String>>) -> Option<Vec<String>> {
     labels
-        .and_then(|l| l.get("dockpanel.app.template"))
+        .and_then(|l| l.get("arsy.app.template"))
         .and_then(|template_id| template_cmd(template_id))
 }
 
@@ -619,7 +619,7 @@ fn template_cmd(id: &str) -> Option<Vec<String>> {
 /// sub-paths Dozzle's client calls, which needs the image version PINNED
 /// FIRST (below) since a config keyed to one release's route set is not
 /// guaranteed to still parse against `:latest` next month.
-/// [[project_dockpanel_tech_debt_p185]] carry I.
+/// [[project_arsy_tech_debt_p185]] carry I.
 static DOZZLE_PROXY_ENV: &[(&str, &str)] = &[
     ("CONTAINERS", "1"),
     ("EVENTS", "1"),
@@ -665,7 +665,7 @@ static TEMPLATE_SIDECAR: &[(&str, app_sidecar::SidecarDef)] = &[(
         // (sha256:a14e639c…) so this is not a functional change, only a
         // reproducibility one: a proxy sitting in front of the Docker socket
         // is exactly the kind of thing that should not silently change
-        // underneath a deploy. [[project_dockpanel_tech_debt_p185]] carry I.
+        // underneath a deploy. [[project_arsy_tech_debt_p185]] carry I.
         image: "tecnativa/docker-socket-proxy:v0.5.0",
         alias: "dockerproxy",
         port: 2375,
@@ -683,13 +683,13 @@ fn template_sidecar(id: &str) -> Option<&'static app_sidecar::SidecarDef> {
 }
 
 /// The sidecar a running container's template needs, read from the
-/// `dockpanel.app.template` label rather than the container's own live
+/// `arsy.app.template` label rather than the container's own live
 /// network attachments — the same reason `catalogue_cmd_for` reads the label
 /// instead of the resolved `Cmd`: this is the panel's CURRENT policy for the
 /// template, not whatever the container happens to be doing right now.
 fn catalogue_sidecar_for(labels: Option<&HashMap<String, String>>) -> Option<&'static app_sidecar::SidecarDef> {
     labels
-        .and_then(|l| l.get("dockpanel.app.template"))
+        .and_then(|l| l.get("arsy.app.template"))
         .and_then(|template_id| template_sidecar(template_id))
 }
 
@@ -1514,7 +1514,7 @@ static TEMPLATES: &[AppTemplateDef] = &[
         // (which only ever seeds an EMPTY bind) silently found nothing to
         // copy and every invoice-ninja deploy started with no `public`/
         // `storage` content Docker itself would otherwise have provided.
-        // [[project_dockpanel_tech_debt_p185]] carry I.
+        // [[project_arsy_tech_debt_p185]] carry I.
         volumes: &["/var/www/app/public", "/var/www/app/storage"],
     },
     AppTemplateDef {
@@ -2419,7 +2419,7 @@ static TEMPLATES: &[AppTemplateDef] = &[
         default_port: 9042,
         container_port: "9042/tcp",
         env_vars: &[
-            EnvVarDef { name: "CASSANDRA_CLUSTER_NAME", label: "Cluster Name", default: "DockPanelCluster", required: false, secret: false },
+            EnvVarDef { name: "CASSANDRA_CLUSTER_NAME", label: "Cluster Name", default: "ARSYCluster", required: false, secret: false },
         ],
         volumes: &["/var/lib/cassandra"],
     },
@@ -2808,7 +2808,7 @@ static TEMPLATES: &[AppTemplateDef] = &[
         container_port: "41641/udp",
         env_vars: &[
             EnvVarDef { name: "TS_AUTHKEY", label: "Auth Key", default: "", required: true, secret: true },
-            EnvVarDef { name: "TS_HOSTNAME", label: "Hostname", default: "dockpanel", required: false, secret: false },
+            EnvVarDef { name: "TS_HOSTNAME", label: "Hostname", default: "arsy", required: false, secret: false },
         ],
         volumes: &["/var/lib/tailscale"],
     },
@@ -3322,7 +3322,7 @@ pub(crate) async fn seed_volume_from_image(
         Err(_) => return,
     }
 
-    let probe_name = format!("dockpanel-seedprobe-{}", uuid::Uuid::new_v4());
+    let probe_name = format!("arsy-seedprobe-{}", uuid::Uuid::new_v4());
     let created = match docker
         .create_container(
             Some(CreateContainerOptions {
@@ -3333,7 +3333,7 @@ pub(crate) async fn seed_volume_from_image(
                 image: Some(image.to_string()),
                 // Never started; this only has to satisfy `create` for an image
                 // that declares no command of its own.
-                cmd: Some(vec!["dockpanel-seed-probe".to_string()]),
+                cmd: Some(vec!["arsy-seed-probe".to_string()]),
                 ..Default::default()
             },
         )
@@ -3412,7 +3412,7 @@ pub(crate) async fn seed_volume_from_image(
 /// a name like `nonroot` is defined by the image's own `/etc/passwd` and by
 /// nothing on the host.
 async fn read_file_from_image(docker: &Docker, image: &str, path: &str) -> Option<String> {
-    let probe_name = format!("dockpanel-userprobe-{}", uuid::Uuid::new_v4());
+    let probe_name = format!("arsy-userprobe-{}", uuid::Uuid::new_v4());
     let created = docker
         .create_container(
             Some(CreateContainerOptions {
@@ -3423,7 +3423,7 @@ async fn read_file_from_image(docker: &Docker, image: &str, path: &str) -> Optio
                 image: Some(image.to_string()),
                 // Never started, so this only has to satisfy `create` for an image
                 // that declares no command of its own.
-                cmd: Some(vec!["dockpanel-user-probe".to_string()]),
+                cmd: Some(vec!["arsy-user-probe".to_string()]),
                 ..Default::default()
             },
         )
@@ -3961,7 +3961,7 @@ pub async fn deploy_app(
     gpu_indices: Option<Vec<u32>>,
 ) -> Result<DeployResult, String> {
     // Refused before anything is pulled or created. An app called
-    // `dockpanel-app-<something>` owns the very directory a recreate of the app
+    // `arsy-app-<something>` owns the very directory a recreate of the app
     // `<something>` migrated into on releases v2.111.0 through v2.113.3, so the two would
     // share one tree and deleting either would take the other's data. The migration no
     // longer writes there, but the installs it already wrote cannot be un-written — so the
@@ -4206,18 +4206,18 @@ pub async fn deploy_app(
         networking_config: sidecar.map(|_| app_sidecar::attach_config(name)),
         labels: Some({
             let mut labels = HashMap::from([
-                ("dockpanel.managed".to_string(), "true".to_string()),
+                ("arsy.managed".to_string(), "true".to_string()),
                 (
-                    "dockpanel.app.template".to_string(),
+                    "arsy.app.template".to_string(),
                     template.id.to_string(),
                 ),
-                ("dockpanel.app.name".to_string(), name.to_string()),
+                ("arsy.app.name".to_string(), name.to_string()),
             ]);
             if let Some(domain) = domain {
-                labels.insert("dockpanel.app.domain".to_string(), domain.to_string());
+                labels.insert("arsy.app.domain".to_string(), domain.to_string());
             }
             if let Some(uid) = user_id {
-                labels.insert("dockpanel.user.id".to_string(), uid.to_string());
+                labels.insert("arsy.user.id".to_string(), uid.to_string());
             }
             labels
         }),
@@ -4283,13 +4283,13 @@ pub async fn deploy_app(
     })
 }
 
-/// List all deployed apps (containers with dockpanel.app.template label).
+/// List all deployed apps (containers with arsy.app.template label).
 pub async fn list_deployed_apps() -> Result<Vec<DeployedApp>, String> {
     let docker =
         Docker::connect_with_local_defaults().map_err(|e| format!("Docker connect failed: {e}"))?;
 
     let mut filters = HashMap::new();
-    filters.insert("label", vec!["dockpanel.managed=true"]);
+    filters.insert("label", vec!["arsy.managed=true"]);
 
     let containers = docker
         .list_containers(Some(ListContainersOptions {
@@ -4305,7 +4305,7 @@ pub async fn list_deployed_apps() -> Result<Vec<DeployedApp>, String> {
         .filter_map(|c| {
             let labels = c.labels.as_ref()?;
             // Only include containers that have the app template label
-            let template = labels.get("dockpanel.app.template")?;
+            let template = labels.get("arsy.app.template")?;
             let id = c.id.as_ref()?;
 
             let port = c
@@ -4327,7 +4327,7 @@ pub async fn list_deployed_apps() -> Result<Vec<DeployedApp>, String> {
                 .map(|n| n.trim_start_matches('/').to_string())
                 .unwrap_or_default();
 
-            let domain = labels.get("dockpanel.app.domain").cloned();
+            let domain = labels.get("arsy.app.domain").cloned();
             let image = c.image.clone();
 
             // Extract volume mounts
@@ -4359,8 +4359,8 @@ pub async fn list_deployed_apps() -> Result<Vec<DeployedApp>, String> {
                 }
             });
 
-            let stack_id = labels.get("dockpanel.stack_id").cloned();
-            let user_id = labels.get("dockpanel.user.id").cloned();
+            let stack_id = labels.get("arsy.stack_id").cloned();
+            let user_id = labels.get("arsy.user.id").cloned();
 
             let ssl = domain
                 .as_deref()
@@ -4609,7 +4609,7 @@ pub(crate) fn mounted_destinations(host_config: &bollard::service::HostConfig) -
 /// Paths this container's own template calls persistent that nothing actually mounts.
 ///
 /// Returns empty for anything we are not entitled to touch: a container without
-/// `dockpanel.managed=true`, one whose `dockpanel.app.template` names no template we
+/// `arsy.managed=true`, one whose `arsy.app.template` names no template we
 /// ship, or one whose declared paths are all mounted already.
 fn unmounted_declared_volumes(
     config: &bollard::models::ContainerConfig,
@@ -4618,10 +4618,10 @@ fn unmounted_declared_volumes(
     let Some(labels) = config.labels.as_ref() else {
         return Vec::new();
     };
-    if labels.get("dockpanel.managed").map(String::as_str) != Some("true") {
+    if labels.get("arsy.managed").map(String::as_str) != Some("true") {
         return Vec::new();
     }
-    let Some(template_id) = labels.get("dockpanel.app.template") else {
+    let Some(template_id) = labels.get("arsy.app.template") else {
         return Vec::new();
     };
     let declared: &'static [&'static str] = match TEMPLATES.iter().find(|t| t.id == template_id) {
@@ -4641,7 +4641,7 @@ fn unmounted_declared_volumes(
 /// Paths kept by a managed container whose template label names no catalogue row.
 ///
 /// The label is not proof of a template. The mail stack installs its webmail container
-/// with `dockpanel.managed=true` and a template label of its own, and nothing in the
+/// with `arsy.managed=true` and a template label of its own, and nothing in the
 /// catalogue answers to that name — so the lookup above found no row, returned no paths,
 /// and every recreate door removed the container with its writable layer and everything
 /// in it. That is #110 exactly, against a container the panel installs itself: the webmail
@@ -4665,7 +4665,7 @@ fn non_catalogue_volumes(template_id: &str) -> &'static [&'static str] {
 
 /// The app's own name — the one whose directory under `APP_DATA_DIR` holds its data.
 ///
-/// `deploy_app` creates the container as `dockpanel-app-<app>` but writes its volume
+/// `deploy_app` creates the container as `arsy-app-<app>` but writes its volume
 /// directories at `{APP_DATA_DIR}/<app>{vol}`, and `removal_identity` looks for them
 /// under `{APP_DATA_DIR}/<app>`. Every recreate path reads `info.name`, which is the
 /// CONTAINER name, and handed that straight to the migration below — so a rescued app's
@@ -4679,7 +4679,7 @@ fn non_catalogue_volumes(template_id: &str) -> &'static [&'static str] {
 /// because the label is what `removal_identity` reads.
 fn app_data_name(labels: Option<&HashMap<String, String>>, container_name: &str) -> String {
     labels
-        .and_then(|l| l.get("dockpanel.app.name"))
+        .and_then(|l| l.get("arsy.app.name"))
         .filter(|name| !name.is_empty())
         .cloned()
         .unwrap_or_else(|| {
@@ -4890,7 +4890,7 @@ async fn blue_green_update(
 
     // Create new container with a temp name. The separator is `.` and not `-`
     // because `is_valid_name` rejects `.`: an app may legally be called
-    // `api-blue`, and `dockpanel-app-api-blue` was therefore both its production
+    // `api-blue`, and `arsy-app-api-blue` was therefore both its production
     // container AND the stand-in name for the app `api`.
     let new_name = crate::services::ownership::blue_name(name);
 
@@ -4901,7 +4901,7 @@ async fn blue_green_update(
         );
         if !owner.may_delete() {
             return Err(format!(
-                "A container named {new_name} exists and is not managed by DockPanel \
+                "A container named {new_name} exists and is not managed by ARSY \
                  ({owner:?}); refusing to force-remove it to make room for a blue-green swap"
             ));
         }
@@ -5288,7 +5288,7 @@ pub async fn update_app(container_id: &str) -> Result<UpdateResult, String> {
         .trim_start_matches('/')
         .to_string();
     let image = config.image.clone().ok_or("No image found")?;
-    // The container is `dockpanel-app-<app>`; its DATA lives under the app's own name.
+    // The container is `arsy-app-<app>`; its DATA lives under the app's own name.
     let app_name = app_data_name(config.labels.as_ref(), &name);
 
     // Anything this app's template calls persistent that the container does not mount is
@@ -5301,7 +5301,7 @@ pub async fn update_app(container_id: &str) -> Result<UpdateResult, String> {
     let domain = config
         .labels
         .as_ref()
-        .and_then(|l| l.get("dockpanel.app.domain"))
+        .and_then(|l| l.get("arsy.app.domain"))
         .cloned();
     let old_port = extract_host_port(&host_config);
 
@@ -5518,7 +5518,7 @@ pub async fn update_app(container_id: &str) -> Result<UpdateResult, String> {
 /// EVERY hardening flag the original deploy applied — cap_drop ALL + the minimal cap_add
 /// allowlist, security_opt no-new-privileges, the published `127.0.0.1:<port>` binding
 /// (so the nginx reverse proxy 502'd), the restart policy, the memory/CPU limits, the env
-/// vars, and the `dockpanel.managed` labels (so the container vanished from the panel).
+/// vars, and the `arsy.managed` labels (so the container vanished from the panel).
 /// This inspects the existing container and recreates it with the same `host_config`
 /// (caps, security_opt, port bindings, restart, resource limits, GPU device requests, binds),
 /// `labels`, `env`, and `exposed_ports`, only swapping the image.
@@ -5708,18 +5708,18 @@ pub async fn get_app_env(container_id: &str) -> Result<Vec<(String, String)>, St
 /// callers treat that as a refusal, per [`crate::services::ownership`].
 #[derive(Debug, Default, Clone)]
 pub struct RemovalIdentity {
-    /// `dockpanel.app.domain` — the vhost, cert dir and logs are named after it.
+    /// `arsy.app.domain` — the vhost, cert dir and logs are named after it.
     pub domain: Option<String>,
-    /// `dockpanel.app.name` — `/var/lib/dockpanel/apps/{name}` is named after it.
+    /// `arsy.app.name` — `/var/lib/arsy/apps/{name}` is named after it.
     pub name: Option<String>,
     /// The published host port. The app's vhost `proxy_pass`es to it, and it is
     /// the only thing in that file identifying which container it fronts.
     pub host_port: Option<u16>,
     /// Whether this container actually bind-mounts out of
-    /// `/var/lib/dockpanel/apps/{name}`.
+    /// `/var/lib/arsy/apps/{name}`.
     ///
     /// A template deploy does; a compose service does not — its binds are
-    /// confined to `/var/lib/dockpanel/compose/`, so an identically-named
+    /// confined to `/var/lib/arsy/compose/`, so an identically-named
     /// compose service was deleting a template app's data directory while
     /// owning nothing under it.
     pub owns_app_dir: bool,
@@ -5772,8 +5772,8 @@ pub async fn removal_identity(container_id: &str) -> RemovalIdentity {
     };
 
     if let Some(labels) = info.config.as_ref().and_then(|c| c.labels.as_ref()) {
-        id.domain = labels.get("dockpanel.app.domain").cloned();
-        id.name = labels.get("dockpanel.app.name").cloned();
+        id.domain = labels.get("arsy.app.domain").cloned();
+        id.name = labels.get("arsy.app.name").cloned();
     }
 
     if let Some(host_config) = info.host_config.as_ref() {
@@ -5792,19 +5792,19 @@ pub async fn removal_identity(container_id: &str) -> RemovalIdentity {
     id
 }
 
-/// True iff the container's labels mark it dockpanel-managed (`dockpanel.managed=true`).
+/// True iff the container's labels mark it arsy-managed (`arsy.managed=true`).
 /// This is the boundary that separates panel-managed app containers from the panel's OWN infra
 /// (its postgres/api/agent containers carry no such label). Pure + unit-tested.
 fn is_managed_labels(labels: Option<&HashMap<String, String>>) -> bool {
     labels
-        .and_then(|l| l.get("dockpanel.managed"))
+        .and_then(|l| l.get("arsy.managed"))
         .map(|v| v == "true")
         .unwrap_or(false)
 }
 
-/// Guard an action-handler target: inspect the container and reject unless it is dockpanel-managed.
+/// Guard an action-handler target: inspect the container and reject unless it is arsy-managed.
 /// Gives WRITE scope (stop/start/restart/logs/exec/remove/change-image/update/env/snapshot/limits)
-/// the same `dockpanel.managed=true` boundary the `list` READ path already enforces, so an admin
+/// the same `arsy.managed=true` boundary the `list` READ path already enforces, so an admin
 /// cannot act on the panel's own infrastructure containers by id (confused-deputy footgun). For the
 /// recreate paths (change_container_image/update_env) this runs on the ORIGINAL container before any
 /// stop/remove, and the recreation preserves the label — so the new container stays managed.
@@ -5816,7 +5816,7 @@ pub async fn require_managed(container_id: &str) -> Result<(), String> {
         .await
         .map_err(|e| format!("Failed to inspect container: {e}"))?;
     if !is_managed_labels(info.config.as_ref().and_then(|c| c.labels.as_ref())) {
-        return Err("not a dockpanel-managed container".to_string());
+        return Err("not a arsy-managed container".to_string());
     }
     Ok(())
 }
@@ -6057,15 +6057,15 @@ mod tests {
 
     #[test]
     fn managed_label_gate() {
-        // Only dockpanel.managed=true passes; panel infra (no such label) and false are rejected.
-        let managed = HashMap::from([("dockpanel.managed".to_string(), "true".to_string())]);
+        // Only arsy.managed=true passes; panel infra (no such label) and false are rejected.
+        let managed = HashMap::from([("arsy.managed".to_string(), "true".to_string())]);
         assert!(is_managed_labels(Some(&managed)));
 
-        let disabled = HashMap::from([("dockpanel.managed".to_string(), "false".to_string())]);
+        let disabled = HashMap::from([("arsy.managed".to_string(), "false".to_string())]);
         assert!(!is_managed_labels(Some(&disabled)));
 
         // A panel-infra container (e.g. only compose labels) must be rejected.
-        let infra = HashMap::from([("com.docker.compose.project".to_string(), "dockpanel".to_string())]);
+        let infra = HashMap::from([("com.docker.compose.project".to_string(), "arsy".to_string())]);
         assert!(!is_managed_labels(Some(&infra)));
 
         assert!(!is_managed_labels(Some(&HashMap::new())));
@@ -6561,7 +6561,7 @@ mod tests {
         let mut out = serde_json::to_string_pretty(&serde_json::json!({
             "_generated": "Do not edit. Source of truth is TEMPLATES in \
                            panel/agent/src/services/docker_apps.rs. Regenerate with \
-                           UPDATE_TEMPLATE_CATALOGUE=1 cargo test -p dockpanel-agent catalogue",
+                           UPDATE_TEMPLATE_CATALOGUE=1 cargo test -p arsy-agent catalogue",
             "count": TEMPLATES.len(),
             "templates": templates,
         }))
@@ -6571,7 +6571,7 @@ mod tests {
     }
 
     /// Regenerate with:
-    ///     UPDATE_TEMPLATE_CATALOGUE=1 cargo test -p dockpanel-agent catalogue
+    ///     UPDATE_TEMPLATE_CATALOGUE=1 cargo test -p arsy-agent catalogue
     #[test]
     fn the_generated_catalogue_is_current() {
         let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -6589,7 +6589,7 @@ mod tests {
         let found = std::fs::read_to_string(&path).unwrap_or_else(|e| {
             panic!(
                 "tests/fixtures/app-templates.json is missing ({e}). Regenerate it:\n    \
-                 UPDATE_TEMPLATE_CATALOGUE=1 cargo test -p dockpanel-agent catalogue"
+                 UPDATE_TEMPLATE_CATALOGUE=1 cargo test -p arsy-agent catalogue"
             )
         });
 
@@ -6615,14 +6615,14 @@ mod tests {
                  changed and this artefact did not.\nFirst difference at line \
                  {line}:\n  committed: {committed}\n  registry:  {registry}\n\n\
                  Regenerate it:\n    \
-                 UPDATE_TEMPLATE_CATALOGUE=1 cargo test -p dockpanel-agent catalogue"
+                 UPDATE_TEMPLATE_CATALOGUE=1 cargo test -p arsy-agent catalogue"
             );
         }
     }
 
     /// Hits the local Docker daemon and the two images the fix was proven on, so
     /// it is not part of the ordinary suite. Run with:
-    ///   cargo test -p dockpanel-agent volume_owner -- --ignored --nocapture
+    ///   cargo test -p arsy-agent volume_owner -- --ignored --nocapture
     #[tokio::test]
     #[ignore = "requires a Docker daemon with the test images pulled"]
     async fn volume_owner_resolves_real_images_both_ways() {
@@ -6714,7 +6714,7 @@ mod tests {
     /// container on the sidecar's own network (the same vantage point a real
     /// Dozzle container has, never the panel's own process).
     #[tokio::test]
-    #[ignore = "creates real containers and a real network; run with cargo test -p dockpanel-agent sidecar_actually_proxies -- --ignored --nocapture"]
+    #[ignore = "creates real containers and a real network; run with cargo test -p arsy-agent sidecar_actually_proxies -- --ignored --nocapture"]
     async fn sidecar_actually_proxies_reads_and_refuses_writes() {
         let docker = Docker::connect_with_unix_defaults().expect("docker");
         let app = "sidecartest-s426";
@@ -6907,7 +6907,7 @@ mod tests {
     /// `fstatat`'s own type check, which reports a link's `S_IFLNK`, not
     /// `S_IFDIR` — so THIS is the test that actually exercises `O_NOFOLLOW`
     /// rather than being satisfied by that earlier, unrelated guard.
-    /// [[project_dockpanel_tech_debt_p185]] carry F.
+    /// [[project_arsy_tech_debt_p185]] carry F.
     #[test]
     fn openat_nofollow_refuses_a_symlink_even_though_it_is_opened_as_a_directory() {
         let base =
@@ -6940,7 +6940,7 @@ mod tests {
     /// A symlink standing where a directory name is listed must never be
     /// followed — the walk resolves fd-relative (`openat`/`O_NOFOLLOW`), so
     /// an entry that turned into a link is refused (`ELOOP`), not descended
-    /// into. [[project_dockpanel_tech_debt_p185]] carry F.
+    /// into. [[project_arsy_tech_debt_p185]] carry F.
     #[test]
     fn the_repair_never_follows_a_symlink_standing_where_a_directory_was_listed() {
         use std::os::unix::fs::MetadataExt;
@@ -6986,7 +6986,7 @@ mod tests {
     /// hardlink to a real host file (`fs.protected_hardlinks=0` allows an
     /// unprivileged process to create one inside its own volume) — the walk
     /// must never chown it, because chowning a shared inode repaints every
-    /// name pointing at it. [[project_dockpanel_tech_debt_p185]] carry F.
+    /// name pointing at it. [[project_arsy_tech_debt_p185]] carry F.
     #[test]
     fn the_repair_skips_a_root_owned_entry_that_has_more_than_one_link() {
         use std::os::unix::fs::MetadataExt;
@@ -7286,22 +7286,22 @@ mod tests {
     /// The container is named for the app; the DATA is named for the app alone.
     #[test]
     fn the_data_directory_is_named_for_the_app_and_not_for_its_container() {
-        let labels = labels_of(&[("dockpanel.app.name", "n8n")]);
-        assert_eq!(app_data_name(Some(&labels), "dockpanel-app-n8n"), "n8n");
+        let labels = labels_of(&[("arsy.app.name", "n8n")]);
+        assert_eq!(app_data_name(Some(&labels), "arsy-app-n8n"), "n8n");
 
         // No label: strip the prefix the deploy added rather than keeping it. Getting
         // this wrong is the whole defect — the migration wrote under the container name.
-        assert_eq!(app_data_name(None, "dockpanel-app-ghost"), "ghost");
+        assert_eq!(app_data_name(None, "arsy-app-ghost"), "ghost");
         assert_eq!(app_data_name(None, "something-else"), "something-else");
 
         // An empty label is not an answer.
-        let blank = labels_of(&[("dockpanel.app.name", "")]);
-        assert_eq!(app_data_name(Some(&blank), "dockpanel-app-gitea"), "gitea");
+        let blank = labels_of(&[("arsy.app.name", "")]);
+        assert_eq!(app_data_name(Some(&blank), "arsy-app-gitea"), "gitea");
 
         // The label WINS over the container name, because the label is what the removal
         // path reads. A container renamed by hand must not move the data directory.
-        let renamed = labels_of(&[("dockpanel.app.name", "wiki")]);
-        assert_eq!(app_data_name(Some(&renamed), "dockpanel-app-old"), "wiki");
+        let renamed = labels_of(&[("arsy.app.name", "wiki")]);
+        assert_eq!(app_data_name(Some(&renamed), "arsy-app-old"), "wiki");
     }
 
     /// Both spellings are cleaned up; nothing else is touched.
@@ -7317,16 +7317,16 @@ mod tests {
         // rebuilt the path from the label, found nothing there, and left the data behind
         // without even warning — because the label-derived directory did not exist.
         let legacy = vec![format!(
-            "{APP_DATA_DIR}/dockpanel-app-n8n/home/node/.n8n:/home/node/.n8n"
+            "{APP_DATA_DIR}/arsy-app-n8n/home/node/.n8n:/home/node/.n8n"
         )];
         assert_eq!(
             owned_app_dir("n8n", &legacy),
-            Some(format!("{APP_DATA_DIR}/dockpanel-app-n8n"))
+            Some(format!("{APP_DATA_DIR}/arsy-app-n8n"))
         );
 
         // A compose service binds outside the app directory entirely and must keep
         // owning nothing, or it deletes the tree of the app it shares a name with.
-        let compose = vec!["/var/lib/dockpanel/compose/n8n/data:/data".to_string()];
+        let compose = vec!["/var/lib/arsy/compose/n8n/data:/data".to_string()];
         assert_eq!(owned_app_dir("n8n", &compose), None);
 
         // A neighbouring app's directory is not this app's, and a prefix that stops
@@ -7343,9 +7343,9 @@ mod tests {
     fn a_managed_container_outside_the_catalogue_still_declares_its_state() {
         let config = bollard::models::ContainerConfig {
             labels: Some(labels_of(&[
-                ("dockpanel.managed", "true"),
-                ("dockpanel.app.template", "roundcube"),
-                ("dockpanel.app.name", "roundcube"),
+                ("arsy.managed", "true"),
+                ("arsy.app.template", "roundcube"),
+                ("arsy.app.name", "roundcube"),
             ])),
             ..Default::default()
         };
@@ -7370,8 +7370,8 @@ mod tests {
         // A compose service brings its own mounts and is deliberately left alone.
         let compose = bollard::models::ContainerConfig {
             labels: Some(labels_of(&[
-                ("dockpanel.managed", "true"),
-                ("dockpanel.app.template", "compose"),
+                ("arsy.managed", "true"),
+                ("arsy.app.template", "compose"),
             ])),
             ..Default::default()
         };
@@ -7379,7 +7379,7 @@ mod tests {
 
         // And an unmanaged container is still none of our business.
         let unmanaged = bollard::models::ContainerConfig {
-            labels: Some(labels_of(&[("dockpanel.app.template", "roundcube")])),
+            labels: Some(labels_of(&[("arsy.app.template", "roundcube")])),
             ..Default::default()
         };
         assert!(unmounted_declared_volumes(&unmanaged, &bare).is_empty());
@@ -7391,7 +7391,7 @@ mod tests {
         // A template the catalogue gives a command to keeps it across an image change.
         // Without this the image's own default reasserts itself, and for these templates
         // that default prints usage and exits.
-        let ntfy = labels_of(&[("dockpanel.app.template", "ntfy")]);
+        let ntfy = labels_of(&[("arsy.app.template", "ntfy")]);
         assert_eq!(
             catalogue_cmd_for(Some(&ntfy)),
             Some(vec!["serve".to_string()])
@@ -7399,11 +7399,11 @@ mod tests {
 
         // A template with no override gets none, so the NEW image's default applies —
         // which is the behaviour this path always intended.
-        let ghost = labels_of(&[("dockpanel.app.template", "ghost")]);
+        let ghost = labels_of(&[("arsy.app.template", "ghost")]);
         assert_eq!(catalogue_cmd_for(Some(&ghost)), None);
 
         assert_eq!(catalogue_cmd_for(None), None);
-        let unknown = labels_of(&[("dockpanel.app.template", "not-a-template")]);
+        let unknown = labels_of(&[("arsy.app.template", "not-a-template")]);
         assert_eq!(catalogue_cmd_for(Some(&unknown)), None);
     }
 
@@ -7411,7 +7411,7 @@ mod tests {
     #[test]
     fn every_commanded_template_is_reachable_through_its_own_label() {
         for (id, args) in TEMPLATE_CMD {
-            let labels = labels_of(&[("dockpanel.app.template", id)]);
+            let labels = labels_of(&[("arsy.app.template", id)]);
             let recovered = catalogue_cmd_for(Some(&labels));
             assert_eq!(
                 recovered.as_deref(),
@@ -7440,8 +7440,8 @@ mod tests {
     #[tokio::test]
     async fn an_app_may_not_be_named_so_it_shadows_another_apps_data_directory() {
         let err = deploy_app(
-            "dockpanel-no-such-template",
-            "dockpanel-app-n8n",
+            "arsy-no-such-template",
+            "arsy-app-n8n",
             8080,
             HashMap::new(),
             None,
@@ -7613,7 +7613,7 @@ mod tests {
         } else if has("PORT") {
             port.to_string()
         } else {
-            "dockpanel-census".to_string()
+            "arsy-census".to_string()
         }
     }
 
@@ -7644,7 +7644,7 @@ mod tests {
     /// that is what they are. So it is `#[ignore]`d AND gated behind an explicit
     /// variable, since `--ignored` alone is one habit away from running it:
     ///
-    ///   TEMPLATE_CENSUS=1 cargo test -p dockpanel-agent template_census \
+    ///   TEMPLATE_CENSUS=1 cargo test -p arsy-agent template_census \
     ///       -- --ignored --nocapture
     ///
     /// `TEMPLATE_CENSUS_SHARD=2/4` takes one quarter of the catalogue, which is

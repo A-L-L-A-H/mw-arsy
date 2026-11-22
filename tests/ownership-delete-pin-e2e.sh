@@ -270,7 +270,7 @@ fi
 if derives "$RA" 'identity\.app_dir'; then
   ok "B3 app removal deletes the data dir only when the container mounts it"
 else
-  bad "B3 app removal deletes /var/lib/dockpanel/apps/{name} on an unvalidated label"
+  bad "B3 app removal deletes /var/lib/arsy/apps/{name} on an unvalidated label"
 fi
 
 # B2c/B2d — s417: stack removal used to derive its ownership proof from
@@ -459,9 +459,9 @@ SC=$(fnbody "$CA" "sync_crons")
 # The capability a regression must use: stripping by the panel-wide marker
 # instead of by the ids in this request.
 if [ -n "$SC" ] && has "$SC" 'owned' && ! has "$SC" 'filter\(\|line\| *!line\.contains\(CRONTAB_MARKER\)\)'; then
-  ok "D1 sync strips only the ids it was sent, not every dockpanel line on the box"
+  ok "D1 sync strips only the ids it was sent, not every arsy line on the box"
 else
-  bad "D1 sync_crons strips every '# dockpanel:' line — every other tenant's jobs with it"
+  bad "D1 sync_crons strips every '# arsy:' line — every other tenant's jobs with it"
 fi
 
 RC=$(fnbody "$(subj "$CRONTAB_SVC")" "read_crontab")

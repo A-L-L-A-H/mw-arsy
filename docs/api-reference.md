@@ -1,6 +1,6 @@
 # API Reference
 
-DockPanel exposes 840 REST endpoints (545 backend + 295 agent) across 50+ categories — the figure derived from the two routers in `FEATURES.md` §Verified Metrics, which owns it. The tables below document the commonly used subset, not every route. All endpoints except `/api/health`, `/api/branding`, `/api/auth/setup-status`, and `/api/auth/login` require authentication.
+ARSY exposes 840 REST endpoints (545 backend + 295 agent) across 50+ categories — the figure derived from the two routers in `FEATURES.md` §Verified Metrics, which owns it. The tables below document the commonly used subset, not every route. All endpoints except `/api/health`, `/api/branding`, `/api/auth/setup-status`, and `/api/auth/login` require authentication.
 
 ## Authentication
 
@@ -150,8 +150,8 @@ Delete site and all associated resources (database containers, nginx config, SSL
 
 | Value | Meaning |
 |-------|---------|
-| `dockpanel` | Issued by Let's Encrypt, so DockPanel issued it and renews it |
-| `foreign` | Issued by somebody else; `issuer` names them, and DockPanel will not renew it |
+| `arsy` | Issued by Let's Encrypt, so ARSY issued it and renews it |
+| `foreign` | Issued by somebody else; `issuer` names them, and ARSY will not renew it |
 | `unknown` | No answer to act on — the agent was unreachable, or the site is served by a certificate stored under its zone's name rather than its own |
 
 ⛔ `unknown` must never be rendered as a CA name. It is what an unreachable agent
@@ -923,7 +923,7 @@ single administrator, where nobody else can ever approve it.
 
 Admin-only endpoints to drive panel updates from the UI instead of SSH.
 The orchestrator shells out to `scripts/update.sh` under
-`DOCKPANEL_NO_SELF_REFRESH=1 + DOCKPANEL_VERSION=<target>` rather than
+`ARSY_NO_SELF_REFRESH=1 + ARSY_VERSION=<target>` rather than
 reimplementing binary swap — every bug fix in update.sh keeps working.
 
 | Method | Path | Description |
@@ -945,7 +945,7 @@ reimplementing binary swap — every bug fix in update.sh keeps working.
 
 `POST /api/update/rollback` returns `202` as soon as the restore has been handed
 to a detached systemd unit. It cannot return the result: the first thing a
-restore does is stop `dockpanel-api`, so the process handling your request no
+restore does is stop `arsy-api`, so the process handling your request no
 longer exists by the time there is an outcome to report. Validation that *can*
 be done up front (snapshot exists, file present, sha256 matches) still happens
 synchronously, so a bad request is still a `404`/`410`/`5xx` immediately.
@@ -966,15 +966,15 @@ Poll `GET /api/update/status` afterwards and read `last_restore`:
 says where it stopped and what was left untouched. The database is applied in a
 single transaction, so a rollback that fails during the database stage changes
 nothing at all. The same document is written to
-`/var/lib/dockpanel/last-restore.json` on the box.
+`/var/lib/arsy/last-restore.json` on the box.
 
 **What a rollback does and does not rewind.** It restores what the snapshot
-contains: the three binaries, `/etc/dockpanel`, and the database. The database is
+contains: the three binaries, `/etc/arsy`, and the database. The database is
 a true point-in-time revert — the `public` schema is dropped and rebuilt from the
 dump in a single transaction — so database objects created *after* the snapshot
 do **not** survive it, and neither does data written into them. The database as it
 stood immediately before the rollback is dumped first to
-`/var/lib/dockpanel/pre-rollback-<id>.sql.gz` (mode `0600`), which is the way
+`/var/lib/arsy/pre-rollback-<id>.sql.gz` (mode `0600`), which is the way
 back from a rollback you did not mean; the three most recent are kept and older
 ones are pruned. Nothing outside the snapshot — nginx vhosts, Let's Encrypt
 certificates, site files, docker volumes — is touched. A rollback restores the
@@ -999,12 +999,12 @@ a single run needs to render — there is no need to additionally fetch a
 single run by id.
 
 Each member updates **its own agent binary**: the agent fetches
-`dockpanel-agent-linux-<arch>` for the requested release tag, verifies it
+`arsy-agent-linux-<arch>` for the requested release tag, verifies it
 against that release's `checksums.txt` *before* installing it, swaps it in by
 rename, restarts itself, and rolls back to the previous binary if the new one
 does not come up. The result is written to
-`/var/lib/dockpanel/last-agent-update.json` on the member. A server that is
-itself a full DockPanel install runs the ordinary `update.sh` flow instead.
+`/var/lib/arsy/last-agent-update.json` on the member. A server that is
+itself a full ARSY install runs the ordinary `update.sh` flow instead.
 
 A member counts as updated only when its `/health` reports the target version.
 Nothing infers success from an exit status or from the agent's own claim — up to
@@ -1057,7 +1057,7 @@ once) and runs the same updater a fleet rolling update runs: the download is
 verified against the release's own `checksums.txt` before anything is installed,
 the swap is atomic within the target directory, and the new agent must answer
 `/health` reporting the expected version or it is rolled back. The outcome is
-written to `/var/lib/dockpanel/last-agent-update.json` on every exit path.
+written to `/var/lib/arsy/last-agent-update.json` on every exit path.
 
 Rate limit: 120 requests/minute per server, as for the other agent endpoints.
 
@@ -1072,7 +1072,7 @@ Note: distinct from `/system/updates/*` (OS-package apt-get mgmt).
 ## Configuration Drift (v2.13.0, Phase 4 W5)
 
 Read-only report answering "is my fleet's operational posture consistent?".
-Because DockPanel is a single hub DB + thin agents, every server's declared
+Because ARSY is a single hub DB + thin agents, every server's declared
 config already lives centrally keyed by `server_id`, so this is a **local
 cross-server diff** — no remote agent call, and an offline member is still
 comparable. Computed on demand (no background scan). Admin only.
@@ -1099,5 +1099,5 @@ Secret-bearing fields (`notify_slack_url`, `notify_discord_url`) are compared by
 
 **Report only.** Reconcile (push a source-of-truth server's config to the
 others) is deliberately not in this release — it is cross-server mutation with no
-existing transport, and DockPanel keeps that surface explicit. Comparing a
+existing transport, and ARSY keeps that surface explicit. Comparing a
 member's live on-box state against its declared config is likewise a later leg.

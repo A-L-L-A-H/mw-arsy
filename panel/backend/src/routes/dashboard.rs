@@ -659,7 +659,7 @@ pub async fn fleet_overview(
     .unwrap_or((0,));
 
     // MCP server status — mcp_server_enabled/mcp_bind_mode are records an
-    // operator fills in from Settings → Services (dockpanel-mcp itself doesn't
+    // operator fills in from Settings → Services (arsy-mcp itself doesn't
     // read this table; its actual on/off state is the systemd unit). Surfacing
     // them here, rather than nowhere, means the same fleet-wide view an
     // operator gets from the panel is also what an agent gets by calling this

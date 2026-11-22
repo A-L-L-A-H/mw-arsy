@@ -104,8 +104,8 @@ mod tests {
         let agent = ver(include_str!("../../../agent/Cargo.toml"));
         assert_eq!(
             api, agent,
-            "dockpanel-api {api} would advertise v{api} as the agent target, \
-             but dockpanel-agent is {agent} — that tag has no agent asset"
+            "arsy-api {api} would advertise v{api} as the agent target, \
+             but arsy-agent is {agent} — that tag has no agent asset"
         );
     }
 

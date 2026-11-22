@@ -47,8 +47,8 @@ use super::copy::{
 use super::{DnsRecordHint, PrereqResult, Remediation};
 use crate::safe_cmd::safe_command;
 
-/// The DKIM selector DockPanel uses when a domain doesn't record its own.
-pub const DEFAULT_DKIM_SELECTOR: &str = "dockpanel";
+/// The DKIM selector ARSY uses when a domain doesn't record its own.
+pub const DEFAULT_DKIM_SELECTOR: &str = "arsy";
 
 /// Turn a stored DKIM public key (PEM) into its DNS TXT value.
 pub fn dkim_txt_value(public_key_pem: &str) -> String {
@@ -74,14 +74,14 @@ pub fn dkim_txt_value(public_key_pem: &str) -> String {
 /// because it is not what this product deploys:
 ///
 /// * `auto_create_mail_dns` publishes `A <domain>` and `MX <domain> → <domain>`,
-///   so every domain DockPanel has ever configured automatically uses the apex.
+///   so every domain ARSY has ever configured automatically uses the apex.
 ///   Describing a different topology would report all of them as broken.
 /// * The auto-SSL step immediately after issues a certificate for `<domain>` over
 ///   HTTP-01, which requires the apex A record to exist. Moving the mail host to
 ///   a subdomain would silently break certificate issuance for new mail domains.
 ///
 /// Postfix's `myhostname` is left at the distro default and never pinned by
-/// DockPanel, so neither topology is enforced by the mail stack — which is
+/// ARSY, so neither topology is enforced by the mail stack — which is
 /// exactly why the check accepts both (see [`record_satisfies`]) while we only
 /// ever *advise* one.
 pub fn mail_records(
@@ -238,7 +238,7 @@ async fn lookup(record: &DnsRecordHint) -> Option<Vec<String>> {
 /// `Warning`, never `Blocking`, and that follows the governing rule rather than
 /// timidity: nothing in the panel is gated on this. Mail already flows without
 /// these records — badly. The consequence of a missing SPF record is that other
-/// people's servers form a judgement about you, which DockPanel cannot refuse on
+/// people's servers form a judgement about you, which ARSY cannot refuse on
 /// your behalf. There is no control to disable, so there is nothing to block;
 /// what there is, is a domain quietly landing in spam folders with nothing
 /// anywhere in the product saying so.
@@ -323,7 +323,7 @@ pub async fn check_mail_dns_published(
 /// A domain whose DKIM keys never generated can't sign anything.
 ///
 /// Surfaced separately because the fix is different in kind: it is an action in
-/// DockPanel, not a record at the registrar. `create_domain` logs a warning and
+/// ARSY, not a record at the registrar. `create_domain` logs a warning and
 /// stores the domain anyway when generation fails, so this state is reachable and
 /// otherwise invisible.
 pub fn check_dkim_key_present(domain: &str, dkim_public_key: Option<&str>) -> PrereqResult {
@@ -355,7 +355,7 @@ mod tests {
     const PEM: &str = "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA\nhkiG9w0B\n-----END PUBLIC KEY-----\n";
 
     fn records() -> Vec<DnsRecordHint> {
-        mail_records("example.com", "dockpanel", Some(PEM), "203.0.113.7")
+        mail_records("example.com", "arsy", Some(PEM), "203.0.113.7")
     }
 
     fn of_type(t: &str) -> DnsRecordHint {
@@ -409,9 +409,9 @@ mod tests {
 
     #[test]
     fn a_domain_with_no_dkim_key_gets_no_dkim_record() {
-        assert_eq!(mail_records("example.com", "dockpanel", None, "203.0.113.7").len(), 4);
+        assert_eq!(mail_records("example.com", "arsy", None, "203.0.113.7").len(), 4);
         assert_eq!(
-            mail_records("example.com", "dockpanel", Some("  "), "203.0.113.7").len(),
+            mail_records("example.com", "arsy", Some("  "), "203.0.113.7").len(),
             4,
             "a blank key is not a key"
         );
@@ -523,7 +523,7 @@ mod tests {
 
     #[tokio::test]
     async fn an_unknown_server_ip_is_unknown_not_a_failure() {
-        let r = check_mail_dns_published("example.com", "dockpanel", Some(PEM), "").await;
+        let r = check_mail_dns_published("example.com", "arsy", Some(PEM), "").await;
         assert_eq!(r.state, PrereqState::Unknown);
         assert!(!r.blocks());
     }
@@ -538,7 +538,7 @@ mod tests {
     /// Nothing on the mail surface is gated, so nothing here may ever block.
     #[tokio::test]
     async fn mail_prerequisites_never_gate_a_control() {
-        for r in evaluate("example.invalid", "dockpanel", None, "203.0.113.7").await {
+        for r in evaluate("example.invalid", "arsy", None, "203.0.113.7").await {
             assert!(!r.blocks(), "{} must not block", r.key);
         }
     }

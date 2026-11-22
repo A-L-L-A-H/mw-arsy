@@ -139,7 +139,7 @@ async fn check_nginx() -> Vec<DiagnosticFinding> {
         while let Ok(Some(entry)) = entries.next_entry().await {
             let path = entry.path();
             let filename = path.file_name().and_then(|n| n.to_str()).unwrap_or("").to_string();
-            if filename == "default" || filename == "dockpanel-panel.conf" || filename == "dockpanel.dev.conf" {
+            if filename == "default" || filename == "arsy-panel.conf" || filename == "moonwitness.dev.conf" {
                 continue;
             }
 
@@ -412,7 +412,7 @@ async fn check_services() -> Vec<DiagnosticFinding> {
 
 async fn check_ssl_expiry() -> Vec<DiagnosticFinding> {
     let mut findings = Vec::new();
-    let ssl_dir = "/etc/dockpanel/ssl";
+    let ssl_dir = "/etc/arsy/ssl";
 
     let mut entries = match tokio::fs::read_dir(ssl_dir).await {
         Ok(e) => e,
@@ -784,8 +784,8 @@ pub async fn apply_fix(fix_id: &str) -> Result<String, String> {
                 return Err("No path specified".into());
             }
             // Validate path starts with expected prefix
-            if !target.starts_with("/var/www/") && !target.starts_with("/etc/dockpanel/sites/") {
-                return Err("Path must be under /var/www/ or /etc/dockpanel/sites/".into());
+            if !target.starts_with("/var/www/") && !target.starts_with("/etc/arsy/sites/") {
+                return Err("Path must be under /var/www/ or /etc/arsy/sites/".into());
             }
             tokio::fs::create_dir_all(target)
                 .await
@@ -881,7 +881,7 @@ pub async fn apply_fix(fix_id: &str) -> Result<String, String> {
                 Ok(format!("Tmp cleanup completed with warnings: {}", stderr.chars().take(200).collect::<String>()))
             }
         }
-        // Reclaim only what DockPanel does NOT manage.
+        // Reclaim only what ARSY does NOT manage.
         //
         // This replaces `docker system prune -af --volumes`, which removed every
         // stopped container, every image not held by a RUNNING container, and
@@ -894,7 +894,7 @@ pub async fn apply_fix(fix_id: &str) -> Result<String, String> {
         //     command then reclaimed, so the tenant's data went with it;
         //   * a locally built image (git deploys, and every rollback target) has
         //     no registry to be pulled back from.
-        // `dockpanel.managed=true` is the label the panel puts on everything it
+        // `arsy.managed=true` is the label the panel puts on everything it
         // creates, and is the same evidence `services::ownership` uses elsewhere.
         // `docker-prune` is the OLD id and is deliberately routed here, so an
         // older panel pointed at a newer agent cannot get the destructive
@@ -913,7 +913,7 @@ pub async fn apply_fix(fix_id: &str) -> Result<String, String> {
             if let Ok(out) = tokio::time::timeout(
                 std::time::Duration::from_secs(60),
                 safe_command("docker")
-                    .args(["image", "prune", "-f", "--filter", "label!=dockpanel.managed=true"])
+                    .args(["image", "prune", "-f", "--filter", "label!=arsy.managed=true"])
                     .output(),
             ).await.map_err(|_| "Docker image prune timed out".to_string())? {
                 if out.status.success() {
@@ -937,7 +937,7 @@ pub async fn apply_fix(fix_id: &str) -> Result<String, String> {
             let _ = tokio::time::timeout(
                 std::time::Duration::from_secs(30),
                 safe_command("docker")
-                    .args(["network", "prune", "-f", "--filter", "label!=dockpanel.managed=true"])
+                    .args(["network", "prune", "-f", "--filter", "label!=arsy.managed=true"])
                     .output(),
             ).await;
 

@@ -293,7 +293,7 @@ done
 # tries both literal paths for the panel's own vhost. Pin that this is still
 # true, as a control: if this ever regresses to hardcoding one path, the
 # panel's own webmail-domain detection breaks on whichever family it drops.
-if hasE "$SRC_MAIL" '"/etc/nginx/sites-enabled/dockpanel-panel.conf"' && hasE "$SRC_MAIL" '"/etc/nginx/conf.d/dockpanel-panel.conf"'; then
+if hasE "$SRC_MAIL" '"/etc/nginx/sites-enabled/arsy-panel.conf"' && hasE "$SRC_MAIL" '"/etc/nginx/conf.d/arsy-panel.conf"'; then
   ok "mail.rs's pre-existing dual-path check for the panel's own vhost is still intact (control)"
 else
   bad "mail.rs no longer tries both families for the panel's own vhost"

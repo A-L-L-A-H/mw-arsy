@@ -20,7 +20,7 @@ const SAFE_PATH: &str = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin
 /// than at a call site because `env_clear()` means a unit-level `Environment=`
 /// would never reach the child, and because ~77 docker invocations share these
 /// helpers — one of them silently missing it is exactly the drift that hid this.
-pub const DOCKER_CONFIG_DIR: &str = "/var/lib/dockpanel/docker";
+pub const DOCKER_CONFIG_DIR: &str = "/var/lib/arsy/docker";
 
 /// Create an async `tokio::process::Command` with a sanitized environment.
 ///
@@ -63,10 +63,10 @@ pub fn safe_command_sync(binary: &str) -> std::process::Command {
 ///
 /// Must live under a path PID1 itself may write. `/tmp` is NOT usable: on the
 /// RHEL family PID1 runs as `init_t` and writing a `tmp_t` file is denied
-/// (measured on Rocky 9.8). `/var/lib/dockpanel` is `var_lib_t`, which is
+/// (measured on Rocky 9.8). `/var/lib/arsy` is `var_lib_t`, which is
 /// allowed, and is already in the agent unit's `ReadWritePaths` so the agent
 /// can read the result back.
-const CAPTURE_DIR: &str = "/var/lib/dockpanel/run";
+const CAPTURE_DIR: &str = "/var/lib/arsy/run";
 
 /// The filesystem path capture logic actually writes to.
 ///
@@ -85,10 +85,10 @@ const CAPTURE_DIR: &str = "/var/lib/dockpanel/run";
 /// `#[cfg(test)]` ahead of the real `#[cfg(test)] mod tests` block this
 /// file already ends with, and every pin suite that reads this file treats
 /// the FIRST such token as "everything after this is test code, stop
-/// measuring" — see reference_dockpanel_ops_p7's mid-file cfg(test) gate.
+/// measuring" — see reference_arsy_ops_p7's mid-file cfg(test) gate.
 fn capture_dir() -> std::path::PathBuf {
     if cfg!(test) {
-        std::env::temp_dir().join("dockpanel-test-capture")
+        std::env::temp_dir().join("arsy-test-capture")
     } else {
         std::path::PathBuf::from(CAPTURE_DIR)
     }
@@ -491,7 +491,7 @@ fn insert_unit_arg(argv: &mut Vec<std::ffi::OsString>) -> (String, String) {
     // `systemctl stop` both accept without quoting concerns. Matches the
     // `.simple()` convention `routes/ssl_registry.rs` already uses for the
     // same "unique, filesystem/argv-safe token" need.
-    let unit = format!("dockpanel-op-{}", uuid::Uuid::new_v4().simple());
+    let unit = format!("arsy-op-{}", uuid::Uuid::new_v4().simple());
     argv.insert(sep, std::ffi::OsString::from(format!("--unit={unit}")));
     (binary, unit)
 }
@@ -746,10 +746,10 @@ mod tests {
     #[test]
     fn an_argument_with_no_dollar_sign_is_unchanged() {
         let mut cmd = safe_command_unsandboxed("useradd", &[]);
-        cmd.args(["-u", "30001", "-d", "/var/dockpanel-sftp/example.com", "sftp30001"]);
+        cmd.args(["-u", "30001", "-d", "/var/arsy-sftp/example.com", "sftp30001"]);
         assert_eq!(
             argv_of(&cmd)[argv_of(&cmd).iter().position(|a| a == "--").unwrap() + 1..],
-            ["useradd", "-u", "30001", "-d", "/var/dockpanel-sftp/example.com", "sftp30001"]
+            ["useradd", "-u", "30001", "-d", "/var/arsy-sftp/example.com", "sftp30001"]
         );
     }
 
@@ -810,8 +810,8 @@ mod tests {
         let mut cmd = safe_command_unsandboxed("dnf", &[]);
         let (_, unit) = insert_unit_arg(&mut cmd.argv);
         let suffix = unit
-            .strip_prefix("dockpanel-op-")
-            .expect("unit name keeps the dockpanel-op- prefix");
+            .strip_prefix("arsy-op-")
+            .expect("unit name keeps the arsy-op- prefix");
         assert_eq!(suffix.len(), 32, "uuid simple form is 32 hex characters");
         assert!(
             suffix.chars().all(|c| c.is_ascii_hexdigit()),
@@ -869,11 +869,11 @@ mod tests {
     #[test]
     fn capture_properties_keep_stdout_and_stderr_apart() {
         let cap = Capture {
-            out: "/var/lib/dockpanel/run/x.out".into(),
-            err: "/var/lib/dockpanel/run/x.err".into(),
+            out: "/var/lib/arsy/run/x.out".into(),
+            err: "/var/lib/arsy/run/x.err".into(),
         };
         let props = cap.properties();
-        assert!(props.iter().any(|p| p == "StandardOutput=file:/var/lib/dockpanel/run/x.out"));
-        assert!(props.iter().any(|p| p == "StandardError=file:/var/lib/dockpanel/run/x.err"));
+        assert!(props.iter().any(|p| p == "StandardOutput=file:/var/lib/arsy/run/x.out"));
+        assert!(props.iter().any(|p| p == "StandardError=file:/var/lib/arsy/run/x.err"));
     }
 }

@@ -478,7 +478,7 @@ pub async fn view_shared(
     let html = format!(
         r#"<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>DockPanel — Shared Terminal Output</title>
+<title>ARSY — Shared Terminal Output</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -517,7 +517,7 @@ pre::-webkit-scrollbar-thumb:hover{{background:#585b70}}
 <div class="container">
   <div class="header">
     <div class="brand">
-      <span class="brand-name">DockPanel</span>
+      <span class="brand-name">ARSY</span>
       <span class="badge">Read-Only Snapshot</span>
     </div>
     <div class="actions">
@@ -532,7 +532,7 @@ pre::-webkit-scrollbar-thumb:hover{{background:#585b70}}
     </div>
     <pre id="output">{escaped}</pre>
   </div>
-  <div class="footer">Shared via DockPanel &mdash; self-hosted server management</div>
+  <div class="footer">Shared via ARSY &mdash; self-hosted server management</div>
 </div>
 <div class="toast" id="toast">Copied to clipboard</div>
 <script>

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# DockPanel Updater
+# ARSY Updater
 # Pulls latest code, rebuilds binaries + frontend, restarts services.
 # Preserves database, secrets, and configuration.
 #
@@ -11,8 +11,8 @@ set -euo pipefail
 
 # ── Escape the caller's service cgroup ────────────────────────────────────
 # When the panel triggers an update it spawns this script from inside
-# dockpanel-api.service. That unit is KillMode=control-group (the systemd
-# default), so the `systemctl stop dockpanel-agent dockpanel-api` further down
+# arsy-api.service. That unit is KillMode=control-group (the systemd
+# default), so the `systemctl stop arsy-agent arsy-api` further down
 # SIGTERMs every process in the cgroup — including this script, one line before
 # it swaps the binaries. The box is then left with both services stopped and the
 # old binaries still in place. Setting a POSIX process group (which the
@@ -25,15 +25,15 @@ set -euo pipefail
 # dies with it ("Removed slice user-0.slice" — observed killing an update
 # mid-swap). A transient service is owned by PID1 and outlives both the unit
 # being stopped and any session.
-if [ -z "${DOCKPANEL_UPDATE_DETACHED:-}" ] && command -v systemd-run >/dev/null 2>&1; then
-    if grep -qE 'dockpanel-(api|agent)\.service' /proc/self/cgroup 2>/dev/null; then
+if [ -z "${ARSY_UPDATE_DETACHED:-}" ] && command -v systemd-run >/dev/null 2>&1; then
+    if grep -qE 'arsy-(api|agent)\.service' /proc/self/cgroup 2>/dev/null; then
         echo "[+] Re-executing outside the panel's service cgroup..."
         exec systemd-run --quiet --collect \
-            --unit="dockpanel-self-update-$$" \
-            --setenv=DOCKPANEL_UPDATE_DETACHED=1 \
+            --unit="arsy-self-update-$$" \
+            --setenv=ARSY_UPDATE_DETACHED=1 \
             --setenv=INSTALL_FROM_RELEASE="${INSTALL_FROM_RELEASE:-}" \
-            --setenv=DOCKPANEL_VERSION="${DOCKPANEL_VERSION:-}" \
-            --setenv=DOCKPANEL_NO_SELF_REFRESH="${DOCKPANEL_NO_SELF_REFRESH:-}" \
+            --setenv=ARSY_VERSION="${ARSY_VERSION:-}" \
+            --setenv=ARSY_NO_SELF_REFRESH="${ARSY_NO_SELF_REFRESH:-}" \
             bash "$0" "$@"
     fi
 fi
@@ -47,7 +47,7 @@ fi
 # it observes belongs to systemd-run rather than to the update.
 #
 # For a SUCCESSFUL update that does not matter much: this script stops
-# dockpanel-api, the orchestrator dies with it, and the next boot works out what
+# arsy-api, the orchestrator dies with it, and the next boot works out what
 # happened. The case that was broken is a failure BEFORE the services are
 # stopped — a bad download, a missing file, a failed database backup. The api is
 # never stopped, so no restart ever comes to carry a verdict; the orchestrator
@@ -61,45 +61,45 @@ fi
 # that outlives the process. `--pipe` is NOT the alternative — it implies
 # `--wait` and wires the unit's stdout to a caller that is about to be killed, so
 # the updater would take SIGPIPE on its next log line, mid binary swap.
-DOCKPANEL_STATE_DIR="${DOCKPANEL_STATE_DIR:-/var/lib/dockpanel}"
-_dockpanel_result="$DOCKPANEL_STATE_DIR/last-panel-update.json"
-_dockpanel_stage="preflight"
-_dockpanel_finished=0
+ARSY_STATE_DIR="${ARSY_STATE_DIR:-/var/lib/arsy}"
+_arsy_result="$ARSY_STATE_DIR/last-panel-update.json"
+_arsy_stage="preflight"
+_arsy_finished=0
 
-_dockpanel_json_escape() {
+_arsy_json_escape() {
     printf '%s' "$1" | tr -d '\000-\010\013\014\016-\037' \
         | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' | tr '\n' ' '
 }
 
-_dockpanel_write_result() {
+_arsy_write_result() {
     local ok="$1" stage="$2" detail="$3"
-    mkdir -p "$DOCKPANEL_STATE_DIR" 2>/dev/null || return 0
-    local tmp="$_dockpanel_result.tmp"
+    mkdir -p "$ARSY_STATE_DIR" 2>/dev/null || return 0
+    local tmp="$_arsy_result.tmp"
     printf '{"target_version":"%s","ok":%s,"stage":"%s","detail":"%s","finished_at":"%s"}\n' \
-        "$(_dockpanel_json_escape "${DOCKPANEL_VERSION:-}")" "$ok" "$stage" \
-        "$(_dockpanel_json_escape "$detail")" \
+        "$(_arsy_json_escape "${ARSY_VERSION:-}")" "$ok" "$stage" \
+        "$(_arsy_json_escape "$detail")" \
         "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$tmp" 2>/dev/null || return 0
     chmod 0600 "$tmp" 2>/dev/null || true
-    mv "$tmp" "$_dockpanel_result" 2>/dev/null || true
+    mv "$tmp" "$_arsy_result" 2>/dev/null || true
 }
 
 # Safety net: if we get killed or fail after the services are stopped but before
 # they are started again, bring them back rather than leaving the box dark.
-_dockpanel_services_stopped=0
-_dockpanel_on_exit() {
+_arsy_services_stopped=0
+_arsy_on_exit() {
     local code=$?
-    if [ "$_dockpanel_services_stopped" = "1" ]; then
-        systemctl start dockpanel-agent dockpanel-api 2>/dev/null || true
+    if [ "$_arsy_services_stopped" = "1" ]; then
+        systemctl start arsy-agent arsy-api 2>/dev/null || true
     fi
     # Every exit path leaves a verdict, including the ones nobody wrote by hand:
     # a `set -e` abort, a SIGTERM, a failed curl. Without this the only paths
     # that reported anything were the ones that happened to be instrumented.
-    if [ "$_dockpanel_finished" != "1" ]; then
-        _dockpanel_write_result false "$_dockpanel_stage" \
-            "update aborted at stage '$_dockpanel_stage' with exit code $code"
+    if [ "$_arsy_finished" != "1" ]; then
+        _arsy_write_result false "$_arsy_stage" \
+            "update aborted at stage '$_arsy_stage' with exit code $code"
     fi
 }
-trap _dockpanel_on_exit EXIT INT TERM
+trap _arsy_on_exit EXIT INT TERM
 
 # ── Colors ────────────────────────────────────────────────────────────────
 GREEN='\033[0;32m'
@@ -160,18 +160,18 @@ MCP_SRC="$REPO_DIR/panel/mcp"
 # with no repo tree, the one already installed) so this can never fall behind it.
 # Prints nothing if no unit is readable; callers must tolerate an empty result.
 agent_rwp_dirs() {
-    local unit="$AGENT_SRC/dockpanel-agent.service"
-    [ -f "$unit" ] || unit="/etc/systemd/system/dockpanel-agent.service"
+    local unit="$AGENT_SRC/arsy-agent.service"
+    [ -f "$unit" ] || unit="/etc/systemd/system/arsy-agent.service"
     [ -f "$unit" ] || return 0
     sed -n 's/^ReadWritePaths=//p' "$unit" | tr ' ' '\n' | sed 's/^-//' | grep '^/' || true
 }
 FRONTEND_DIR="$REPO_DIR/panel/frontend"
-AGENT_BIN="/usr/local/bin/dockpanel-agent"
-API_BIN="/usr/local/bin/dockpanel-api"
-CLI_BIN="/usr/local/bin/dockpanel"
-MCP_BIN="/usr/local/bin/dockpanel-mcp"
+AGENT_BIN="/usr/local/bin/arsy-agent"
+API_BIN="/usr/local/bin/arsy-api"
+CLI_BIN="/usr/local/bin/arsy"
+MCP_BIN="/usr/local/bin/arsy-mcp"
 INSTALL_FROM_RELEASE="${INSTALL_FROM_RELEASE:-0}"
-GITHUB_REPO="ovexro/dockpanel"
+GITHUB_REPO="A-L-L-A-H/mw-arsy"
 
 # ── Mode detection (must run BEFORE self-refresh) ─────────────────────────
 # Self-refresh is gated on INSTALL_FROM_RELEASE=1, so the auto-detect that
@@ -212,12 +212,12 @@ fi
 # v2.7.13 — strands operators unable to upgrade. Pull the latest script
 # from the latest release tag and re-exec ourselves before running any
 # update logic. SELF_REFRESHED=1 prevents an infinite re-exec loop.
-# DOCKPANEL_NO_SELF_REFRESH=1 — set by the panel-internal orchestrator
+# ARSY_NO_SELF_REFRESH=1 — set by the panel-internal orchestrator
 # (services/panel_update.rs) so it can stream a single update.sh invocation's
 # stdout into its state machine without a mid-flight re-exec breaking the pipe.
 # SSH-operator flow keeps self-refresh on by default.
 if [ "${SELF_REFRESHED:-0}" != "1" ] && [ "$INSTALL_FROM_RELEASE" = "1" ] \
-   && [ "${DOCKPANEL_NO_SELF_REFRESH:-0}" != "1" ]; then
+   && [ "${ARSY_NO_SELF_REFRESH:-0}" != "1" ]; then
     LATEST_TAG=$(curl -fsSL "https://api.github.com/repos/${GITHUB_REPO}/releases/latest" 2>/dev/null \
         | grep -m1 '"tag_name"' | cut -d'"' -f4 || true)
     if [ -n "$LATEST_TAG" ]; then
@@ -246,23 +246,23 @@ if [ "$INSTALL_FROM_RELEASE" != "1" ] && [ ! -d "$AGENT_SRC/src" ]; then
 fi
 
 echo ""
-echo -e "${GREEN}${BOLD}DockPanel Updater${NC}"
+echo -e "${GREEN}${BOLD}ARSY Updater${NC}"
 echo ""
 
 # ── Sync repo to origin/main ──────────────────────────────────────────────
-_dockpanel_stage="sync-repo"
+_arsy_stage="sync-repo"
 # Both modes need a fresh tree: the canonical systemd unit
-# (panel/agent/dockpanel-agent.service), nginx templates, install-agent.sh,
+# (panel/agent/arsy-agent.service), nginx templates, install-agent.sh,
 # and a few other repo-resident files are deployed from $REPO_DIR. Without a
-# pull, `bash /opt/dockpanel/scripts/update.sh` would download new binaries
+# pull, `bash /opt/arsy/scripts/update.sh` would download new binaries
 # but redeploy the OLD canonical unit — exactly what stranded the v2.8.13 →
-# v2.8.14 upgrade-path test (RuntimeDirectory=dockpanel and /var/cache/nginx
+# v2.8.14 upgrade-path test (RuntimeDirectory=arsy and /var/cache/nginx
 # in ReadWritePaths never reached the deployed unit). v2.8.15.
 #
 # `git pull --ff-only` doesn't cover installs cloned with `-b vX.Y.Z` (those
 # end up on a detached HEAD with no `main` known locally), so the sync uses
 # `git fetch origin main` + `git reset --hard FETCH_HEAD` to forcibly track
-# main. Local edits to /opt/dockpanel are unsupported (it's a deploy
+# main. Local edits to /opt/arsy are unsupported (it's a deploy
 # artifact, not a working tree) — `git stash` captures any incidental drift
 # in case anyone wants to inspect it post-upgrade.
 if [ -d "$REPO_DIR/.git" ]; then
@@ -278,8 +278,8 @@ if [ -d "$REPO_DIR/.git" ]; then
 fi
 
 # ── Backup database before upgrade ────────────────────────────────────────
-_dockpanel_stage="db-backup"
-BACKUP_DIR="/var/backups/dockpanel/db"
+_arsy_stage="db-backup"
+BACKUP_DIR="/var/backups/arsy/db"
 mkdir -p "$BACKUP_DIR"
 # `>` creates 0666 & ~umask. This dump carries `servers.agent_token` in
 # cleartext — the Bearer credential for every agent endpoint and the key the
@@ -297,9 +297,9 @@ mkdir -p "$BACKUP_DIR"
 # modes, so the extracted tree looks right and only the parent is wrong.
 # Scope it the way setup.sh already does at its three `$(umask 077; mktemp)`
 # sites — the redirect is the only thing that needs it.
-chmod 700 "$BACKUP_DIR" /var/backups/dockpanel 2>/dev/null || true
+chmod 700 "$BACKUP_DIR" /var/backups/arsy 2>/dev/null || true
 log "Backing up database..."
-if ( umask 077; docker exec dockpanel-postgres pg_dump -U dockpanel dockpanel | gzip > "$BACKUP_DIR/pre-upgrade-$(date +%Y%m%d%H%M%S).sql.gz" ); then
+if ( umask 077; docker exec arsy-postgres pg_dump -U arsy arsy | gzip > "$BACKUP_DIR/pre-upgrade-$(date +%Y%m%d%H%M%S).sql.gz" ); then
     log "Database backup saved to $BACKUP_DIR/"
 else
     error "Database backup failed, aborting upgrade"
@@ -322,10 +322,10 @@ fi
 #
 # Prepending the umask is deliberately the whole fix: it needs no new file, it
 # preserves whatever schedule the operator chose, and it is safe to run twice.
-if crontab -l 2>/dev/null | grep -c 'pg_dump -U dockpanel.*/var/backups/dockpanel/db' >/dev/null \
-   && ! crontab -l 2>/dev/null | grep 'pg_dump -U dockpanel' | grep -c 'umask 077' >/dev/null; then
+if crontab -l 2>/dev/null | grep -c 'pg_dump -U arsy.*/var/backups/arsy/db' >/dev/null \
+   && ! crontab -l 2>/dev/null | grep 'pg_dump -U arsy' | grep -c 'umask 077' >/dev/null; then
     if crontab -l 2>/dev/null \
-        | sed '\#/var/backups/dockpanel/db# s#docker exec dockpanel-postgres pg_dump#umask 077; docker exec dockpanel-postgres pg_dump#' \
+        | sed '\#/var/backups/arsy/db# s#docker exec arsy-postgres pg_dump#umask 077; docker exec arsy-postgres pg_dump#' \
         | crontab -; then
         log "Hardened legacy database-backup cron (umask 077)"
     else
@@ -334,7 +334,7 @@ if crontab -l 2>/dev/null | grep -c 'pg_dump -U dockpanel.*/var/backups/dockpane
 fi
 
 # ── Build or download binaries ────────────────────────────────────────────
-_dockpanel_stage="binaries"
+_arsy_stage="binaries"
 if [ "$INSTALL_FROM_RELEASE" = "1" ]; then
     # Download pre-built binaries from GitHub Releases
     ARCH=$(uname -m)
@@ -344,13 +344,13 @@ if [ "$INSTALL_FROM_RELEASE" = "1" ]; then
         *) error "Unsupported architecture: $ARCH"; exit 1 ;;
     esac
 
-    # DOCKPANEL_VERSION=vX.Y.Z (or vX.Y.Z-rc.N) — pin to a specific release
+    # ARSY_VERSION=vX.Y.Z (or vX.Y.Z-rc.N) — pin to a specific release
     # tag instead of /releases/latest. Lets the panel-internal orchestrator
     # honour the operator's candidate-channel pick and the in-process
     # "available version" snapshot, instead of racing /releases/latest mid-
     # apply (which could shift to a newer GA between poll and click).
-    if [ -n "${DOCKPANEL_VERSION:-}" ]; then
-        RELEASE_TAG="$DOCKPANEL_VERSION"
+    if [ -n "${ARSY_VERSION:-}" ]; then
+        RELEASE_TAG="$ARSY_VERSION"
         # Accept a bare semver too. Panels up to v2.11.2 passed the version with
         # the `v` already stripped (their poller normalises it for display), which
         # built releases/download/2.11.2/... — a 404 — so their self-update could
@@ -361,7 +361,7 @@ if [ "$INSTALL_FROM_RELEASE" = "1" ]; then
         case "$RELEASE_TAG" in
             [0-9]*) RELEASE_TAG="v$RELEASE_TAG" ;;
         esac
-        log "Pinned release: $RELEASE_TAG (DOCKPANEL_VERSION)"
+        log "Pinned release: $RELEASE_TAG (ARSY_VERSION)"
     else
         log "Fetching latest release..."
         RELEASE_TAG=$(curl -sf "https://api.github.com/repos/${GITHUB_REPO}/releases/latest" | grep '"tag_name"' | head -1 | cut -d'"' -f4)
@@ -375,11 +375,11 @@ if [ "$INSTALL_FROM_RELEASE" = "1" ]; then
 
     # Verify every downloaded asset against the release's checksums.txt before
     # installing it — parity with scripts/agent-self-update.sh. The release ships
-    # checksums.txt (.github/workflows/release.yml: `sha256sum dockpanel-* >
+    # checksums.txt (.github/workflows/release.yml: `sha256sum arsy-* >
     # checksums.txt`; entries are bare basenames). Fail closed: a missing
     # checksums.txt, a missing entry, or a hash mismatch aborts the upgrade —
     # never install unverified bytes (lesson #25/#48).
-    CHECKSUMS=/tmp/dockpanel-checksums.txt
+    CHECKSUMS=/tmp/arsy-checksums.txt
     if ! dp_fetch "${BASE_URL}/checksums.txt" "$CHECKSUMS"; then
         error "Could not download ${BASE_URL}/checksums.txt — refusing to install unverified binaries"
         exit 1
@@ -401,33 +401,33 @@ if [ "$INSTALL_FROM_RELEASE" = "1" ]; then
     }
 
     log "Downloading agent (${DL_ARCH})..."
-    dp_fetch "${BASE_URL}/dockpanel-agent-linux-${DL_ARCH}" /tmp/dockpanel-agent-new
-    verify_checksum /tmp/dockpanel-agent-new "dockpanel-agent-linux-${DL_ARCH}"
-    chmod +x /tmp/dockpanel-agent-new
+    dp_fetch "${BASE_URL}/arsy-agent-linux-${DL_ARCH}" /tmp/arsy-agent-new
+    verify_checksum /tmp/arsy-agent-new "arsy-agent-linux-${DL_ARCH}"
+    chmod +x /tmp/arsy-agent-new
 
     log "Downloading API (${DL_ARCH})..."
-    dp_fetch "${BASE_URL}/dockpanel-api-linux-${DL_ARCH}" /tmp/dockpanel-api-new
-    verify_checksum /tmp/dockpanel-api-new "dockpanel-api-linux-${DL_ARCH}"
-    chmod +x /tmp/dockpanel-api-new
+    dp_fetch "${BASE_URL}/arsy-api-linux-${DL_ARCH}" /tmp/arsy-api-new
+    verify_checksum /tmp/arsy-api-new "arsy-api-linux-${DL_ARCH}"
+    chmod +x /tmp/arsy-api-new
 
     log "Downloading CLI (${DL_ARCH})..."
-    dp_fetch "${BASE_URL}/dockpanel-cli-linux-${DL_ARCH}" /tmp/dockpanel-cli-new
-    verify_checksum /tmp/dockpanel-cli-new "dockpanel-cli-linux-${DL_ARCH}"
-    chmod +x /tmp/dockpanel-cli-new
+    dp_fetch "${BASE_URL}/arsy-cli-linux-${DL_ARCH}" /tmp/arsy-cli-new
+    verify_checksum /tmp/arsy-cli-new "arsy-cli-linux-${DL_ARCH}"
+    chmod +x /tmp/arsy-cli-new
 
     log "Downloading MCP server (${DL_ARCH})..."
-    dp_fetch "${BASE_URL}/dockpanel-mcp-linux-${DL_ARCH}" /tmp/dockpanel-mcp-new
-    verify_checksum /tmp/dockpanel-mcp-new "dockpanel-mcp-linux-${DL_ARCH}"
-    chmod +x /tmp/dockpanel-mcp-new
+    dp_fetch "${BASE_URL}/arsy-mcp-linux-${DL_ARCH}" /tmp/arsy-mcp-new
+    verify_checksum /tmp/arsy-mcp-new "arsy-mcp-linux-${DL_ARCH}"
+    chmod +x /tmp/arsy-mcp-new
 
     # Download and extract frontend
     log "Downloading frontend..."
-    dp_fetch "${BASE_URL}/dockpanel-frontend.tar.gz" /tmp/dockpanel-frontend.tar.gz
-    verify_checksum /tmp/dockpanel-frontend.tar.gz "dockpanel-frontend.tar.gz"
-    FE_DIR="/opt/dockpanel/frontend"
+    dp_fetch "${BASE_URL}/arsy-frontend.tar.gz" /tmp/arsy-frontend.tar.gz
+    verify_checksum /tmp/arsy-frontend.tar.gz "arsy-frontend.tar.gz"
+    FE_DIR="/opt/arsy/frontend"
     mkdir -p "$FE_DIR"
-    tar xzf /tmp/dockpanel-frontend.tar.gz -C "$FE_DIR"
-    rm -f /tmp/dockpanel-frontend.tar.gz
+    tar xzf /tmp/arsy-frontend.tar.gz -C "$FE_DIR"
+    rm -f /tmp/arsy-frontend.tar.gz
     rm -f "$CHECKSUMS"
     log "Frontend updated"
 else
@@ -481,11 +481,11 @@ else
 fi
 
 # ── Ensure required directories exist (may be new in this version) ────────
-_dockpanel_stage="directories"
+_arsy_stage="directories"
 log "Ensuring required directories exist..."
-mkdir -p /etc/dockpanel/ssl /var/run/dockpanel /var/backups/dockpanel
+mkdir -p /etc/arsy/ssl /var/run/arsy /var/backups/arsy
 mkdir -p /var/www/acme/.well-known/acme-challenge
-mkdir -p /var/lib/dockpanel/git
+mkdir -p /var/lib/arsy/git
 # Directories needed by agent ReadWritePaths (created only if missing), DERIVED
 # FROM THE UNIT ABOUT TO BE DEPLOYED rather than hand-copied.
 #
@@ -511,7 +511,7 @@ done
 for d in /run/opendkim /var/lib/nginx /var/cache/nginx/fastcgi; do
     [ -d "$d" ] || mkdir -p "$d" 2>/dev/null || true
 done
-echo "d /run/dockpanel 0755 root root -" > /etc/tmpfiles.d/dockpanel.conf 2>/dev/null || true
+echo "d /run/arsy 0755 root root -" > /etc/tmpfiles.d/arsy.conf 2>/dev/null || true
 
 # v2.8.17: drop apt lock-wait config so agent's apt-get install/update/purge
 # waits up to 5 min for the dpkg lock instead of failing immediately when
@@ -519,14 +519,14 @@ echo "d /run/dockpanel 0755 root root -" > /etc/tmpfiles.d/dockpanel.conf 2>/dev
 # Idempotent — overwrites on every update.sh run, no apt operation needed.
 if command -v apt-get &> /dev/null; then
     mkdir -p /etc/apt/apt.conf.d
-    cat > /etc/apt/apt.conf.d/99-dockpanel-lock-wait.conf << 'APT_EOF'
+    cat > /etc/apt/apt.conf.d/99-arsy-lock-wait.conf << 'APT_EOF'
 DPkg::Lock::Timeout "300";
 APT_EOF
 
     # v2.48.1: exclude the agent from needrestart's auto-restart list. A
-    # panel-driven update runs apt from inside dockpanel-agent; because the
+    # panel-driven update runs apt from inside arsy-agent; because the
     # agent links libc, an ordinary libc6 upgrade made needrestart restart
-    # dockpanel-agent.service mid-run and kill the process streaming the
+    # arsy-agent.service mid-run and kill the process streaming the
     # update's own progress. apt itself survived (it runs in a systemd-run
     # transient scope), but the NDJSON stream died before its final
     # {"type":"done"} line, so the panel reported a clean 16-package upgrade
@@ -537,9 +537,9 @@ APT_EOF
         # Subscript assignment ADDS to the hash the main needrestart.conf
         # already filled in; `$nrconf{override_rc} = {...}` would replace it
         # and drop the distro's own exclusions.
-        cat > /etc/needrestart/conf.d/99-dockpanel.conf << 'NR_EOF'
-# Managed by DockPanel — do not edit; rewritten by setup.sh/update.sh.
-$nrconf{override_rc}{qr(^dockpanel-agent)} = 0;
+        cat > /etc/needrestart/conf.d/99-arsy.conf << 'NR_EOF'
+# Managed by ARSY — do not edit; rewritten by setup.sh/update.sh.
+$nrconf{override_rc}{qr(^arsy-agent)} = 0;
 1;
 NR_EOF
     fi
@@ -596,49 +596,49 @@ if command -v getenforce &> /dev/null && [ "$(getenforce 2>/dev/null)" = "Enforc
 fi
 
 # ── Refresh systemd service files (may have changed between versions) ─────
-_dockpanel_stage="systemd-units"
+_arsy_stage="systemd-units"
 log "Updating systemd service files..."
-# Agent unit — deploy from repo (single source of truth: panel/agent/dockpanel-agent.service)
+# Agent unit — deploy from repo (single source of truth: panel/agent/arsy-agent.service)
 # v2.8.13: existing installs upgrading from v2.8.12 or earlier get the strict sandbox here.
-if [ -f "$AGENT_SRC/dockpanel-agent.service" ]; then
-    cp "$AGENT_SRC/dockpanel-agent.service" /etc/systemd/system/dockpanel-agent.service
-    chmod 644 /etc/systemd/system/dockpanel-agent.service
+if [ -f "$AGENT_SRC/arsy-agent.service" ]; then
+    cp "$AGENT_SRC/arsy-agent.service" /etc/systemd/system/arsy-agent.service
+    chmod 644 /etc/systemd/system/arsy-agent.service
 else
-    warn "Agent unit source not found at $AGENT_SRC/dockpanel-agent.service — keeping existing on-disk unit (no repo tree on this layout)"
+    warn "Agent unit source not found at $AGENT_SRC/arsy-agent.service — keeping existing on-disk unit (no repo tree on this layout)"
 fi
 
 # MCP server unit — deploy from repo (single source of truth:
-# panel/mcp/dockpanel-mcp.service). Installed but never enabled/started here:
+# panel/mcp/arsy-mcp.service). Installed but never enabled/started here:
 # see the matching comment in setup.sh's create_services(). An install that
 # already has the service enabled (a manual opt-in) keeps running through the
 # upgrade — this only refreshes the unit FILE, it never touches enablement.
-if [ -f "$MCP_SRC/dockpanel-mcp.service" ]; then
-    cp "$MCP_SRC/dockpanel-mcp.service" /etc/systemd/system/dockpanel-mcp.service
-    chmod 644 /etc/systemd/system/dockpanel-mcp.service
+if [ -f "$MCP_SRC/arsy-mcp.service" ]; then
+    cp "$MCP_SRC/arsy-mcp.service" /etc/systemd/system/arsy-mcp.service
+    chmod 644 /etc/systemd/system/arsy-mcp.service
 fi
 
-cat > /etc/systemd/system/dockpanel-api.service << 'EOF'
+cat > /etc/systemd/system/arsy-api.service << 'EOF'
 [Unit]
-Description=DockPanel API
-After=network.target docker.service dockpanel-agent.service
-Wants=dockpanel-agent.service
+Description=ARSY API
+After=network.target docker.service arsy-agent.service
+Wants=arsy-agent.service
 StartLimitBurst=5
 StartLimitIntervalSec=60
 
 [Service]
 Type=simple
-ExecStart=/usr/local/bin/dockpanel-api
+ExecStart=/usr/local/bin/arsy-api
 Restart=always
 RestartSec=5
 Environment=RUST_LOG=info
-EnvironmentFile=/etc/dockpanel/api.env
+EnvironmentFile=/etc/arsy/api.env
 NoNewPrivileges=yes
 PrivateTmp=yes
 ProtectHome=yes
 ProtectKernelLogs=yes
 ProtectKernelModules=yes
 ProtectSystem=no
-ReadWritePaths=/var/run/dockpanel /tmp
+ReadWritePaths=/var/run/arsy /tmp
 MemoryMax=1G
 LimitNOFILE=65535
 
@@ -648,10 +648,10 @@ EOF
 
 # ── Update nginx frontend path if needed ──────────────────────────────────
 if [ "$INSTALL_FROM_RELEASE" = "1" ]; then
-    FE_DIST="/opt/dockpanel/frontend/dist"
-    for conf in /etc/nginx/sites-enabled/dockpanel-panel.conf /etc/nginx/conf.d/dockpanel-panel.conf; do
+    FE_DIST="/opt/arsy/frontend/dist"
+    for conf in /etc/nginx/sites-enabled/arsy-panel.conf /etc/nginx/conf.d/arsy-panel.conf; do
         if [ -f "$conf" ] && grep -q "panel/frontend/dist" "$conf" 2>/dev/null; then
-            sed -i "s|/opt/dockpanel/panel/frontend/dist|${FE_DIST}|g" "$conf"
+            sed -i "s|/opt/arsy/panel/frontend/dist|${FE_DIST}|g" "$conf"
             log "Updated nginx frontend path in $conf"
             nginx -t > /dev/null 2>&1 && nginx -s reload > /dev/null 2>&1
         fi
@@ -660,7 +660,7 @@ else
     # The build above lands in $REPO_DIR/panel/frontend/dist, but nginx's
     # `root` may point somewhere else entirely — every box that started life
     # via the standard curl|bash install.sh serves from
-    # /opt/dockpanel/frontend/dist (the release-tarball layout, written by the
+    # /opt/arsy/frontend/dist (the release-tarball layout, written by the
     # branch above), which this branch's own build output never touches. Left
     # alone, a source build logs "Frontend rebuilt" and changes nothing an
     # operator can see: the exact stale-panel-that-looks-healthy failure this
@@ -672,7 +672,7 @@ else
     # when no vhost exists yet to read (first-ever setup.sh run).
     BUILT_DIST="${REPO_DIR}/panel/frontend/dist"
     FE_DIST="$BUILT_DIST"
-    for conf in /etc/nginx/sites-enabled/dockpanel-panel.conf /etc/nginx/conf.d/dockpanel-panel.conf; do
+    for conf in /etc/nginx/sites-enabled/arsy-panel.conf /etc/nginx/conf.d/arsy-panel.conf; do
         if [ -f "$conf" ]; then
             SERVED_ROOT=$(grep -oP '^\s*root\s+\K[^;]+' "$conf" | head -1)
             if [ -n "$SERVED_ROOT" ] && [ "$SERVED_ROOT" != "$BUILT_DIST" ] && [ -d "$BUILT_DIST" ]; then
@@ -698,7 +698,7 @@ if [ -f "${REPO_DIR}/scripts/install-agent.sh" ] && [ -d "$FE_DIST" ]; then
 fi
 
 # ── Migrate panel nginx config to bind IPv6 (fixes site-vhost dual-stack hijack) ──
-_dockpanel_stage="nginx-migrations"
+_arsy_stage="nginx-migrations"
 # v2.8.3: agent site templates declare `listen [::]:443 ssl;` (dual-stack), but
 # pre-v2.8.3 setup.sh bound the panel to IPv4 only. The first SSL site to be
 # provisioned then became the de-facto default for IPv6 traffic — WordPress
@@ -711,7 +711,7 @@ _dockpanel_stage="nginx-migrations"
 # "duplicate listen options" when sites add their own [::]:443 ssl block).
 NGINX_NEEDS_RELOAD=0
 NGINX_NEEDS_RESTART=0
-for conf in /etc/nginx/sites-enabled/dockpanel-panel.conf /etc/nginx/conf.d/dockpanel-panel.conf; do
+for conf in /etc/nginx/sites-enabled/arsy-panel.conf /etc/nginx/conf.d/arsy-panel.conf; do
     [ -f "$conf" ] || continue
     # certbot --nginx writes a WILDCARD `listen 443 ssl;`, while agent-generated
     # site vhosts bind `<ip>:443 ssl`. nginx treats those as different listen
@@ -764,7 +764,7 @@ if [ -d /etc/nginx/sites-enabled ]; then
     for site_conf in /etc/nginx/sites-enabled/*.conf; do
         [ -f "$site_conf" ] || continue
         case "$(basename "$site_conf")" in
-            dockpanel-panel.conf) continue ;;
+            arsy-panel.conf) continue ;;
         esac
         if grep -qE 'listen \[::\]:(80|443 ssl) ipv6only=on' "$site_conf"; then
             sed -i -E 's|^([[:space:]]*)listen \[::\]:80 ipv6only=on;|\1listen [::]:80;|' "$site_conf"
@@ -794,7 +794,7 @@ if [ -d /etc/nginx/sites-enabled ]; then
     for site_conf in /etc/nginx/sites-enabled/*.conf; do
         [ -f "$site_conf" ] || continue
         case "$(basename "$site_conf")" in
-            dockpanel-panel.conf) continue ;;
+            arsy-panel.conf) continue ;;
         esac
         grep -q 'index index.html index.htm;' "$site_conf" || continue
         grep -q 'fastcgi_pass' "$site_conf" && continue
@@ -831,28 +831,28 @@ if [ -d /etc/nginx/sites-enabled ]; then
         fi
     done
 fi
-# ── v2.8.22: ensure panel vhost includes dockpanel-panel.locations/*.conf ─
+# ── v2.8.22: ensure panel vhost includes arsy-panel.locations/*.conf ─
 # Drop-in dir for path-mounted tool reverse-proxies. Webmail uses this in
 # v2.8.22+ (writes webmail.conf on install, deletes on remove). Pre-v2.8.22
 # panel vhosts lack the include directive — inject it just before the
 # server-block closing brace via awk (sed nested-brace handling is fragile).
-mkdir -p /etc/nginx/conf.d/dockpanel-panel.locations
-for conf in /etc/nginx/sites-enabled/dockpanel-panel.conf /etc/nginx/conf.d/dockpanel-panel.conf; do
+mkdir -p /etc/nginx/conf.d/arsy-panel.locations
+for conf in /etc/nginx/sites-enabled/arsy-panel.conf /etc/nginx/conf.d/arsy-panel.conf; do
     [ -f "$conf" ] || continue
-    if ! grep -q "dockpanel-panel.locations" "$conf"; then
+    if ! grep -q "arsy-panel.locations" "$conf"; then
         # Inject before the FIRST top-level `}` (the server block close).
         # Panel vhost has exactly one top-level `}`, so single-match is safe.
         if awk '
             /^}/ && !done {
                 print "    # Drop-in location blocks for path-mounted tools (webmail, etc.)";
-                print "    include /etc/nginx/conf.d/dockpanel-panel.locations/*.conf;";
+                print "    include /etc/nginx/conf.d/arsy-panel.locations/*.conf;";
                 print "";
                 done=1
             }
             { print }
         ' "$conf" > "$conf.new" && [ -s "$conf.new" ]; then
             mv "$conf.new" "$conf"
-            log "Added dockpanel-panel.locations include to $conf"
+            log "Added arsy-panel.locations include to $conf"
             NGINX_NEEDS_RELOAD=1
         else
             rm -f "$conf.new"
@@ -883,7 +883,7 @@ done
 # box's own set (rather than today's) also keeps an old vhost from being
 # silently given a different CSP on a single response. If no server-level
 # add_header is found the migration is skipped rather than guessed at.
-for conf in /etc/nginx/sites-enabled/dockpanel-panel.conf /etc/nginx/conf.d/dockpanel-panel.conf; do
+for conf in /etc/nginx/sites-enabled/arsy-panel.conf /etc/nginx/conf.d/arsy-panel.conf; do
     [ -f "$conf" ] || continue
     grep -q "location = /index.html" "$conf" && continue
     # Server-level headers are indented 4; location-level ones 8, so an exact
@@ -944,7 +944,7 @@ done
 # Two passes over the file (awk NR==FNR), unlike the single pass above: the
 # server-level add_headers are written AFTER the /assets/ block, so they are not
 # yet known at the point the block has to be rewritten.
-for conf in /etc/nginx/sites-enabled/dockpanel-panel.conf /etc/nginx/conf.d/dockpanel-panel.conf; do
+for conf in /etc/nginx/sites-enabled/arsy-panel.conf /etc/nginx/conf.d/arsy-panel.conf; do
     [ -f "$conf" ] || continue
     grep -q "location /assets/" "$conf" || continue
     grep -q 'max-age=31536000, immutable' "$conf" && continue
@@ -1018,38 +1018,38 @@ fi
 # repair was skipped on every install that has ever existed. Require a real key
 # with a non-empty value — setup.sh writes a bare, valueless key on domainless
 # installs, and that counts as unset here.
-if [ -f /etc/dockpanel/api.env ] && ! grep -qE '^BASE_URL=.+' /etc/dockpanel/api.env; then
+if [ -f /etc/arsy/api.env ] && ! grep -qE '^BASE_URL=.+' /etc/arsy/api.env; then
     # Detect panel URL from nginx config
     PANEL_DOMAIN=""
-    for conf in /etc/nginx/sites-enabled/dockpanel-panel.conf /etc/nginx/conf.d/dockpanel-panel.conf; do
+    for conf in /etc/nginx/sites-enabled/arsy-panel.conf /etc/nginx/conf.d/arsy-panel.conf; do
         if [ -f "$conf" ]; then
             PANEL_DOMAIN=$(grep "server_name" "$conf" | head -1 | awk '{print $2}' | tr -d ';')
             break
         fi
     done
     if [ -n "$PANEL_DOMAIN" ] && [ "$PANEL_DOMAIN" != "_" ]; then
-        if grep -qE '^BASE_URL=' /etc/dockpanel/api.env; then
+        if grep -qE '^BASE_URL=' /etc/arsy/api.env; then
             # A bare `BASE_URL=` is already there (domainless install later moved
             # onto a domain). Rewrite it in place — appending a second key would
             # leave two BASE_URL lines and make the effective value depend on
             # which one the env parser happens to keep.
-            sed -i -E "s|^BASE_URL=.*|BASE_URL=https://${PANEL_DOMAIN}|" /etc/dockpanel/api.env
+            sed -i -E "s|^BASE_URL=.*|BASE_URL=https://${PANEL_DOMAIN}|" /etc/arsy/api.env
             log "Set empty BASE_URL to https://${PANEL_DOMAIN} in api.env"
         else
-            echo "BASE_URL=https://${PANEL_DOMAIN}" >> /etc/dockpanel/api.env
+            echo "BASE_URL=https://${PANEL_DOMAIN}" >> /etc/arsy/api.env
             log "Added BASE_URL=https://${PANEL_DOMAIN} to api.env"
         fi
     fi
 fi
 
 # ── Deploy binaries ───────────────────────────────────────────────────────
-_dockpanel_stage="deploy"
+_arsy_stage="deploy"
 # Note: ~2-5s downtime during binary swap is expected for self-hosted deployments.
 log "Backing up current binaries..."
 cp "$AGENT_BIN" "${AGENT_BIN}.bak" 2>/dev/null || true
 cp "$API_BIN" "${API_BIN}.bak" 2>/dev/null || true
 cp "$CLI_BIN" "${CLI_BIN}.bak" 2>/dev/null || true
-# dockpanel-mcp is a NEW binary as of this release — on every box upgrading
+# arsy-mcp is a NEW binary as of this release — on every box upgrading
 # for the first time since it shipped, $MCP_BIN does not exist yet, so there
 # is nothing to back up and nothing to roll back TO. Recorded now so the
 # rollback function below can tell "no backup because first install" apart
@@ -1058,28 +1058,28 @@ MCP_BIN_PRE_EXISTED=0
 [ -f "$MCP_BIN" ] && MCP_BIN_PRE_EXISTED=1
 cp "$MCP_BIN" "${MCP_BIN}.bak" 2>/dev/null || true
 
-# dockpanel-mcp is opt-in (§ setup.sh/update.sh systemd-units comment) — most
+# arsy-mcp is opt-in (§ setup.sh/update.sh systemd-units comment) — most
 # installs have it deployed but never enabled, so unlike agent/api it is only
 # stopped/restarted here if an operator already turned it on. Captured BEFORE
 # the stop below since `systemctl is-active` after stopping would always say no.
 MCP_WAS_ACTIVE=0
-systemctl is-active --quiet dockpanel-mcp 2>/dev/null && MCP_WAS_ACTIVE=1
+systemctl is-active --quiet arsy-mcp 2>/dev/null && MCP_WAS_ACTIVE=1
 
 log "Stopping services..."
-_dockpanel_services_stopped=1
-systemctl stop dockpanel-agent dockpanel-api 2>/dev/null || true
-[ "$MCP_WAS_ACTIVE" = "1" ] && systemctl stop dockpanel-mcp 2>/dev/null || true
+_arsy_services_stopped=1
+systemctl stop arsy-agent arsy-api 2>/dev/null || true
+[ "$MCP_WAS_ACTIVE" = "1" ] && systemctl stop arsy-mcp 2>/dev/null || true
 
 if [ "$INSTALL_FROM_RELEASE" = "1" ]; then
-    mv /tmp/dockpanel-agent-new "$AGENT_BIN"
-    mv /tmp/dockpanel-api-new "$API_BIN"
-    mv /tmp/dockpanel-cli-new "$CLI_BIN"
-    mv /tmp/dockpanel-mcp-new "$MCP_BIN"
+    mv /tmp/arsy-agent-new "$AGENT_BIN"
+    mv /tmp/arsy-api-new "$API_BIN"
+    mv /tmp/arsy-cli-new "$CLI_BIN"
+    mv /tmp/arsy-mcp-new "$MCP_BIN"
 else
-    cp "$AGENT_SRC/target/release/dockpanel-agent" "$AGENT_BIN"
-    cp "$API_SRC/target/release/dockpanel-api" "$API_BIN"
-    cp "$CLI_SRC/target/release/dockpanel" "$CLI_BIN"
-    [ -f "$MCP_SRC/target/release/dockpanel-mcp" ] && cp "$MCP_SRC/target/release/dockpanel-mcp" "$MCP_BIN"
+    cp "$AGENT_SRC/target/release/arsy-agent" "$AGENT_BIN"
+    cp "$API_SRC/target/release/arsy-api" "$API_BIN"
+    cp "$CLI_SRC/target/release/arsy" "$CLI_BIN"
+    [ -f "$MCP_SRC/target/release/arsy-mcp" ] && cp "$MCP_SRC/target/release/arsy-mcp" "$MCP_BIN"
 fi
 chmod +x "$AGENT_BIN" "$API_BIN" "$CLI_BIN"
 [ -f "$MCP_BIN" ] && chmod +x "$MCP_BIN"
@@ -1091,8 +1091,8 @@ chmod +x "$AGENT_BIN" "$API_BIN" "$CLI_BIN"
 # `user_tmp_t` instead of `bin_t`, and on an Enforcing box systemd then refuses
 # to execute it:
 #
-#     Failed at step EXEC spawning /usr/local/bin/dockpanel-agent: Permission denied
-#     dockpanel-agent.service: Main process exited, code=exited, status=203/EXEC
+#     Failed at step EXEC spawning /usr/local/bin/arsy-agent: Permission denied
+#     arsy-agent.service: Main process exited, code=exited, status=203/EXEC
 #
 # Measured on Rocky 9.8 at s266. The failure is silent in the worst way: the
 # update reports success, and the service is dead until someone relabels it by
@@ -1108,11 +1108,11 @@ fi
 log "Binaries updated (agent: $(du -h "$AGENT_BIN" | cut -f1), api: $(du -h "$API_BIN" | cut -f1), cli: $(du -h "$CLI_BIN" | cut -f1), mcp: $(du -h "$MCP_BIN" 2>/dev/null | cut -f1 || echo '?'))"
 
 systemctl daemon-reload
-systemctl start dockpanel-agent
+systemctl start arsy-agent
 sleep 1
-systemctl start dockpanel-api
-[ "$MCP_WAS_ACTIVE" = "1" ] && systemctl start dockpanel-mcp
-_dockpanel_services_stopped=0
+systemctl start arsy-api
+[ "$MCP_WAS_ACTIVE" = "1" ] && systemctl start arsy-mcp
+_arsy_services_stopped=0
 log "Services restarted"
 
 # ── Health check with rollback ────────────────────────────────────────────
@@ -1122,18 +1122,18 @@ rollback() {
     # Restore with `mv`, not `cp`, and stop the services first.
     #
     # This path had never executed in production. `cp` writes into the existing
-    # inode, so restoring over the RUNNING dockpanel-api/dockpanel-agent failed
+    # inode, so restoring over the RUNNING arsy-api/arsy-agent failed
     # ETXTBSY ("Text file busy") — and because each cp was suffixed
     # `2>/dev/null || true`, the failure was discarded and the script printed
     # "Rolled back to previous binaries" while the box kept running the binary
     # that had just failed its health check. Only the CLI (not running) was
     # actually restored, so the box then disagreed with itself:
-    # `dockpanel --version` reported the old version while /api/health reported
+    # `arsy --version` reported the old version while /api/health reported
     # the new one. rename(2) replaces the directory entry and is unaffected by a
     # busy inode — it is what the forward swap above already uses.
-    _dockpanel_services_stopped=1
-    systemctl stop dockpanel-agent dockpanel-api 2>/dev/null || true
-    [ "$MCP_WAS_ACTIVE" = "1" ] && systemctl stop dockpanel-mcp 2>/dev/null || true
+    _arsy_services_stopped=1
+    systemctl stop arsy-agent arsy-api 2>/dev/null || true
+    [ "$MCP_WAS_ACTIVE" = "1" ] && systemctl stop arsy-mcp 2>/dev/null || true
 
     local restore_failed=0
     local pair
@@ -1146,7 +1146,7 @@ rollback() {
                 restore_failed=1
             fi
         elif [ "$pair" = "$MCP_BIN" ] && [ "$MCP_BIN_PRE_EXISTED" = "0" ]; then
-            # Nothing to roll back to — this box never had dockpanel-mcp before
+            # Nothing to roll back to — this box never had arsy-mcp before
             # this update. Remove the newly-placed (unhealthy-update) binary
             # rather than leaving a stray one an un-rolled-back systemd unit
             # could later be pointed at.
@@ -1163,20 +1163,20 @@ rollback() {
     # net for the process dying, not a substitute for telling the operator what
     # happened.
     systemctl daemon-reload
-    systemctl start dockpanel-agent || error "dockpanel-agent did not start after rollback"
+    systemctl start arsy-agent || error "arsy-agent did not start after rollback"
     sleep 1
-    systemctl start dockpanel-api || error "dockpanel-api did not start after rollback"
+    systemctl start arsy-api || error "arsy-api did not start after rollback"
     if [ "$MCP_WAS_ACTIVE" = "1" ]; then
-        systemctl start dockpanel-mcp || error "dockpanel-mcp did not start after rollback"
+        systemctl start arsy-mcp || error "arsy-mcp did not start after rollback"
     fi
-    _dockpanel_services_stopped=0
+    _arsy_services_stopped=0
 
     if [ "$restore_failed" = "1" ]; then
         error "ROLLBACK INCOMPLETE — the panel may still be running the failed build."
-        error "Inspect /usr/local/bin/dockpanel-{api,agent} and restore manually."
-        _dockpanel_finished=1
-        _dockpanel_write_result false "rollback" \
-            "health check failed after the swap AND the rollback did not complete — the panel may still be running the failed build; inspect /usr/local/bin/dockpanel-{api,agent}"
+        error "Inspect /usr/local/bin/arsy-{api,agent} and restore manually."
+        _arsy_finished=1
+        _arsy_write_result false "rollback" \
+            "health check failed after the swap AND the rollback did not complete — the panel may still be running the failed build; inspect /usr/local/bin/arsy-{api,agent}"
         exit 1
     fi
 
@@ -1185,8 +1185,8 @@ rollback() {
     # orchestrator has to be able to tell them apart: this box is healthy and
     # running its previous version, which is not something that needs an
     # operator at 3am.
-    _dockpanel_finished=1
-    _dockpanel_write_result false "rollback" \
+    _arsy_finished=1
+    _arsy_write_result false "rollback" \
         "health check failed after the swap; rolled back to the previous binaries and the panel is running again"
     exit 1
 }
@@ -1217,8 +1217,8 @@ log "Health check: /api/auth/setup-status OK"
 # states carries no signal; it only taught operators to ignore the warning.
 # The agent's own /health is explicitly exempt from auth
 # (panel/agent/src/routes/mod.rs), which makes it the honest probe.
-AGENT_SOCK=/run/dockpanel/agent.sock
-[ -S "$AGENT_SOCK" ] || AGENT_SOCK=/var/run/dockpanel/agent.sock
+AGENT_SOCK=/run/arsy/agent.sock
+[ -S "$AGENT_SOCK" ] || AGENT_SOCK=/var/run/arsy/agent.sock
 if ! curl -sf --max-time 30 --unix-socket "$AGENT_SOCK" http://localhost/health > /dev/null 2>&1; then
     warn "Agent connectivity check failed (non-fatal, agent may still be starting)"
 else
@@ -1226,15 +1226,15 @@ else
 fi
 
 # CLI health check (non-fatal)
-if ! dockpanel --version > /dev/null 2>&1; then
+if ! arsy --version > /dev/null 2>&1; then
     warn "CLI health check failed (non-fatal)"
 fi
 
 log "Health checks passed"
-_dockpanel_stage="complete"
-_dockpanel_finished=1
-_dockpanel_write_result true "complete" \
-    "updated to ${DOCKPANEL_VERSION:-latest} and passed the post-deploy health checks"
+_arsy_stage="complete"
+_arsy_finished=1
+_arsy_write_result true "complete" \
+    "updated to ${ARSY_VERSION:-latest} and passed the post-deploy health checks"
 
 # Clean up backups
 rm -f "${AGENT_BIN}.bak" "${API_BIN}.bak" "${CLI_BIN}.bak" "${MCP_BIN}.bak"
@@ -1242,10 +1242,10 @@ rm -f "${AGENT_BIN}.bak" "${API_BIN}.bak" "${CLI_BIN}.bak" "${MCP_BIN}.bak"
 echo ""
 echo -e "${GREEN}${BOLD}Update complete!${NC}"
 echo ""
-echo -e "  Agent: $(systemctl is-active dockpanel-agent)"
-echo -e "  API:   $(systemctl is-active dockpanel-api)"
-if systemctl list-unit-files dockpanel-mcp.service > /dev/null 2>&1; then
-    echo -e "  MCP:   $(systemctl is-active dockpanel-mcp) $([ "$MCP_WAS_ACTIVE" = "0" ] && echo '(not enabled — see docs.dockpanel.dev)')"
+echo -e "  Agent: $(systemctl is-active arsy-agent)"
+echo -e "  API:   $(systemctl is-active arsy-api)"
+if systemctl list-unit-files arsy-mcp.service > /dev/null 2>&1; then
+    echo -e "  MCP:   $(systemctl is-active arsy-mcp) $([ "$MCP_WAS_ACTIVE" = "0" ] && echo '(not enabled — see docs.moonwitness.dev)')"
 fi
 echo -e "  Version: $($CLI_BIN --version 2>/dev/null || echo 'unknown')"
 echo ""

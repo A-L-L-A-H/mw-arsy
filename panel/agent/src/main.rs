@@ -17,8 +17,8 @@ use tokio::net::UnixListener;
 use tokio::sync::Mutex;
 use tracing_subscriber::EnvFilter;
 
-const SOCKET_PATH: &str = "/var/run/dockpanel/agent.sock";
-const CONFIG_DIR: &str = "/etc/dockpanel";
+const SOCKET_PATH: &str = "/var/run/arsy/agent.sock";
+const CONFIG_DIR: &str = "/etc/arsy";
 
 #[tokio::main]
 async fn main() {
@@ -38,13 +38,13 @@ async fn main() {
     }
     // An unrecognised option must be an ERROR, not a daemon. Every version
     // before this one ignored its arguments entirely and went straight to
-    // binding the agent socket, so `dockpanel-agent --anything` silently
+    // binding the agent socket, so `arsy-agent --anything` silently
     // started a second agent — and an installer asking an older binary for
     // `--print-unit` hung for ever instead of being refused (measured, s271).
     // Only `--`-prefixed arguments are judged; bare arguments keep their old
     // behaviour, since nothing passes any.
     if let Some(bad) = std::env::args().skip(1).find(|a| a.starts_with("--")) {
-        eprintln!("dockpanel-agent: unknown option '{bad}'");
+        eprintln!("arsy-agent: unknown option '{bad}'");
         eprintln!("The only option is --print-unit, which prints the systemd unit and exits.");
         eprintln!("Running it with no arguments starts the agent daemon.");
         std::process::exit(2);
@@ -69,12 +69,12 @@ async fn main() {
     }
 
     // Ensure directories exist
-    std::fs::create_dir_all("/var/run/dockpanel").ok();
+    std::fs::create_dir_all("/var/run/arsy").ok();
     std::fs::create_dir_all(CONFIG_DIR).ok();
-    std::fs::create_dir_all("/etc/dockpanel/ssl").ok();
-    std::fs::create_dir_all("/var/backups/dockpanel").ok();
-    std::fs::create_dir_all("/var/backups/dockpanel/databases").ok();
-    std::fs::create_dir_all("/var/backups/dockpanel/volumes").ok();
+    std::fs::create_dir_all("/etc/arsy/ssl").ok();
+    std::fs::create_dir_all("/var/backups/arsy").ok();
+    std::fs::create_dir_all("/var/backups/arsy/databases").ok();
+    std::fs::create_dir_all("/var/backups/arsy/volumes").ok();
 
     // The backup tree is root-only, and this repairs what is already on disk.
     // `create_dir_all` above made these 0755 and every writer's redirect made
@@ -307,7 +307,7 @@ async fn main() {
 
     // Multi-server: start TLS-wrapped TCP listener for remote panel connections.
     // Set AGENT_LISTEN_TCP=0.0.0.0:9443 to enable. The listener always terminates
-    // TLS using the self-signed cert at /etc/dockpanel/ssl/agent.{crt,key}; the
+    // TLS using the self-signed cert at /etc/arsy/ssl/agent.{crt,key}; the
     // central panel pins the cert's SHA-256 fingerprint on first checkin (TOFU).
     if let Ok(tcp_addr) = std::env::var("AGENT_LISTEN_TCP") {
         let parsed_addr: std::net::SocketAddr = match tcp_addr.parse() {
@@ -331,7 +331,7 @@ async fn main() {
     }
 
     tracing::info!(
-        "DockPanel Agent v{} listening on {SOCKET_PATH}",
+        "ARSY Agent v{} listening on {SOCKET_PATH}",
         env!("CARGO_PKG_VERSION")
     );
 
@@ -342,7 +342,7 @@ async fn main() {
         tracing::error!("Agent server error: {e}");
     }
 
-    tracing::info!("DockPanel Agent shut down gracefully");
+    tracing::info!("ARSY Agent shut down gracefully");
 }
 
 async fn shutdown_signal() {

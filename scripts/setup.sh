@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
-# DockPanel Setup
-# Installs DockPanel on a fresh server.
+# ARSY Setup
+# Installs ARSY on a fresh server.
 # Supports: Ubuntu 20+, Debian 11+, CentOS 9+, Rocky 9+, Fedora 39+, Amazon Linux 2023
 # Architectures: x86_64, ARM64 (aarch64)
 #
@@ -9,7 +9,7 @@
 #   - PostgreSQL 16 (Docker container on port 5450)
 #   - Agent (Rust binary, systemd, Unix socket)
 #   - API (Rust binary, systemd, port 3080)
-#   - CLI (Rust binary, /usr/local/bin/dockpanel)
+#   - CLI (Rust binary, /usr/local/bin/arsy)
 #   - Frontend (Vite build, served by nginx)
 #   - Nginx (reverse proxy + static files)
 #
@@ -24,14 +24,14 @@ set -euo pipefail
 # ── Configuration (override with env vars) ──────────────────────────────
 PANEL_DOMAIN="${PANEL_DOMAIN:-}"
 PANEL_PORT="${PANEL_PORT:-8443}"
-CONFIG_DIR="/etc/dockpanel"
-AGENT_BIN="/usr/local/bin/dockpanel-agent"
-API_BIN="/usr/local/bin/dockpanel-api"
-CLI_BIN="/usr/local/bin/dockpanel"
+CONFIG_DIR="/etc/arsy"
+AGENT_BIN="/usr/local/bin/arsy-agent"
+API_BIN="/usr/local/bin/arsy-api"
+CLI_BIN="/usr/local/bin/arsy"
 DB_PORT=5450
-DB_CONTAINER="dockpanel-postgres"
+DB_CONTAINER="arsy-postgres"
 INSTALL_FROM_RELEASE="${INSTALL_FROM_RELEASE:-0}"
-GITHUB_REPO="ovexro/dockpanel"
+GITHUB_REPO="A-L-L-A-H/mw-arsy"
 # Set to 1 by configure_nginx when the panel is served over a self-signed
 # certificate (no domain → no Let's Encrypt). print_summary reads it to print
 # the right scheme and explain the browser warning before it happens.
@@ -54,12 +54,12 @@ CLI_SRC="$REPO_DIR/panel/cli"
 MCP_SRC="$REPO_DIR/panel/mcp"
 
 # Directories the agent unit declares in ReadWritePaths, with any `-` prefix
-# stripped. The unit (panel/agent/dockpanel-agent.service) is the single source
+# stripped. The unit (panel/agent/arsy-agent.service) is the single source
 # of truth, so this can never fall behind it the way a hand-copied list does.
 # Prints nothing if no unit is readable; callers must tolerate an empty result.
 agent_rwp_dirs() {
-    local unit="$AGENT_SRC/dockpanel-agent.service"
-    [ -f "$unit" ] || unit="/etc/systemd/system/dockpanel-agent.service"
+    local unit="$AGENT_SRC/arsy-agent.service"
+    [ -f "$unit" ] || unit="/etc/systemd/system/arsy-agent.service"
     [ -f "$unit" ] || return 0
     sed -n 's/^ReadWritePaths=//p' "$unit" | tr ' ' '\n' | sed 's/^-//' | grep '^/' || true
 }
@@ -78,7 +78,7 @@ WHITE='\033[1;37m'
 # ── Install log + terminal detection ─────────────────────────────────────
 # Everything a wrapped command prints is captured here, so a failure at any
 # step leaves full forensics behind instead of vanishing into >/dev/null.
-INSTALL_LOG="/var/log/dockpanel-install.log"
+INSTALL_LOG="/var/log/arsy-install.log"
 IS_TTY=0
 if [ -t 1 ]; then IS_TTY=1; fi
 
@@ -147,7 +147,7 @@ on_exit() {
     if [ "$INSTALL_DONE" = "1" ]; then return 0; fi
     echo ""
     echo -e "${RED}${BOLD}╔══════════════════════════════════════════════════════╗${NC}"
-    echo -e "${RED}${BOLD}║           DockPanel install did not finish           ║${NC}"
+    echo -e "${RED}${BOLD}║           ARSY install did not finish           ║${NC}"
     echo -e "${RED}${BOLD}╚══════════════════════════════════════════════════════╝${NC}"
     echo ""
     echo -e "  Stopped during: ${BOLD}${CURRENT_STEP_NAME}${NC} (exit code ${rc})"
@@ -160,9 +160,9 @@ on_exit() {
     fi
     echo ""
     echo -e "  Re-running the installer is safe — it picks up where it left off:"
-    echo -e "    ${BOLD}curl -sL https://dockpanel.dev/install.sh | sudo bash${NC}"
+    echo -e "    ${BOLD}curl -sL https://moonwitness.dev/install.sh | sudo bash${NC}"
     echo ""
-    echo -e "  Stuck? Open an issue: https://github.com/ovexro/dockpanel/issues"
+    echo -e "  Stuck? Open an issue: https://github.com/A-L-L-A-H/mw-arsy/issues"
     echo ""
 }
 trap on_exit EXIT
@@ -274,9 +274,9 @@ preflight_checks() {
 }
 
 # ── Package manager ──────────────────────────────────────────────────────
-# Panel-driven updates run apt from inside dockpanel-agent. apt's needrestart
+# Panel-driven updates run apt from inside arsy-agent. apt's needrestart
 # hook restarts every unit linked against an upgraded library — and since the
-# agent links libc, an ordinary libc6 upgrade puts dockpanel-agent.service on
+# agent links libc, an ordinary libc6 upgrade puts arsy-agent.service on
 # that list. needrestart then kills the very process that is streaming the
 # update's own progress. The apt transaction survives (safe_command_unsandboxed
 # runs it in a systemd-run transient scope, so it is not a child of the agent),
@@ -286,7 +286,7 @@ preflight_checks() {
 # Excluding only the agent keeps every other service restarting normally, which
 # is the part that actually matters for security. The agent picks up the new
 # libraries on the next reboot or panel-initiated agent restart.
-dockpanel_needrestart_override() {
+arsy_needrestart_override() {
     [ -d /etc/needrestart ] || return 0
     mkdir -p /etc/needrestart/conf.d
     # Subscript assignment ADDS to the hash the main needrestart.conf already
@@ -294,9 +294,9 @@ dockpanel_needrestart_override() {
     # and silently drop the distro's own exclusions (dbus, display managers…).
     # No `.service` suffix in the regex — needrestart's own defaults are bare
     # prefixes, and this matches whether or not the suffix is present.
-    cat > /etc/needrestart/conf.d/99-dockpanel.conf << 'NR_EOF'
-# Managed by DockPanel — do not edit; rewritten by setup.sh/update.sh.
-$nrconf{override_rc}{qr(^dockpanel-agent)} = 0;
+    cat > /etc/needrestart/conf.d/99-arsy.conf << 'NR_EOF'
+# Managed by ARSY — do not edit; rewritten by setup.sh/update.sh.
+$nrconf{override_rc}{qr(^arsy-agent)} = 0;
 1;
 NR_EOF
 }
@@ -310,10 +310,10 @@ detect_pkg_manager() {
         # unattended-upgrades is running in the background — common on fresh
         # Debian 13 boots, where the auto-update kicks off right after install.
         mkdir -p /etc/apt/apt.conf.d
-        cat > /etc/apt/apt.conf.d/99-dockpanel-lock-wait.conf << 'APT_EOF'
+        cat > /etc/apt/apt.conf.d/99-arsy-lock-wait.conf << 'APT_EOF'
 DPkg::Lock::Timeout "300";
 APT_EOF
-        dockpanel_needrestart_override
+        arsy_needrestart_override
     elif command -v dnf &> /dev/null; then
         PKG_MGR="dnf"
     elif command -v yum &> /dev/null; then
@@ -430,7 +430,7 @@ print_banner() {
 BANNER
     echo -e "${NC}"
     echo -e "  ${BOLD}Your server. Your rules. Your panel.${NC}"
-    echo -e "  Free & open source — https://dockpanel.dev"
+    echo -e "  Free & open source — https://moonwitness.dev"
     echo ""
 }
 
@@ -449,7 +449,7 @@ check_source() {
     fi
     if [ ! -d "$AGENT_SRC/src" ]; then
         error "Cannot find agent source at $AGENT_SRC"
-        error "Run this script from the DockPanel repository root,"
+        error "Run this script from the ARSY repository root,"
         error "or set INSTALL_FROM_RELEASE=1 to download pre-built binaries."
         exit 1
     fi
@@ -705,13 +705,13 @@ create_directories() {
     header "Creating Directories"
 
     mkdir -p -m 0700 "$CONFIG_DIR"
-    mkdir -p /var/run/dockpanel
-    mkdir -p /etc/dockpanel/ssl
-    mkdir -p /var/backups/dockpanel
+    mkdir -p /var/run/arsy
+    mkdir -p /etc/arsy/ssl
+    mkdir -p /var/backups/arsy
     mkdir -p /var/www/acme
 
     # Ensure socket directory persists across tmpfiles cleanup/reboot
-    echo "d /run/dockpanel 0755 root root -" > /etc/tmpfiles.d/dockpanel.conf
+    echo "d /run/arsy 0755 root root -" > /etc/tmpfiles.d/arsy.conf
 
     # Create all directories required by the agent unit's ReadWritePaths, DERIVED
     # FROM THE UNIT rather than hand-mirrored here.
@@ -735,7 +735,7 @@ create_directories() {
     [ -n "$_rwp" ] && mkdir -p $_rwp
     # Paths the agent reaches through an escape hatch or that are not RWP entries.
     mkdir -p /run/opendkim /var/lib/nginx /var/lib/dpkg /var/cache/apt /var/lib/apt
-    mkdir -p /var/lib/dockpanel/git /var/lib/dockpanel/recordings /var/cache/nginx/fastcgi
+    mkdir -p /var/lib/arsy/git /var/lib/arsy/recordings /var/cache/nginx/fastcgi
     touch /etc/opendkim.conf /run/nginx.pid 2>/dev/null || true
 
     log "Directories created"
@@ -758,7 +758,7 @@ generate_secrets() {
 
     # Reuse from existing api.env if present (idempotent reinstall)
     if [ -f "$CONFIG_DIR/api.env" ]; then
-        EXISTING_DB_PW=$(grep '^DATABASE_URL=' "$CONFIG_DIR/api.env" 2>/dev/null | sed 's|.*://dockpanel:\(.*\)@.*|\1|' || true)
+        EXISTING_DB_PW=$(grep '^DATABASE_URL=' "$CONFIG_DIR/api.env" 2>/dev/null | sed 's|.*://arsy:\(.*\)@.*|\1|' || true)
         EXISTING_JWT=$(grep '^JWT_SECRET=' "$CONFIG_DIR/api.env" 2>/dev/null | cut -d= -f2- || true)
     fi
 
@@ -788,9 +788,9 @@ setup_database() {
         # Remove stale volume from previous failed install (PostgreSQL ignores
         # POSTGRES_PASSWORD when an existing data directory is found, causing
         # password mismatch if the password was regenerated)
-        if docker volume inspect dockpanel-pgdata > /dev/null 2>&1; then
+        if docker volume inspect arsy-pgdata > /dev/null 2>&1; then
             warn "Removing stale database volume from previous install..."
-            docker volume rm dockpanel-pgdata > /dev/null 2>&1 || true
+            docker volume rm arsy-pgdata > /dev/null 2>&1 || true
         fi
 
         # POSTGRES_PASSWORD is passed via the environment (bare `-e` inherits),
@@ -800,11 +800,11 @@ setup_database() {
             docker run -d \
             --name "$DB_CONTAINER" \
             --restart unless-stopped \
-            -e POSTGRES_DB=dockpanel \
-            -e POSTGRES_USER=dockpanel \
+            -e POSTGRES_DB=arsy \
+            -e POSTGRES_USER=arsy \
             -e POSTGRES_PASSWORD \
             -p "127.0.0.1:${DB_PORT}:5432" \
-            -v dockpanel-pgdata:/var/lib/postgresql/data \
+            -v arsy-pgdata:/var/lib/postgresql/data \
             postgres:16-alpine
         log "PostgreSQL container created (port $DB_PORT)"
     fi
@@ -839,11 +839,11 @@ setup_database() {
     if run "Waiting for PostgreSQL to accept connections" bash -c \
         "for i in \$(seq 1 30); do
              h=\$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $DB_CONTAINER 2>/dev/null | awk '{print \$1}')
-             [ -n \"\$h\" ] && docker exec $DB_CONTAINER pg_isready -h \"\$h\" -U dockpanel && exit 0
+             [ -n \"\$h\" ] && docker exec $DB_CONTAINER pg_isready -h \"\$h\" -U arsy && exit 0
              sleep 2
          done
          echo 'no TCP listener after 60s — falling back to a socket check (container has no bridge address?)'
-         docker exec $DB_CONTAINER pg_isready -U dockpanel && exit 0
+         docker exec $DB_CONTAINER pg_isready -U arsy && exit 0
          exit 1"; then
         log "PostgreSQL ready"
     else
@@ -860,7 +860,7 @@ setup_database() {
     # container holding password A and no api.env at all. The next run finds no
     # api.env, generates password B, finds the container already present, starts
     # it unchanged, and writes B. The panel then crash-loops for ever on
-    # `password authentication failed for user "dockpanel"`, and re-running never
+    # `password authentication failed for user "arsy"`, and re-running never
     # helps because each run only mints another password the container has never
     # heard of. The reuse branch above cannot catch it: it keys on api.env
     # existing, which in this window it does not.
@@ -873,7 +873,7 @@ setup_database() {
     # can carry a quote into the SQL.
     # ⚠ THE PROBE MUST ACTUALLY AUTHENTICATE, and the obvious way of writing it
     # does not. The official Postgres image ships a pg_hba that trusts BOTH
-    # `local` and `host 127.0.0.1/32`, so `docker exec … psql -U dockpanel`
+    # `local` and `host 127.0.0.1/32`, so `docker exec … psql -U arsy`
     # connects over the container's own socket and succeeds with ANY password —
     # including the wrong one this check exists to detect. Written that way, the
     # branch below never ran, and a box left with mismatched credentials by an
@@ -893,15 +893,15 @@ setup_database() {
     # rather than assume health. Re-setting the role to the password we are about
     # to write is idempotent when it already matches.
     if [ -z "$db_probe_host" ] || ! docker exec -e PGPASSWORD="$DB_PASSWORD" "$DB_CONTAINER" \
-            psql -h "$db_probe_host" -U dockpanel -d dockpanel -c 'SELECT 1' >/dev/null 2>&1; then
+            psql -h "$db_probe_host" -U arsy -d arsy -c 'SELECT 1' >/dev/null 2>&1; then
         warn "Database rejects this install's password — reconciling"
         local container_pw
         container_pw=$(docker inspect "$DB_CONTAINER" \
             --format '{{range .Config.Env}}{{println .}}{{end}}' 2>/dev/null \
             | sed -n 's/^POSTGRES_PASSWORD=//p' | head -1)
         if [ -n "$container_pw" ] && docker exec -e PGPASSWORD="$container_pw" "$DB_CONTAINER" \
-                psql -U dockpanel -d dockpanel \
-                -c "ALTER USER dockpanel WITH PASSWORD '${DB_PASSWORD}';" >/dev/null 2>&1; then
+                psql -U arsy -d arsy \
+                -c "ALTER USER arsy WITH PASSWORD '${DB_PASSWORD}';" >/dev/null 2>&1; then
             log "Database password reconciled with $CONFIG_DIR/api.env"
         else
             error "The database will not accept this install's password, and the password"
@@ -918,8 +918,8 @@ setup_database() {
             # brand-new operator could actually follow.
             if [ -f "$CONFIG_DIR/api.env" ]; then
                 error "Or set the role's password by hand to the one the panel expects:"
-                error "  docker exec -it $DB_CONTAINER psql -U dockpanel -d dockpanel"
-                error "  ALTER USER dockpanel WITH PASSWORD '<the DATABASE_URL password in $CONFIG_DIR/api.env>';"
+                error "  docker exec -it $DB_CONTAINER psql -U arsy -d arsy"
+                error "  ALTER USER arsy WITH PASSWORD '<the DATABASE_URL password in $CONFIG_DIR/api.env>';"
                 error ""
                 error "Only if neither works, and it LOSES ALL DATABASE DATA:"
             else
@@ -927,7 +927,7 @@ setup_database() {
                 error "stored password to match by hand. If re-running does not help — and"
                 error "this LOSES ALL DATABASE DATA, which on a first install is none:"
             fi
-            error "  docker rm -f $DB_CONTAINER && docker volume rm dockpanel-pgdata"
+            error "  docker rm -f $DB_CONTAINER && docker volume rm arsy-pgdata"
             exit 1
         fi
     fi
@@ -1015,20 +1015,20 @@ download_binaries() {
 
     # Which release to install.
     #
-    # install.sh already reads DOCKPANEL_VERSION and clones that ref — but this,
+    # install.sh already reads ARSY_VERSION and clones that ref — but this,
     # its only consumer, used to always fetch releases/latest. So
-    # `DOCKPANEL_VERSION=v2.31.2 install.sh` produced a v2.31.2 tree running
+    # `ARSY_VERSION=v2.31.2 install.sh` produced a v2.31.2 tree running
     # v2.34.2 binaries and printed "Version: v2.34.2" at the end (s261). Unit
     # files, nginx templates and install-agent.sh are deployed from the tree,
     # so that skew is the same class that stranded the v2.8.13 -> v2.8.14
     # upgrade path. Honour the pin here; `main` (the default) means "latest".
     local RELEASE_TAG
-    if [ -n "${DOCKPANEL_VERSION:-}" ] && [ "${DOCKPANEL_VERSION}" != "main" ]; then
-        RELEASE_TAG="$DOCKPANEL_VERSION"
+    if [ -n "${ARSY_VERSION:-}" ] && [ "${ARSY_VERSION}" != "main" ]; then
+        RELEASE_TAG="$ARSY_VERSION"
         case "$RELEASE_TAG" in
             [0-9]*) RELEASE_TAG="v$RELEASE_TAG" ;;
         esac
-        log "Pinned release: $RELEASE_TAG (DOCKPANEL_VERSION)"
+        log "Pinned release: $RELEASE_TAG (ARSY_VERSION)"
     else
         RELEASE_TAG=$(curl --retry 3 --retry-delay 2 -sf "https://api.github.com/repos/${GITHUB_REPO}/releases/latest" | grep '"tag_name"' | head -1 | cut -d'"' -f4)
         log "Latest release: $RELEASE_TAG"
@@ -1044,7 +1044,7 @@ download_binaries() {
     # Checksum manifest first — every later download is verified against it.
     # mktemp (root-owned, O_EXCL, unpredictable) so a local user can't pre-seed
     # a manifest that would make a tampered binary "verify".
-    CHECKSUMS_FILE=$(umask 077; mktemp /tmp/dockpanel-checksums.XXXXXX 2>/dev/null || echo "")
+    CHECKSUMS_FILE=$(umask 077; mktemp /tmp/arsy-checksums.XXXXXX 2>/dev/null || echo "")
     # Through dp_fetch like every other release download, including this file's
     # own. This line kept a bare `curl --retry` after dp_fetch was written eleven
     # lines above it, so the one fetch that decides whether ANY binary gets
@@ -1062,27 +1062,27 @@ download_binaries() {
     # busy" (exit 23) because Linux refuses to overwrite a running executable.
     # systemctl stop is a no-op if the unit is inactive or missing.
     if command -v systemctl >/dev/null 2>&1; then
-        systemctl stop dockpanel-api dockpanel-agent 2>/dev/null || true
+        systemctl stop arsy-api arsy-agent 2>/dev/null || true
     fi
 
-    fetch_asset "dockpanel-agent-linux-${DL_ARCH}" "$AGENT_BIN"
+    fetch_asset "arsy-agent-linux-${DL_ARCH}" "$AGENT_BIN"
     chmod +x "$AGENT_BIN"
     fetched_msg "Agent" "$AGENT_BIN"
 
-    fetch_asset "dockpanel-api-linux-${DL_ARCH}" "$API_BIN"
+    fetch_asset "arsy-api-linux-${DL_ARCH}" "$API_BIN"
     chmod +x "$API_BIN"
     fetched_msg "API" "$API_BIN"
 
-    fetch_asset "dockpanel-cli-linux-${DL_ARCH}" "$CLI_BIN"
+    fetch_asset "arsy-cli-linux-${DL_ARCH}" "$CLI_BIN"
     chmod +x "$CLI_BIN"
     fetched_msg "CLI" "$CLI_BIN"
 
     local FE_TARBALL
-    FE_TARBALL=$(umask 077; mktemp /tmp/dockpanel-frontend.XXXXXX.tar.gz 2>/dev/null || echo /tmp/dockpanel-frontend.tar.gz)
-    fetch_asset "dockpanel-frontend.tar.gz" "$FE_TARBALL"
+    FE_TARBALL=$(umask 077; mktemp /tmp/arsy-frontend.XXXXXX.tar.gz 2>/dev/null || echo /tmp/arsy-frontend.tar.gz)
+    fetch_asset "arsy-frontend.tar.gz" "$FE_TARBALL"
 
     # Extract frontend — need a target directory
-    local FE_DIR="/opt/dockpanel/frontend"
+    local FE_DIR="/opt/arsy/frontend"
     mkdir -p "$FE_DIR"
     tar xzf "$FE_TARBALL" -C "$FE_DIR"
     rm -f "$FE_TARBALL"
@@ -1138,27 +1138,27 @@ build_binaries() {
     # Stop running services so cp can overwrite their binaries (see note in
     # download_binaries — same "Text file busy" trap).
     if command -v systemctl >/dev/null 2>&1; then
-        systemctl stop dockpanel-api dockpanel-agent 2>/dev/null || true
+        systemctl stop arsy-api arsy-agent 2>/dev/null || true
     fi
 
     # Build agent
     log "Building agent..."
     cargo_build_with_progress "$AGENT_SRC" "Agent"
-    cp "$AGENT_SRC/target/release/dockpanel-agent" "$AGENT_BIN"
+    cp "$AGENT_SRC/target/release/arsy-agent" "$AGENT_BIN"
     chmod +x "$AGENT_BIN"
     log "Agent built ($(du -h "$AGENT_BIN" | cut -f1))"
 
     # Build API
     log "Building API..."
     cargo_build_with_progress "$API_SRC" "API"
-    cp "$API_SRC/target/release/dockpanel-api" "$API_BIN"
+    cp "$API_SRC/target/release/arsy-api" "$API_BIN"
     chmod +x "$API_BIN"
     log "API built ($(du -h "$API_BIN" | cut -f1))"
 
     # Build CLI
     log "Building CLI..."
     cargo_build_with_progress "$CLI_SRC" "CLI"
-    cp "$CLI_SRC/target/release/dockpanel" "$CLI_BIN"
+    cp "$CLI_SRC/target/release/arsy" "$CLI_BIN"
     chmod +x "$CLI_BIN"
     log "CLI built ($(du -h "$CLI_BIN" | cut -f1))"
 
@@ -1200,44 +1200,44 @@ build_frontend() {
 create_services() {
     header "Systemd Services"
 
-    # Agent service — deploy from repo (single source of truth: panel/agent/dockpanel-agent.service)
-    cp "$AGENT_SRC/dockpanel-agent.service" /etc/systemd/system/dockpanel-agent.service
-    chmod 644 /etc/systemd/system/dockpanel-agent.service
+    # Agent service — deploy from repo (single source of truth: panel/agent/arsy-agent.service)
+    cp "$AGENT_SRC/arsy-agent.service" /etc/systemd/system/arsy-agent.service
+    chmod 644 /etc/systemd/system/arsy-agent.service
 
-    # MCP server — deploy from repo (single source of truth: panel/mcp/dockpanel-mcp.service).
+    # MCP server — deploy from repo (single source of truth: panel/mcp/arsy-mcp.service).
     # Installed but deliberately NOT enabled/started: v1 has no settings toggle
     # or mint-key UI yet (session 2), so a fresh install would just log
     # "no panel API key configured" forever. `systemctl enable --now
-    # dockpanel-mcp` is a documented manual step once an operator has minted a
-    # key at Settings → API Keys and saved it to /etc/dockpanel/mcp.token.
-    if [ -f "$MCP_SRC/dockpanel-mcp.service" ]; then
-        cp "$MCP_SRC/dockpanel-mcp.service" /etc/systemd/system/dockpanel-mcp.service
-        chmod 644 /etc/systemd/system/dockpanel-mcp.service
+    # arsy-mcp` is a documented manual step once an operator has minted a
+    # key at Settings → API Keys and saved it to /etc/arsy/mcp.token.
+    if [ -f "$MCP_SRC/arsy-mcp.service" ]; then
+        cp "$MCP_SRC/arsy-mcp.service" /etc/systemd/system/arsy-mcp.service
+        chmod 644 /etc/systemd/system/arsy-mcp.service
     fi
 
     # API service
-    cat > /etc/systemd/system/dockpanel-api.service << 'EOF'
+    cat > /etc/systemd/system/arsy-api.service << 'EOF'
 [Unit]
-Description=DockPanel API
-After=network.target docker.service dockpanel-agent.service
-Wants=dockpanel-agent.service
+Description=ARSY API
+After=network.target docker.service arsy-agent.service
+Wants=arsy-agent.service
 StartLimitBurst=5
 StartLimitIntervalSec=60
 
 [Service]
 Type=simple
-ExecStart=/usr/local/bin/dockpanel-api
+ExecStart=/usr/local/bin/arsy-api
 Restart=always
 RestartSec=5
 Environment=RUST_LOG=info
-EnvironmentFile=/etc/dockpanel/api.env
+EnvironmentFile=/etc/arsy/api.env
 NoNewPrivileges=yes
 PrivateTmp=yes
 ProtectHome=yes
 ProtectKernelLogs=yes
 ProtectKernelModules=yes
 ProtectSystem=no
-ReadWritePaths=/var/run/dockpanel /tmp
+ReadWritePaths=/var/run/arsy /tmp
 MemoryMax=1G
 LimitNOFILE=65535
 
@@ -1252,9 +1252,9 @@ EOF
     fi
 
     cat > "$CONFIG_DIR/api.env" << EOF
-DATABASE_URL=postgresql://dockpanel:${DB_PASSWORD}@127.0.0.1:${DB_PORT}/dockpanel
+DATABASE_URL=postgresql://arsy:${DB_PASSWORD}@127.0.0.1:${DB_PORT}/arsy
 JWT_SECRET=${JWT_SECRET}
-AGENT_SOCKET=/var/run/dockpanel/agent.sock
+AGENT_SOCKET=/var/run/arsy/agent.sock
 AGENT_TOKEN=${AGENT_TOKEN}
 LISTEN_ADDR=127.0.0.1:3080
 BASE_URL=${API_BASE_URL}
@@ -1264,26 +1264,26 @@ EOF
     systemctl daemon-reload
 
     # Start agent
-    systemctl enable dockpanel-agent > /dev/null 2>&1
-    systemctl restart dockpanel-agent
+    systemctl enable arsy-agent > /dev/null 2>&1
+    systemctl restart arsy-agent
 
-    if wait_for_unit dockpanel-agent; then
+    if wait_for_unit arsy-agent; then
         log "Agent service running"
     else
         error "Agent failed to start"
-        journalctl -u dockpanel-agent --no-pager -n 10
+        journalctl -u arsy-agent --no-pager -n 10
         exit 1
     fi
 
     # Start API
-    systemctl enable dockpanel-api > /dev/null 2>&1
-    systemctl restart dockpanel-api
+    systemctl enable arsy-api > /dev/null 2>&1
+    systemctl restart arsy-api
 
-    if wait_for_unit dockpanel-api; then
+    if wait_for_unit arsy-api; then
         log "API service running"
     else
         error "API failed to start"
-        journalctl -u dockpanel-api --no-pager -n 10
+        journalctl -u arsy-api --no-pager -n 10
         exit 1
     fi
 }
@@ -1333,10 +1333,10 @@ generate_self_signed_panel_cert() {
     # -addext needs OpenSSL 1.1.1+. Every distro we support ships 3.x, but fall
     # back to a SAN-less certificate rather than dropping to plain HTTP.
     if openssl req -x509 -newkey rsa:2048 -nodes -days 3650 \
-            -subj "/CN=${ip:-dockpanel}" -addext "subjectAltName=${san}" \
+            -subj "/CN=${ip:-arsy}" -addext "subjectAltName=${san}" \
             -keyout "$dir/panel.key" -out "$dir/panel.crt" > /dev/null 2>&1 ||
        openssl req -x509 -newkey rsa:2048 -nodes -days 3650 \
-            -subj "/CN=${ip:-dockpanel}" \
+            -subj "/CN=${ip:-arsy}" \
             -keyout "$dir/panel.key" -out "$dir/panel.crt" > /dev/null 2>&1; then
         chmod 600 "$dir/panel.key"
         chmod 644 "$dir/panel.crt"
@@ -1362,11 +1362,11 @@ configure_nginx() {
 
     # Determine config directory
     if [ -d /etc/nginx/sites-enabled ]; then
-        NGINX_CONF="/etc/nginx/sites-enabled/dockpanel-panel.conf"
+        NGINX_CONF="/etc/nginx/sites-enabled/arsy-panel.conf"
     elif [ -d /etc/nginx/conf.d ]; then
-        NGINX_CONF="/etc/nginx/conf.d/dockpanel-panel.conf"
+        NGINX_CONF="/etc/nginx/conf.d/arsy-panel.conf"
     else
-        NGINX_CONF="/etc/nginx/conf.d/dockpanel-panel.conf"
+        NGINX_CONF="/etc/nginx/conf.d/arsy-panel.conf"
         mkdir -p /etc/nginx/conf.d
     fi
 
@@ -1433,7 +1433,7 @@ configure_nginx() {
     # Drop-in dir for path-mounted tool reverse-proxies (webmail in v2.8.22+, etc.)
     # Agent writes fragment files here on tool install/remove; setup.sh + update.sh
     # only ensure the include directive is present in the panel vhost.
-    mkdir -p /etc/nginx/conf.d/dockpanel-panel.locations
+    mkdir -p /etc/nginx/conf.d/arsy-panel.locations
 
     cat > "$NGINX_CONF" << NGINXEOF
 server {
@@ -1457,7 +1457,7 @@ ${PANEL_TLS_BLOCK}
 
     # Agent proxy (for frontend /agent/* calls)
     location /agent/ {
-        proxy_pass http://unix:/var/run/dockpanel/agent.sock:/;
+        proxy_pass http://unix:/var/run/arsy/agent.sock:/;
         proxy_http_version 1.1;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
@@ -1465,7 +1465,7 @@ ${PANEL_TLS_BLOCK}
 
     # Agent WebSocket terminal
     location /agent/terminal/ws {
-        proxy_pass http://unix:/var/run/dockpanel/agent.sock:/terminal/ws;
+        proxy_pass http://unix:/var/run/arsy/agent.sock:/terminal/ws;
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection "upgrade";
@@ -1477,7 +1477,7 @@ ${PANEL_TLS_BLOCK}
 
     # Agent WebSocket log stream
     location /agent/logs/stream {
-        proxy_pass http://unix:/var/run/dockpanel/agent.sock:/logs/stream;
+        proxy_pass http://unix:/var/run/arsy/agent.sock:/logs/stream;
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection "upgrade";
@@ -1562,7 +1562,7 @@ ${PANEL_TLS_BLOCK}
     }
 
     # Drop-in location blocks for path-mounted tools (webmail, etc.)
-    include /etc/nginx/conf.d/dockpanel-panel.locations/*.conf;
+    include /etc/nginx/conf.d/arsy-panel.locations/*.conf;
 
     # Hide nginx version
     server_tokens off;
@@ -1597,7 +1597,7 @@ wait_for_health() {
         'for i in $(seq 1 15); do curl -sf http://127.0.0.1:3080/api/health && exit 0; sleep 2; done; exit 1'; then
         log "API healthy"
     else
-        warn "API not responding on port 3080 yet — check: journalctl -u dockpanel-api -n 20"
+        warn "API not responding on port 3080 yet — check: journalctl -u arsy-api -n 20"
     fi
 }
 
@@ -1960,7 +1960,7 @@ print_summary() {
     echo -e "  ${CYAN}$(progress_bar 100)${NC} ${WHITE}100%${NC} ${DIM}${mins}m ${secs}s${NC}"
     echo ""
     echo -e "${GREEN}${BOLD}╔══════════════════════════════════════════════════════╗${NC}"
-    echo -e "${GREEN}${BOLD}║         DockPanel installed successfully!            ║${NC}"
+    echo -e "${GREEN}${BOLD}║         ARSY installed successfully!            ║${NC}"
     echo -e "${GREEN}${BOLD}╚══════════════════════════════════════════════════════╝${NC}"
     echo ""
     if [ -n "$INSTALLED_VERSION" ]; then
@@ -1985,30 +1985,30 @@ print_summary() {
         echo -e "  ${DIM}for an IP address. It is self-signed, and it is there so the admin${NC}"
         echo -e "  ${DIM}password you are about to create is encrypted on the way to the server.${NC}"
         echo -e "  ${DIM}For a trusted certificate: point a domain here, then re-run with${NC}"
-        echo -e "  ${DIM}PANEL_DOMAIN=your.domain bash /opt/dockpanel/scripts/setup.sh${NC}"
+        echo -e "  ${DIM}PANEL_DOMAIN=your.domain bash /opt/arsy/scripts/setup.sh${NC}"
     fi
     echo ""
-    echo -e "  ${BOLD}CLI:${NC}            dockpanel status"
-    echo -e "                  dockpanel diagnose"
-    echo -e "                  dockpanel --help"
+    echo -e "  ${BOLD}CLI:${NC}            arsy status"
+    echo -e "                  arsy diagnose"
+    echo -e "                  arsy --help"
     echo ""
     echo -e "  ${BOLD}Service commands:${NC}"
-    echo -e "    Agent status:   systemctl status dockpanel-agent"
-    echo -e "    API status:     systemctl status dockpanel-api"
-    echo -e "    Agent logs:     journalctl -u dockpanel-agent -f"
-    echo -e "    API logs:       journalctl -u dockpanel-api -f"
-    echo -e "    Restart all:    systemctl restart dockpanel-agent dockpanel-api"
+    echo -e "    Agent status:   systemctl status arsy-agent"
+    echo -e "    API status:     systemctl status arsy-api"
+    echo -e "    Agent logs:     journalctl -u arsy-agent -f"
+    echo -e "    API logs:       journalctl -u arsy-api -f"
+    echo -e "    Restart all:    systemctl restart arsy-agent arsy-api"
     echo ""
     echo -e "  ${BOLD}Paths:${NC}"
     echo -e "    Config:         ${CONFIG_DIR}/"
     echo -e "    Agent token:    ${CONFIG_DIR}/agent.token"
     echo -e "    API env:        ${CONFIG_DIR}/api.env"
-    echo -e "    Backups:        /var/backups/dockpanel/"
+    echo -e "    Backups:        /var/backups/arsy/"
     echo -e "    Install log:    ${INSTALL_LOG}"
     echo ""
     echo -e "  ${BOLD}Database:${NC}"
     echo -e "    Container:      ${DB_CONTAINER} (port ${DB_PORT})"
-    echo -e "    Connect:        docker exec -it ${DB_CONTAINER} psql -U dockpanel -d dockpanel"
+    echo -e "    Connect:        docker exec -it ${DB_CONTAINER} psql -U arsy -d arsy"
     echo ""
     # What ACTUALLY installed — never a hardcoded wishlist.
     if [ ${#SVC_OK[@]} -gt 0 ]; then
@@ -2033,8 +2033,8 @@ print_summary() {
     echo -e "    3. Provision SSL (click the lock icon on any site)"
     echo -e "    4. Run diagnostics (Diagnostics → Run Scan)"
     echo ""
-    echo -e "  ${BOLD}Docs:${NC}     https://docs.dockpanel.dev"
-    echo -e "  ${YELLOW}Update:${NC}   Run: bash /opt/dockpanel/scripts/update.sh"
+    echo -e "  ${BOLD}Docs:${NC}     https://docs.moonwitness.dev"
+    echo -e "  ${YELLOW}Update:${NC}   Run: bash /opt/arsy/scripts/update.sh"
     echo ""
 }
 
@@ -2042,8 +2042,8 @@ print_summary() {
 setup_db_backup() {
     header "PostgreSQL Backup"
 
-    local BACKUP_SCRIPT="/opt/dockpanel/scripts/db-backup.sh"
-    mkdir -p /opt/dockpanel/scripts
+    local BACKUP_SCRIPT="/opt/arsy/scripts/db-backup.sh"
+    mkdir -p /opt/arsy/scripts
 
     cat > "$BACKUP_SCRIPT" << 'BKEOF'
 #!/bin/bash
@@ -2057,20 +2057,20 @@ set -o pipefail
 # including `servers.agent_token` in cleartext — lands 0644 on a box that also
 # runs other people's PHP as www-data.
 umask 077
-BACKUP_DIR="/var/backups/dockpanel/db"
+BACKUP_DIR="/var/backups/arsy/db"
 mkdir -p "$BACKUP_DIR"
-chmod 700 "$BACKUP_DIR" /var/backups/dockpanel 2>/dev/null || true
+chmod 700 "$BACKUP_DIR" /var/backups/arsy 2>/dev/null || true
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-OUT="$BACKUP_DIR/dockpanel_$TIMESTAMP.sql.gz"
-if ! docker exec dockpanel-postgres pg_dump -U dockpanel -d dockpanel | gzip > "$OUT"; then
-    echo "dockpanel db-backup: pg_dump failed, discarding $OUT" >&2
+OUT="$BACKUP_DIR/arsy_$TIMESTAMP.sql.gz"
+if ! docker exec arsy-postgres pg_dump -U arsy -d arsy | gzip > "$OUT"; then
+    echo "arsy db-backup: pg_dump failed, discarding $OUT" >&2
     rm -f "$OUT"
     exit 1
 fi
 # A zero exit is not the success condition — a whole dump is. pg_dump emits this
 # marker near the end; its absence means the file is short whatever exited 0.
 if ! gunzip -c "$OUT" | tail -20 | grep -c 'PostgreSQL database dump complete' >/dev/null; then
-    echo "dockpanel db-backup: $OUT is incomplete, discarding" >&2
+    echo "arsy db-backup: $OUT is incomplete, discarding" >&2
     rm -f "$OUT"
     exit 1
 fi
@@ -2089,7 +2089,7 @@ BKEOF
     # dumps of the same database, one of them world-readable in mode.
     (crontab -l 2>/dev/null \
         | grep -v "$BACKUP_SCRIPT" \
-        | grep -v 'pg_dump -U dockpanel.*/var/backups/dockpanel/db'; \
+        | grep -v 'pg_dump -U arsy.*/var/backups/arsy/db'; \
      echo "0 3 * * * $BACKUP_SCRIPT") | crontab -
 
     log "Database backup script installed ($BACKUP_SCRIPT)"
@@ -2109,9 +2109,9 @@ main() {
     if : > "$INSTALL_LOG" 2>/dev/null; then
         chmod 600 "$INSTALL_LOG" 2>/dev/null || true
     else
-        INSTALL_LOG=$(umask 077; mktemp /tmp/dockpanel-install.XXXXXX 2>/dev/null || echo /dev/null)
+        INSTALL_LOG=$(umask 077; mktemp /tmp/arsy-install.XXXXXX 2>/dev/null || echo /dev/null)
     fi
-    plog "DockPanel installer started: $(date 2>/dev/null || true)"
+    plog "ARSY installer started: $(date 2>/dev/null || true)"
 
     # No apt/debconf prompt may ever block a piped installer
     export DEBIAN_FRONTEND=noninteractive
@@ -2208,9 +2208,9 @@ main() {
             next
           }
           { print }
-        ' /etc/nginx/nginx.conf > /etc/nginx/nginx.conf.dockpanel-new 2>/dev/null &&
-          mv /etc/nginx/nginx.conf.dockpanel-new /etc/nginx/nginx.conf
-        rm -f /etc/nginx/nginx.conf.dockpanel-new
+        ' /etc/nginx/nginx.conf > /etc/nginx/nginx.conf.arsy-new 2>/dev/null &&
+          mv /etc/nginx/nginx.conf.arsy-new /etc/nginx/nginx.conf
+        rm -f /etc/nginx/nginx.conf.arsy-new
     fi
 
     # These steps should continue even if one fails
@@ -2225,8 +2225,8 @@ main() {
     sleep 3
 
     # Start services (may already be started by create_services)
-    systemctl start dockpanel-agent 2>/dev/null
-    systemctl start dockpanel-api 2>/dev/null
+    systemctl start arsy-agent 2>/dev/null
+    systemctl start arsy-api 2>/dev/null
     sleep 2
 
     install_recommended_services

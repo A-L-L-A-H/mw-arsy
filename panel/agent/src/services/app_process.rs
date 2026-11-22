@@ -6,7 +6,7 @@ use crate::safe_cmd::safe_command_sync;
 
 use super::command_filter;
 
-const SERVICE_PREFIX: &str = "dockpanel-app-";
+const SERVICE_PREFIX: &str = "arsy-app-";
 
 /// Service unit name for a domain.
 fn service_name(domain: &str) -> String {
@@ -106,7 +106,7 @@ pub fn create_app_service(
 
     let unit = format!(
         r#"[Unit]
-Description=DockPanel App: {domain}
+Description=ARSY App: {domain}
 After=network.target
 
 [Service]
@@ -230,7 +230,7 @@ pub fn remove_app_service(domain: &str) -> Result<(), String> {
 
     // `service_name` maps `.` to `-`, and `-` is legal inside a domain label, so
     // it is NOT injective: `a.b.com` and `a-b.com` are separately claimable
-    // domains that both land on `dockpanel-app-a-b-com`. Deleting a site used to
+    // domains that both land on `arsy-app-a-b-com`. Deleting a site used to
     // stop, disable and unlink the unit at that name whoever wrote it, and no
     // ordinary panel action re-sends `app_command`, so the victim's site stayed
     // down until it was deleted and recreated.

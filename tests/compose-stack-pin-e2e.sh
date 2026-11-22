@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # compose-stack-pin-e2e.sh — s296 / v2.54.0
 #
-# DockPanel's "Compose" support does not run `docker compose`. It creates each
+# ARSY's "Compose" support does not run `docker compose`. It creates each
 # service directly through the Docker API, which is what lets the panel apply
 # its own sandboxing — and which means every convenience `docker compose` gives
 # for free has to be reproduced deliberately. Until v2.54.0 almost none of it
@@ -17,7 +17,7 @@
 #   §C  THE PARSER DOES NOT SILENTLY DISCARD WHAT THE AUTHOR WROTE. `command:`,
 #       `depends_on:`, `labels:` and long-form `ports:` were all parsed away by
 #       a struct that did not declare them — which turned a queue worker into a
-#       second copy of the web server. `dockpanel.*` labels are still ours.
+#       second copy of the web server. `arsy.*` labels are still ours.
 #   §D  "RUNNING" MEANS RUNNING. `create` + `start` returning Ok is not a
 #       status, and a 200 carrying N failures is not a successful deploy.
 #   §E  A STACK'S DOMAIN GOES THROUGH THE ONE DOOR (v2.52.0) AND ITS TEARDOWN
@@ -188,7 +188,7 @@ else
     bad "A5 nothing removes the network — one leaks per stack, forever"
   fi
   RSN=$(fnbody "$C" "remove_stack_network")
-  if derives "$RSN" '\.get\("dockpanel\.managed"\)'; then
+  if derives "$RSN" '\.get\("arsy\.managed"\)'; then
     ok "A6 the teardown refuses a network it cannot prove is ours"
   else
     bad "A6 the teardown removes a network by NAME alone"
@@ -202,10 +202,10 @@ if [ -z "$C" ]; then
   skip "§B — $COMPOSE could not be read"
 else
   PC=$(fnbody "$C" "parse_compose")
-  if derives "$PC" 'dockpanel-compose-\{scope\}'; then
+  if derives "$PC" 'arsy-compose-\{scope\}'; then
     ok "B1 the container name carries the stack scope"
   else
-    bad "B1 unscoped container name — two packages both want dockpanel-compose-db"
+    bad "B1 unscoped container name — two packages both want arsy-compose-db"
   fi
   SNN=$(fnbody "$C" "stack_network_name")
   if derives "$SNN" 'stack_scope'; then
@@ -265,10 +265,10 @@ else
     bad "C5 long-form ports fall through to the discard arm: no published port, no warning"
   fi
   PC=$(fnbody "$C" "parse_compose")
-  if derives "$PC" 'starts_with\("dockpanel\.'; then
-    ok "C6 author labels are kept but the dockpanel namespace is stripped"
+  if derives "$PC" 'starts_with\("arsy\.'; then
+    ok "C6 author labels are kept but the arsy namespace is stripped"
   else
-    bad "C6 a compose file can set dockpanel.managed or dockpanel.stack_id on its own containers"
+    bad "C6 a compose file can set arsy.managed or arsy.stack_id on its own containers"
   fi
   # Ordering is not cosmetic: HashMap iteration is randomised per process, so
   # the same YAML used to start its services in a different order every time.
@@ -567,7 +567,7 @@ echo "== §J  compose_validate is honest about what deploy_service silently drop
 # `deploy_service` has never read any of the three — but `compose_validate`
 # said a stack declaring one was simply "valid", with no warning that the
 # directive would be dropped on the floor at deploy time.
-# [[project_dockpanel_tech_debt_p185]] carry I.
+# [[project_arsy_tech_debt_p185]] carry I.
 if [ -n "$AR" ]; then
   CV=$(fnbody "$AR" "compose_validate")
   if [ -z "$CV" ]; then

@@ -11,8 +11,8 @@ The agent missed its checkin window (default 60s). After the grace period the pa
 1. From the panel: **Servers → click the offline server → "Test connection"**.
 2. From a terminal that can reach the host:
    ```
-   ssh root@<host> "systemctl status dockpanel-agent --no-pager"
-   ssh root@<host> "journalctl -u dockpanel-agent -n 50 --no-pager"
+   ssh root@<host> "systemctl status arsy-agent --no-pager"
+   ssh root@<host> "journalctl -u arsy-agent -n 50 --no-pager"
    ping -c 3 <host>
    ```
 3. If SSH itself fails, the host is the problem (network, kernel panic, OOM kill). Open the provider console.
@@ -28,4 +28,4 @@ The agent missed its checkin window (default 60s). After the grace period the pa
 
 ## Escalation
 
-Wake a human if (a) the host is up but the agent won't start after a `systemctl restart dockpanel-agent`, or (b) the host itself is unreachable for >5 minutes and you don't have a known maintenance window.
+Wake a human if (a) the host is up but the agent won't start after a `systemctl restart arsy-agent`, or (b) the host itself is unreachable for >5 minutes and you don't have a known maintenance window.

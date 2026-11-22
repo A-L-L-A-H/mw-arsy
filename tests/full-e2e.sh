@@ -1,5 +1,5 @@
 #!/bin/bash
-# DockPanel Full E2E Test Suite
+# ARSY Full E2E Test Suite
 # Tests all major features end-to-end against the live API
 set -euo pipefail
 
@@ -33,15 +33,15 @@ test_contains() {
 }
 
 echo "═══════════════════════════════════════════════"
-echo "  DockPanel Full E2E Test Suite"
+echo "  ARSY Full E2E Test Suite"
 echo "═══════════════════════════════════════════════"
 
 # Auth
 TOKEN=$(curl -s -X POST "$API/api/auth/login" -H "Content-Type: application/json" \
-    -d "{\"email\":\"admin@dockpanel.dev\",\"password\":\"${DOCKPANEL_TEST_PASSWORD:-testpassword}\"}" -D - 2>/dev/null | grep -oP 'token=\K[^;]+')
+    -d "{\"email\":\"admin@moonwitness.dev\",\"password\":\"${ARSY_TEST_PASSWORD:-testpassword}\"}" -D - 2>/dev/null | grep -oP 'token=\K[^;]+')
 [ -z "$TOKEN" ] && echo "FATAL: Login failed" && exit 1
 AUTH="Cookie: token=$TOKEN"
-echo "  Authenticated as admin@dockpanel.dev"
+echo "  Authenticated as admin@moonwitness.dev"
 echo ""
 
 echo "── Authentication ──"
@@ -167,7 +167,7 @@ test_api GET /api/notifications/unread-count "Unread notification count"
 echo ""
 echo "── Users ──"
 test_api GET /api/users "List users"
-test_contains GET /api/users "Has admin user" "admin@dockpanel.dev"
+test_contains GET /api/users "Has admin user" "admin@moonwitness.dev"
 
 echo ""
 echo "── Settings ──"
@@ -204,7 +204,7 @@ test_contains GET /api/servers "Has local server" "id"
 
 echo ""
 echo "── Database Migration ──"
-test_it() { if docker exec dockpanel-postgres psql -U dockpanel -d dockpanel -c "$1" > /dev/null 2>&1; then green "$2"; else red "$2"; fi; }
+test_it() { if docker exec arsy-postgres psql -U arsy -d arsy -c "$1" > /dev/null 2>&1; then green "$2"; else red "$2"; fi; }
 test_it "SELECT 1 FROM security_audit_log LIMIT 0" "security_audit_log table exists"
 test_it "SELECT active FROM lockdown_state WHERE id = 1" "lockdown_state table exists"
 test_it "SELECT 1 FROM suspicious_events LIMIT 0" "suspicious_events table exists"
@@ -214,9 +214,9 @@ test_it "SELECT sha256_hash FROM backups LIMIT 0" "backups.sha256_hash column ex
 
 echo ""
 echo "── Filesystem ──"
-[ -d /var/lib/dockpanel/audit ] && green "Audit log directory exists" || red "Audit log directory missing"
-[ -d /var/lib/dockpanel/recordings ] && green "Recordings directory exists" || red "Recordings directory missing"
-[ -d /var/backups/dockpanel ] && green "DB backup directory exists" || red "DB backup directory missing"
+[ -d /var/lib/arsy/audit ] && green "Audit log directory exists" || red "Audit log directory missing"
+[ -d /var/lib/arsy/recordings ] && green "Recordings directory exists" || red "Recordings directory missing"
+[ -d /var/backups/arsy ] && green "DB backup directory exists" || red "DB backup directory missing"
 # The append-only assertion that used to live here demanded the attribute on the audit
 # DIRECTORY. No shipped code has ever set it, so it could only pass on a box where a
 # human ran chattr by hand — and it did pass, for months, on exactly one such box while
@@ -225,15 +225,15 @@ echo "── Filesystem ──"
 # it blocks the panel's own audit retention sweep. The honest check is that the log is
 # being written at all; kernel-enforced protection is an operator choice, documented in
 # docs/guides/security-hardening.md, so a stock install must not be marked red for it.
-AUDIT_TODAY="/var/lib/dockpanel/audit/audit-$(date -u +%Y-%m-%d).log"
+AUDIT_TODAY="/var/lib/arsy/audit/audit-$(date -u +%Y-%m-%d).log"
 if [ -s "$AUDIT_TODAY" ]; then
   green "Audit file log is being written ($AUDIT_TODAY)"
-elif ls /var/lib/dockpanel/audit/audit-*.log >/dev/null 2>&1; then
+elif ls /var/lib/arsy/audit/audit-*.log >/dev/null 2>&1; then
   green "Audit file log present (no events yet today)"
 else
-  red "Audit file log missing — no audit-*.log in /var/lib/dockpanel/audit/"
+  red "Audit file log missing — no audit-*.log in /var/lib/arsy/audit/"
 fi
-if lsattr -d /var/lib/dockpanel/audit/ 2>/dev/null | cut -d' ' -f1 | grep -c "a" >/dev/null; then
+if lsattr -d /var/lib/arsy/audit/ 2>/dev/null | cut -d' ' -f1 | grep -c "a" >/dev/null; then
   # Deliberately NOT green()/red(): it is neither a pass nor a failure, it is an
   # operator choice with a consequence they should know about. Using a counting
   # helper here would also move this suite's assertion total, which docs/testing.md

@@ -732,7 +732,7 @@ pub async fn status(
         .unwrap_or(crate::helpers::CertProvenance::Unknown)
     {
         crate::helpers::CertProvenance::Foreign(i) => ("foreign", Some(i)),
-        crate::helpers::CertProvenance::DockPanelIssued => ("dockpanel", None),
+        crate::helpers::CertProvenance::ArsyIssued => ("arsy", None),
         crate::helpers::CertProvenance::Unknown => ("unknown", None),
     };
 
@@ -907,7 +907,7 @@ pub(crate) async fn record_renewal_provenance(
     // and `security_scanner.rs` (both DO write `SET ssl_expiry`, so that is a
     // measurement, not a missing grep) — yet every door re-renders the vhost from
     // that column moments later. Both plans reaching this point ordered HTTP-01
-    // for `domain`, so the agent wrote `/etc/dockpanel/ssl/{domain}/`.
+    // for `domain`, so the agent wrote `/etc/arsy/ssl/{domain}/`.
     //
     // For a row whose stored path names a DIFFERENT directory — a wildcard child
     // whose path names the zone — the panel therefore renewed the certificate and
@@ -925,8 +925,8 @@ pub(crate) async fn record_renewal_provenance(
          updated_at = NOW() WHERE id = $1",
     )
     .bind(site_id)
-    .bind(format!("/etc/dockpanel/ssl/{domain}/fullchain.pem"))
-    .bind(format!("/etc/dockpanel/ssl/{domain}/privkey.pem"))
+    .bind(format!("/etc/arsy/ssl/{domain}/fullchain.pem"))
+    .bind(format!("/etc/arsy/ssl/{domain}/privkey.pem"))
     .execute(pool)
     .await;
 
@@ -1051,7 +1051,7 @@ pub(crate) async fn renew_for_site(
     // DNS-01 renewal orders against `subject` — the zone apex for a wildcard,
     // recorded at issuance, never `site.domain` — and `site.domain` typically has
     // no certificate directory of its own in that case (the agent resolves
-    // `/ssl/status/{domain}` to a literal `/etc/dockpanel/ssl/{domain}/`), so
+    // `/ssl/status/{domain}` to a literal `/etc/arsy/ssl/{domain}/`), so
     // checking `site.domain` always answered "no certificate here" regardless of
     // what foreign certificate actually sat at the zone apex about to be
     // overwritten. Skipped for `Refuse`, which never reaches an agent order.
@@ -1064,7 +1064,7 @@ pub(crate) async fn renew_for_site(
             return Err(err(
                 StatusCode::UNPROCESSABLE_ENTITY,
                 &format!(
-                    "The certificate on {} was not issued by DockPanel (issuer: {}). DockPanel \
+                    "The certificate on {} was not issued by ARSY (issuer: {}). ARSY \
                      renews only the Let's Encrypt certificates it issued itself, and renewing \
                      this one would replace it. Install a replacement under the site's SSL tab \
                      instead, or renew it wherever it was issued.",
@@ -1223,7 +1223,7 @@ pub async fn revoke(
     .map_err(|e| internal_error("ssl revoke", e))?;
 
     // ⛔ AFTER the clear, never before. The agent's teardown removes
-    // `/etc/dockpanel/ssl/{domain}/` while `/etc/nginx/sites-enabled/{domain}.conf`
+    // `/etc/arsy/ssl/{domain}/` while `/etc/nginx/sites-enabled/{domain}.conf`
     // still carries `ssl_certificate` naming it — and `nginx -t` is WHOLE-SERVER,
     // so from that moment every site edit on the box fails and the next restart
     // leaves nginx down for every tenant. The agent's shared-directory guard does
@@ -1487,7 +1487,7 @@ pub(crate) fn validate_acme_contact(email: &str) -> Result<(), String> {
 /// Resolve the Let's Encrypt account contact for an issuance.
 ///
 /// The panel used to hand `claims.email` straight to the agent, unvalidated. An
-/// operator who registered the panel with e.g. `admin@dockpanel.test` therefore
+/// operator who registered the panel with e.g. `admin@arsy.test` therefore
 /// had EVERY certificate fail at the CA with a contact-validation error that
 /// surfaced neither in the UI nor in `journalctl` — four silent retries, then a
 /// permanent give-up (s252 F4).
@@ -1559,7 +1559,7 @@ mod acme_contact_tests {
     /// The exact address that broke every issuance on the s252 audit box.
     #[test]
     fn rejects_the_address_that_broke_the_audit_box() {
-        let e = validate_acme_contact("admin@dockpanel.test").unwrap_err();
+        let e = validate_acme_contact("admin@arsy.test").unwrap_err();
         assert!(e.contains(".test"), "error must name the offending TLD: {e}");
     }
 

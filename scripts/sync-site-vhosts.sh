@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Keep the project's own public-surface nginx vhosts under version control.
 #
-# dockpanel.dev, demo.dockpanel.dev and docs.dockpanel.dev are served straight
+# moonwitness.dev, demo.moonwitness.dev and docs.moonwitness.dev are served straight
 # off one box, and until s281 their vhosts existed ONLY on that box: hand-edited
 # files with no copy anywhere, no history, and no way to review a change or
 # rebuild the machine. Three sessions of cache-header work lived only in them.
@@ -30,8 +30,8 @@ detect_origin_ip() {
     [ -n "${ORIGIN_IP:-}" ] && { printf '%s' "$ORIGIN_IP"; return; }
     local f ip
     # Whatever the live vhosts already bind is by definition the right answer.
-    for f in /etc/nginx/sites-enabled/dockpanel.dev.conf \
-             /etc/nginx/sites-available/docs.dockpanel.dev.conf; do
+    for f in /etc/nginx/sites-enabled/moonwitness.dev.conf \
+             /etc/nginx/sites-available/docs.moonwitness.dev.conf; do
         [ -r "$f" ] || continue
         ip=$(grep -m1 -oE '^[[:space:]]*listen[[:space:]]+([0-9]{1,3}\.){3}[0-9]{1,3}:' "$f" \
              | grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}')
@@ -47,8 +47,8 @@ SITE_ROOT="${SITE_ROOT:-$REPO}"   # the three sites are served from this checkou
 
 # live path → repo filename
 FILES="
-/etc/nginx/sites-enabled/dockpanel.dev.conf:dockpanel.dev.conf
-/etc/nginx/sites-available/docs.dockpanel.dev.conf:docs.dockpanel.dev.conf
+/etc/nginx/sites-enabled/moonwitness.dev.conf:moonwitness.dev.conf
+/etc/nginx/sites-available/docs.moonwitness.dev.conf:docs.moonwitness.dev.conf
 "
 
 redact()  { sed -e "s#$ORIGIN_IP#__ORIGIN_IP__#g" -e "s#$SITE_ROOT#__SITE_ROOT__#g"; }

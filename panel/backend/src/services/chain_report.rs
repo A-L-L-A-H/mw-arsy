@@ -11,8 +11,8 @@ use tokio::process::Command;
 use tokio::sync::Mutex;
 
 const TYPST_VERSION: &str = "0.13.0";
-const TYPST_DIR: &str = "/var/lib/dockpanel/typst";
-const TYPST_BIN: &str = "/var/lib/dockpanel/typst/typst";
+const TYPST_DIR: &str = "/var/lib/arsy/typst";
+const TYPST_BIN: &str = "/var/lib/arsy/typst/typst";
 const INSTALL_TIMEOUT_SECS: u64 = 120;
 const COMPILE_TIMEOUT_SECS: u64 = 30;
 
@@ -55,7 +55,7 @@ pub async fn ensure_typst_installed() -> Result<PathBuf, String> {
 
     // Allow operators to override the pinned digest if they're using a
     // different typst version (e.g. air-gapped mirror). Same env per arch.
-    let env_key = format!("DOCKPANEL_TYPST_SHA256_{}", arch.to_uppercase());
+    let env_key = format!("ARSY_TYPST_SHA256_{}", arch.to_uppercase());
     let expected_sha = std::env::var(&env_key).unwrap_or_else(|_| expected_sha.to_string());
 
     let target = format!("{arch}-unknown-linux-musl");
@@ -115,7 +115,7 @@ pub async fn render_chain_report_pdf(data: &serde_json::Value) -> Result<Vec<u8>
     // Use a per-render tempdir to avoid contention. /tmp is fine — files are
     // small (JSON < 100KB, PDF < 1MB) and cleaned at the end of this fn.
     let id = uuid::Uuid::new_v4();
-    let dir = PathBuf::from(format!("/tmp/dockpanel-chainreport-{id}"));
+    let dir = PathBuf::from(format!("/tmp/arsy-chainreport-{id}"));
     tokio::fs::create_dir_all(&dir)
         .await
         .map_err(|e| format!("tempdir create: {e}"))?;

@@ -833,7 +833,7 @@ export function ExportMyDataCard() {
                 const url = URL.createObjectURL(new Blob([JSON.stringify(d, null, 2)], { type: "application/json" }));
                 const a = document.createElement("a");
                 a.href = url;
-                a.download = "dockpanel-my-data.json";
+                a.download = "arsy-my-data.json";
                 a.click();
                 URL.revokeObjectURL(url);
               } catch (e) {

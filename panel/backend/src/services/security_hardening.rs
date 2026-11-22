@@ -130,7 +130,7 @@ pub async fn audit_log(
 // ── Tamper-Resistant File Logging (Feature 6) ───────────────────────────
 
 /// Write audit entry to append-only file on disk.
-/// The directory /var/lib/dockpanel/audit/ should have chattr +a set.
+/// The directory /var/lib/arsy/audit/ should have chattr +a set.
 fn write_to_audit_file(
     event_type: &str,
     actor_email: Option<&str>,
@@ -140,7 +140,7 @@ fn write_to_audit_file(
 ) {
     use std::io::Write;
 
-    let dir = "/var/lib/dockpanel/audit";
+    let dir = "/var/lib/arsy/audit";
     let _ = std::fs::create_dir_all(dir);
 
     let date = chrono::Utc::now().format("%Y-%m-%d");
@@ -186,7 +186,7 @@ pub async fn record_suspicious_event(
 /// as one burst and trips the threshold the moment it is read. That is exactly what
 /// happens on upgrade to 2.46.0: before it, suspicious-event ingestion sat under
 /// `auto_heal_enabled`, which is seeded **false**, so on a stock install the agent
-/// wrote `/var/lib/dockpanel/suspicious-events.jsonl` and nothing ever drained it.
+/// wrote `/var/lib/arsy/suspicious-events.jsonl` and nothing ever drained it.
 /// The first tick after upgrading would replay the whole file as if it were
 /// simultaneous and lock every non-admin user out for 24h.
 ///
@@ -387,7 +387,7 @@ pub async fn alert_suspicious_ip(
 pub async fn alert_lockdown(pool: &PgPool, reason: &str, triggered_by: &str) {
     let subject = "🔒 EMERGENCY: System Lockdown Activated";
     let message = format!(
-        "DockPanel has entered lockdown mode.\n\
+        "ARSY has entered lockdown mode.\n\
          Triggered by: {triggered_by}\n\
          Reason: {reason}\n\
          All terminals disabled. Registration blocked.\n\

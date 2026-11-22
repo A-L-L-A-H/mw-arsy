@@ -43,7 +43,7 @@ bad() { printf '\033[31m✗\033[0m %s — %s\n' "$1" "$2"; FAIL=$((FAIL+1)); }
 eq()  { [ "$2" = "$3" ] && ok "$1" || bad "$1" "expected '$3', got '$2'"; }
 
 # ugrep's --ignore-files shim honours .gitignore, so every count below uses the
-# real binary explicitly (dockpanel-ops-p2, s357).
+# real binary explicitly (arsy-ops-p2, s357).
 G=/usr/bin/grep
 flat() { tr -d ' \n' < "$1"; }
 
@@ -126,7 +126,7 @@ eq "B3 no second importer was added to the agent's database router" \
 
 # ⛔ THE LAYERING, and it is load-bearing in both directions. The AGENT answers only
 # "is this a backup file at all" — if it also decided importability, every encrypted
-# backup would be labelled broken in `dockpanel backup db-list`, which is a BACKUP
+# backup would be labelled broken in `arsy backup db-list`, which is a BACKUP
 # listing. Whether a backup can enter a given database depends on the engine and on
 # encryption, which only the PANEL knows. Both halves pinned so neither drifts back.
 eq "B4a the agent's listing gate is is_safe_filename itself, not a second opinion" \
@@ -321,14 +321,14 @@ fi
 if flat "$CLI" | $G -q 'b\["unsupported"\].as_str()'; then
   ok "E6 the CLI renders the reason"
 else
-  bad "E6 the CLI renders the reason" "dockpanel backup db-list still hides the rejected file's reason"
+  bad "E6 the CLI renders the reason" "arsy backup db-list still hides the rejected file's reason"
 fi
 
 echo "── F. Ownership and traversal ────────────────────────────────────────────────"
 
 # Both are required for the credential-auth census to score this handler, and
 # both are load-bearing: get_db_info scopes to the caller's own databases, and
-# the host must come from the site's row because `dockpanel-db-{name}` is unique
+# the host must come from the site's row because `arsy-db-{name}` is unique
 # only per machine and this call hands over the tenant's decrypted password.
 IMPORT_BODY=$(perl -0777 -ne 'print $1 if /pub async fn import\((.*?)\n\}\n/s' "$DBS")
 case "$IMPORT_BODY" in
@@ -349,7 +349,7 @@ echo "── H. The tenancy boundary this door would otherwise cross ───�
 # ⛔ THE MOST IMPORTANT ARM HERE, and it exists because the first cut of this feature
 # was tenant-reachable and an adversarial review broke it in four steps:
 #
-#   1. The dump directory is keyed by DATABASE NAME (`/var/backups/dockpanel/databases/
+#   1. The dump directory is keyed by DATABASE NAME (`/var/backups/arsy/databases/
 #      {name}`), not by id or owner.
 #   2. Deleting a database removes its container and CASCADE-deletes its
 #      `database_backups` rows — but NOTHING removes the dumps from disk, so they become

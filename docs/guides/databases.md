@@ -1,6 +1,6 @@
 # Databases
 
-DockPanel runs each managed database in its own Docker container, deliberately
+ARSY runs each managed database in its own Docker container, deliberately
 isolated from everything else on the box. That isolation is the reason most
 questions about databases have surprising answers, so this guide leads with it.
 
@@ -57,8 +57,8 @@ two of them mean less than they look like they mean.
 - **Password** — masked on screen, copied in clear text by the copy button, and
   also embedded in the connection string shown above the fields. Treat that
   connection string as a secret.
-- **Internal Host** — `dockpanel-db-<name>`, which is the **Docker container's
-  name**. Use it with `docker exec`, `docker logs`, or the DockPanel CLI. It is
+- **Internal Host** — `arsy-db-<name>`, which is the **Docker container's
+  name**. Use it with `docker exec`, `docker logs`, or the ARSY CLI. It is
   not a hostname you can connect to from anywhere.
 
 ## Connecting to a database
@@ -177,9 +177,9 @@ that, so the panel uses the same shape the Migration wizard has always used:
 Copy it into the database's own backup directory, over SSH, as root:
 
 ```bash
-mkdir -p /var/backups/dockpanel/databases/mydb
-scp mydb.sql.gz root@server:/var/backups/dockpanel/databases/mydb/
-chmod 600 /var/backups/dockpanel/databases/mydb/mydb.sql.gz
+mkdir -p /var/backups/arsy/databases/mydb
+scp mydb.sql.gz root@server:/var/backups/arsy/databases/mydb/
+chmod 600 /var/backups/arsy/databases/mydb/mydb.sql.gz
 ```
 
 Then open **Databases → Import** and pick it from the list.
@@ -227,7 +227,7 @@ That is worth stating because it was not true of the restore path before v2.138.
 The same door is available on the command line:
 
 ```bash
-dockpanel backup db-list mydb        # shows importable dumps, and rejected ones with the reason
+arsy backup db-list mydb        # shows importable dumps, and rejected ones with the reason
 ```
 
 ## What is not built

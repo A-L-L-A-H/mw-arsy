@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Regression pins for this session's dockpanel-fanout run over
+# Regression pins for this session's arsy-fanout run over
 # panel/agent/src/services/cms.rs + routes/cms.rs — a genuine LOC-ranked
 # rotation pick (never previously a PRIMARY finder/skeptic target), landed
 # on after 32 higher-priority candidates were disqualified by the
@@ -101,7 +101,7 @@ ok()  { PASS=$((PASS+1)); printf '  \033[0;32m✓\033[0m %s\n' "$1"; }
 bad() { FAIL=$((FAIL+1)); printf '  \033[0;31m✗\033[0m %s\n' "$1"; }
 
 # Strip comments and the test module. NOT the naive "sed-quit-at-first-
-# #[cfg(test)]" shape — see project_dockpanel_lessons_p182 (s456): only exit
+# #[cfg(test)]" shape — see project_arsy_lessons_p182 (s456): only exit
 # at a #[cfg(test)] line immediately followed by `mod `, a real test module,
 # not a cfg-gated function/const variant elsewhere in the file.
 code() {
@@ -120,7 +120,7 @@ hasre() { [ -n "$(code "$1" | grep -E -- "$2")" ]; }
 
 # One named function's body, comment-stripped. Function-name patterns MUST be
 # anchored (^ ... \() — GNU awk's \b silently matches nothing in default ERE
-# mode (project_dockpanel_lessons_p182, s456).
+# mode (project_arsy_lessons_p182, s456).
 fnbody()    { code "$1" | awk "/$2/,/^}/"; }
 bodyhas()   { [ -n "$(fnbody "$1" "$2" | grep -F -- "$3")" ]; }
 bodyhasre() { [ -n "$(fnbody "$1" "$2" | grep -E -- "$3")" ]; }

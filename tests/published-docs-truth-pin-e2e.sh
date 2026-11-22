@@ -2,7 +2,7 @@
 # Regression pins for s379 — the published documentation that described a
 # different product.
 #
-# Every defect below was live at 200 on docs.dockpanel.dev when it was found.
+# Every defect below was live at 200 on docs.moonwitness.dev when it was found.
 # None of them could fail a build, because nothing in the tree had ever compared
 # a published instruction with the thing it instructs the reader to use.
 #
@@ -24,7 +24,7 @@
 #       shortcut that has no handler, a dropdown that is a cycle button plus a
 #       swatch grid, per-user persistence that is really per-browser
 #       localStorage, and a four-level Card Depth control that does not exist.
-#   P3  `docs/guides/secrets.md` published seven `dockpanel secrets …` CLI
+#   P3  `docs/guides/secrets.md` published seven `arsy secrets …` CLI
 #       commands. The CLI crate contains the string "secret" zero times.
 #   P4  Two guides sent operators to screens that are not in the product: a
 #       "Status Page > Subscribers" admin list whose endpoint has no caller, and
@@ -231,13 +231,13 @@ if [ "${CLI_FN:-0}" -ge 1 ]; then
 else
   bad "positive control failed — cannot read panel/cli/src/main.rs, so the arm below proves nothing"
 fi
-DOC_CLI=$(grep -c 'dockpanel secrets' "$SECRETS")
+DOC_CLI=$(grep -c 'arsy secrets' "$SECRETS")
 if [ "$DOC_CLI" -eq 0 ]; then
-  ok "secrets.md publishes no 'dockpanel secrets' command (the CLI has no secrets subcommand)"
+  ok "secrets.md publishes no 'arsy secrets' command (the CLI has no secrets subcommand)"
 elif [ "${CLI_SECRET_HITS:-0}" -gt 0 ]; then
   ok "secrets.md publishes $DOC_CLI CLI example(s) and the CLI crate does mention secrets"
 else
-  bad "secrets.md publishes $DOC_CLI 'dockpanel secrets' command(s); the CLI crate mentions 'secret' $CLI_SECRET_HITS times"
+  bad "secrets.md publishes $DOC_CLI 'arsy secrets' command(s); the CLI crate mentions 'secret' $CLI_SECRET_HITS times"
 fi
 
 # The inject endpoint is site-scoped. A guide that omits the site makes the

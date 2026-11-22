@@ -24,9 +24,9 @@ pub async fn render(pool: &PgPool) -> String {
 }
 
 fn render_info(out: &mut String) {
-    let _ = writeln!(out, "# HELP dockpanel_info DockPanel build information.");
-    let _ = writeln!(out, "# TYPE dockpanel_info gauge");
-    let _ = write!(out, "dockpanel_info{{version=\"");
+    let _ = writeln!(out, "# HELP arsy_info ARSY build information.");
+    let _ = writeln!(out, "# TYPE arsy_info gauge");
+    let _ = write!(out, "arsy_info{{version=\"");
     push_escaped(out, env!("CARGO_PKG_VERSION"));
     let _ = writeln!(out, "\"}} 1");
 }
@@ -48,20 +48,20 @@ async fn render_system(out: &mut String, pool: &PgPool) {
         return;
     }
 
-    let _ = writeln!(out, "# HELP dockpanel_cpu_percent Current CPU usage (0-100).");
-    let _ = writeln!(out, "# TYPE dockpanel_cpu_percent gauge");
+    let _ = writeln!(out, "# HELP arsy_cpu_percent Current CPU usage (0-100).");
+    let _ = writeln!(out, "# TYPE arsy_cpu_percent gauge");
     for (sid, name, cpu, _, _) in &rows {
-        write_server_sample(out, "dockpanel_cpu_percent", sid, name, *cpu);
+        write_server_sample(out, "arsy_cpu_percent", sid, name, *cpu);
     }
-    let _ = writeln!(out, "# HELP dockpanel_memory_percent Current memory usage (0-100).");
-    let _ = writeln!(out, "# TYPE dockpanel_memory_percent gauge");
+    let _ = writeln!(out, "# HELP arsy_memory_percent Current memory usage (0-100).");
+    let _ = writeln!(out, "# TYPE arsy_memory_percent gauge");
     for (sid, name, _, mem, _) in &rows {
-        write_server_sample(out, "dockpanel_memory_percent", sid, name, *mem);
+        write_server_sample(out, "arsy_memory_percent", sid, name, *mem);
     }
-    let _ = writeln!(out, "# HELP dockpanel_disk_percent Current disk usage (0-100).");
-    let _ = writeln!(out, "# TYPE dockpanel_disk_percent gauge");
+    let _ = writeln!(out, "# HELP arsy_disk_percent Current disk usage (0-100).");
+    let _ = writeln!(out, "# TYPE arsy_disk_percent gauge");
     for (sid, name, _, _, disk) in &rows {
-        write_server_sample(out, "dockpanel_disk_percent", sid, name, *disk);
+        write_server_sample(out, "arsy_disk_percent", sid, name, *disk);
     }
 }
 
@@ -85,33 +85,33 @@ async fn render_gpu(out: &mut String, pool: &PgPool) {
         return;
     }
 
-    let _ = writeln!(out, "# HELP dockpanel_gpu_utilization_percent GPU compute utilization (0-100).");
-    let _ = writeln!(out, "# TYPE dockpanel_gpu_utilization_percent gauge");
+    let _ = writeln!(out, "# HELP arsy_gpu_utilization_percent GPU compute utilization (0-100).");
+    let _ = writeln!(out, "# TYPE arsy_gpu_utilization_percent gauge");
     for r in &rows {
-        write_gpu_sample(out, "dockpanel_gpu_utilization_percent", &r.0, &r.1, r.2, r.3);
+        write_gpu_sample(out, "arsy_gpu_utilization_percent", &r.0, &r.1, r.2, r.3);
     }
-    let _ = writeln!(out, "# HELP dockpanel_gpu_vram_used_mb GPU VRAM used in MB.");
-    let _ = writeln!(out, "# TYPE dockpanel_gpu_vram_used_mb gauge");
+    let _ = writeln!(out, "# HELP arsy_gpu_vram_used_mb GPU VRAM used in MB.");
+    let _ = writeln!(out, "# TYPE arsy_gpu_vram_used_mb gauge");
     for r in &rows {
-        write_gpu_sample(out, "dockpanel_gpu_vram_used_mb", &r.0, &r.1, r.2, r.4);
+        write_gpu_sample(out, "arsy_gpu_vram_used_mb", &r.0, &r.1, r.2, r.4);
     }
-    let _ = writeln!(out, "# HELP dockpanel_gpu_vram_total_mb GPU VRAM capacity in MB.");
-    let _ = writeln!(out, "# TYPE dockpanel_gpu_vram_total_mb gauge");
+    let _ = writeln!(out, "# HELP arsy_gpu_vram_total_mb GPU VRAM capacity in MB.");
+    let _ = writeln!(out, "# TYPE arsy_gpu_vram_total_mb gauge");
     for r in &rows {
-        write_gpu_sample(out, "dockpanel_gpu_vram_total_mb", &r.0, &r.1, r.2, r.5);
+        write_gpu_sample(out, "arsy_gpu_vram_total_mb", &r.0, &r.1, r.2, r.5);
     }
-    let _ = writeln!(out, "# HELP dockpanel_gpu_temperature_celsius GPU temperature in Celsius.");
-    let _ = writeln!(out, "# TYPE dockpanel_gpu_temperature_celsius gauge");
+    let _ = writeln!(out, "# HELP arsy_gpu_temperature_celsius GPU temperature in Celsius.");
+    let _ = writeln!(out, "# TYPE arsy_gpu_temperature_celsius gauge");
     for r in &rows {
         if let Some(v) = r.6 {
-            write_gpu_sample(out, "dockpanel_gpu_temperature_celsius", &r.0, &r.1, r.2, v);
+            write_gpu_sample(out, "arsy_gpu_temperature_celsius", &r.0, &r.1, r.2, v);
         }
     }
-    let _ = writeln!(out, "# HELP dockpanel_gpu_power_draw_watts GPU power draw in Watts.");
-    let _ = writeln!(out, "# TYPE dockpanel_gpu_power_draw_watts gauge");
+    let _ = writeln!(out, "# HELP arsy_gpu_power_draw_watts GPU power draw in Watts.");
+    let _ = writeln!(out, "# TYPE arsy_gpu_power_draw_watts gauge");
     for r in &rows {
         if let Some(v) = r.7 {
-            write_gpu_sample(out, "dockpanel_gpu_power_draw_watts", &r.0, &r.1, r.2, v);
+            write_gpu_sample(out, "arsy_gpu_power_draw_watts", &r.0, &r.1, r.2, v);
         }
     }
 }
@@ -129,10 +129,10 @@ async fn render_sites(out: &mut String, pool: &PgPool) {
         return;
     }
 
-    let _ = writeln!(out, "# HELP dockpanel_site_count Sites grouped by status.");
-    let _ = writeln!(out, "# TYPE dockpanel_site_count gauge");
+    let _ = writeln!(out, "# HELP arsy_site_count Sites grouped by status.");
+    let _ = writeln!(out, "# TYPE arsy_site_count gauge");
     for (status, cnt) in &rows {
-        let _ = write!(out, "dockpanel_site_count{{status=\"");
+        let _ = write!(out, "arsy_site_count{{status=\"");
         push_escaped(out, status);
         let _ = writeln!(out, "\"}} {cnt}");
     }
@@ -147,11 +147,11 @@ fn render_cert_renewals(out: &mut String) {
 
     let _ = writeln!(
         out,
-        "# HELP dockpanel_cert_renewals_total SSL certificate renewal attempts grouped by result."
+        "# HELP arsy_cert_renewals_total SSL certificate renewal attempts grouped by result."
     );
-    let _ = writeln!(out, "# TYPE dockpanel_cert_renewals_total counter");
-    let _ = writeln!(out, "dockpanel_cert_renewals_total{{result=\"success\"}} {success}");
-    let _ = writeln!(out, "dockpanel_cert_renewals_total{{result=\"failure\"}} {failure}");
+    let _ = writeln!(out, "# TYPE arsy_cert_renewals_total counter");
+    let _ = writeln!(out, "arsy_cert_renewals_total{{result=\"success\"}} {success}");
+    let _ = writeln!(out, "arsy_cert_renewals_total{{result=\"failure\"}} {failure}");
 }
 
 async fn render_alerts(out: &mut String, pool: &PgPool) {
@@ -162,14 +162,14 @@ async fn render_alerts(out: &mut String, pool: &PgPool) {
     .await
     .unwrap_or_default();
 
-    let _ = writeln!(out, "# HELP dockpanel_alerts_firing Firing alerts grouped by severity.");
-    let _ = writeln!(out, "# TYPE dockpanel_alerts_firing gauge");
+    let _ = writeln!(out, "# HELP arsy_alerts_firing Firing alerts grouped by severity.");
+    let _ = writeln!(out, "# TYPE arsy_alerts_firing gauge");
     if rows.is_empty() {
         // Publish a zero so scrapers can reliably alert on presence.
-        let _ = writeln!(out, "dockpanel_alerts_firing{{severity=\"none\"}} 0");
+        let _ = writeln!(out, "arsy_alerts_firing{{severity=\"none\"}} 0");
     } else {
         for (severity, cnt) in &rows {
-            let _ = write!(out, "dockpanel_alerts_firing{{severity=\"");
+            let _ = write!(out, "arsy_alerts_firing{{severity=\"");
             push_escaped(out, severity);
             let _ = writeln!(out, "\"}} {cnt}");
         }
@@ -244,9 +244,9 @@ mod tests {
         SSL_RENEWALS_FAILURE.store(2, Ordering::Relaxed);
         let mut out = String::new();
         render_cert_renewals(&mut out);
-        assert!(out.contains("# TYPE dockpanel_cert_renewals_total counter"));
-        assert!(out.contains(r#"dockpanel_cert_renewals_total{result="success"} 7"#));
-        assert!(out.contains(r#"dockpanel_cert_renewals_total{result="failure"} 2"#));
+        assert!(out.contains("# TYPE arsy_cert_renewals_total counter"));
+        assert!(out.contains(r#"arsy_cert_renewals_total{result="success"} 7"#));
+        assert!(out.contains(r#"arsy_cert_renewals_total{result="failure"} 2"#));
         // Reset so other tests don't see lingering state.
         SSL_RENEWALS_SUCCESS.store(0, Ordering::Relaxed);
         SSL_RENEWALS_FAILURE.store(0, Ordering::Relaxed);

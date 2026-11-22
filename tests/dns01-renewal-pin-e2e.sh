@@ -22,7 +22,7 @@
 #       `auto_fix_safe_findings` runs on every security scan with no opt-in.
 #
 #     SHAPE B — a subdomain under a zone wildcard. There is no certificate at
-#       `/etc/dockpanel/ssl/{site.domain}/`, so the guard exits on `has_cert:false`
+#       `/etc/arsy/ssl/{site.domain}/`, so the guard exits on `has_cert:false`
 #       before it ever reads an issuer. The renewal writes an orphan certificate,
 #       the panel re-renders the vhost from `ssl_cert_path` and points nginx BACK
 #       at the un-renewed wildcard, and stamps the NEW certificate's expiry on the
@@ -379,7 +379,7 @@ case "${F_REC%%ifrecord_provenance*}" in
          "it is gated on provenance — a row already stamped http-01 keeps its stale path for ever" ;;
 esac
 has "F6b bound to the directory the HTTP-01 order actually wrote" "$F_REC" \
-    'format!("/etc/dockpanel/ssl/{domain}/fullchain.pem")'
+    'format!("/etc/arsy/ssl/{domain}/fullchain.pem")'
 # ⚠ F6b's literal appears elsewhere in this file. It is sound ONLY because
 # `$F_REC` is a `fnbody` extraction (#672 — a file-scoped `has` asks "does this
 # file contain this shape anywhere", which for ordinary Rust is always yes).
@@ -414,7 +414,7 @@ records_before_rebuild HEAL "$F_HEAL" "build_nginx_body("
 records_before_rebuild SCAN "$F_SCAN" "build_nginx_body("
 
 # ⛔ s393 — REVOKE RE-RENDERS THE VHOST IT JUST STRIPPED. The agent's teardown
-# deletes `/etc/dockpanel/ssl/{domain}/` while the vhost still names it, and
+# deletes `/etc/arsy/ssl/{domain}/` while the vhost still names it, and
 # `nginx -t` is WHOLE-SERVER: every later site edit on the box fails and the next
 # restart leaves nginx down for every tenant. The agent's shared-directory guard
 # does not cover this door — it skips the site's OWN vhost — so a solo site's

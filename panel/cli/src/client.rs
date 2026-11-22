@@ -2,8 +2,8 @@ use std::path::Path;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::UnixStream;
 
-const SOCKET_PATH: &str = "/var/run/dockpanel/agent.sock";
-const TOKEN_PATH: &str = "/etc/dockpanel/agent.token";
+const SOCKET_PATH: &str = "/var/run/arsy/agent.sock";
+const TOKEN_PATH: &str = "/etc/arsy/agent.token";
 
 pub fn load_token() -> Result<String, String> {
     std::fs::read_to_string(TOKEN_PATH)
@@ -19,7 +19,7 @@ async fn agent_request(
 ) -> Result<serde_json::Value, String> {
     if !Path::new(SOCKET_PATH).exists() {
         return Err(format!(
-            "Agent socket not found at {SOCKET_PATH}\nIs dockpanel-agent running? Check: systemctl status dockpanel-agent"
+            "Agent socket not found at {SOCKET_PATH}\nIs arsy-agent running? Check: systemctl status arsy-agent"
         ));
     }
 

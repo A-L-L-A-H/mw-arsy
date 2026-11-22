@@ -18,7 +18,7 @@ pub fn router() -> Router<AppState> {
 }
 
 /// POST /migration/fetch — download a backup archive from a URL into the
-/// `/var/backups/dockpanel/` tree `analyze` already trusts, so an operator no
+/// `/var/backups/arsy/` tree `analyze` already trusts, so an operator no
 /// longer has to SFTP it up first.
 async fn fetch(
     State(_state): State<AppState>,

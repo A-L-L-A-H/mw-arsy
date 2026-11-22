@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to DockPanel will be documented in this file.
+All notable changes to ARSY will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
@@ -60,7 +60,7 @@ own database features.
 
 ### Add: MCP server, session 2 — the full v1 tool catalogue, Settings UI, and a stale-copy fix
 
-Finishes what v2.240.0's scaffold started. `dockpanel-mcp` now ships the complete v1 surface the
+Finishes what v2.240.0's scaffold started. `arsy-mcp` now ships the complete v1 surface the
 design called for, still entirely read-only.
 
 - **37 more tools, 40 total.** One representative list/get pair per resource family — sites, apps,
@@ -80,26 +80,26 @@ design called for, still entirely read-only.
   authenticate requests" on every new/rotated key — untrue since `dp_` keys became first-class, and
   actively wrong advice to anyone minting one for MCP.
 - **Docs**: a new MCP Server guide (setup, bind modes, the full tool table, security notes), and the
-  "3 Rust binaries" claim on README/COMPARISON/dockpanel.dev corrected to 4 (~57 MB total) — stale
+  "3 Rust binaries" claim on README/COMPARISON/moonwitness.dev corrected to 4 (~57 MB total) — stale
   since v2.240.0 shipped the crate itself.
 
 ## [2.240.0]
 
 ### Add: MCP server, session 1 — crate scaffold + audit-attribution fix (read-only tools land in the next release)
 
-The first half of a design for letting an AI agent talk to DockPanel over the Model Context Protocol.
+The first half of a design for letting an AI agent talk to ARSY over the Model Context Protocol.
 This release ships the plumbing, not the feature surface an operator would notice yet:
 
-- **`panel/mcp`**, a 4th standalone crate (`dockpanel-mcp`), following the exact pattern
-  `dockpanel-cli` already uses to talk to the panel API — a `dp_` key over loopback HTTP, read from
-  `/etc/dockpanel/mcp.token`. Built on `rmcp` 3.2.0 (pinned: 2.0.0 fixed a CVSS 7.5 unauthenticated
+- **`panel/mcp`**, a 4th standalone crate (`arsy-mcp`), following the exact pattern
+  `arsy-cli` already uses to talk to the panel API — a `dp_` key over loopback HTTP, read from
+  `/etc/arsy/mcp.token`. Built on `rmcp` 3.2.0 (pinned: 2.0.0 fixed a CVSS 7.5 unauthenticated
   DoS in older releases), Streamable HTTP transport only. Ships 3 read-only tools (`list_sites`,
   `get_security_audit_log`, `get_fleet_dashboard`) to prove the pipeline end to end — the full
   ~40-tool read-only catalogue is next release.
-- **Installed but not enabled.** `setup.sh`/`update.sh` install the `dockpanel-mcp` systemd unit and
+- **Installed but not enabled.** `setup.sh`/`update.sh` install the `arsy-mcp` systemd unit and
   binary; nothing starts it automatically, and there is no settings toggle yet. An operator who wants
-  it today: mint a `dp_` key (Settings → API Keys), save it to `/etc/dockpanel/mcp.token`, then
-  `systemctl enable --now dockpanel-mcp`. nginx proxies `/mcp` (exact match) to it once running.
+  it today: mint a `dp_` key (Settings → API Keys), save it to `/etc/arsy/mcp.token`, then
+  `systemctl enable --now arsy-mcp`. nginx proxies `/mcp` (exact match) to it once running.
   `mcp_server_enabled` and the settings UI land with the tool catalogue.
 - **Audit-attribution fix (the reason this shipped ahead of any UI).** Before this release, an
   action authenticated with a `dp_` key was indistinguishable from a browser session in both audit
@@ -117,7 +117,7 @@ This release ships the plumbing, not the feature surface an operator would notic
 
 ### Fix: Agent binary size register was 1MB stale
 
-`live-surfaces-check.sh` caught it on the v2.239.0 push: the published `dockpanel-agent-linux-amd64`
+`live-surfaces-check.sh` caught it on the v2.239.0 push: the published `arsy-agent-linux-amd64`
 asset is 22.0 MB, not the 21 MB `FEATURES.md`'s Verified Metrics register (and README) had held
 since v2.103.0 — a pre-existing drift, not something this release introduced, made visible because
 Live Surfaces re-runs on every push. Corrected both surfaces to 22 MB.
@@ -139,7 +139,7 @@ push rather than re-derived per call site, so a preview link can never carry a h
 Importing from cPanel, Plesk, or HestiaCP required uploading the archive to the server via SFTP
 first, then pasting the resulting path — the only path `POST /api/migration/analyze` ever accepted.
 It now also accepts a URL: the agent downloads the archive itself into the one subtree it can
-actually write under systemd's sandbox (`/var/backups/dockpanel/migration-fetch/`), then analysis
+actually write under systemd's sandbox (`/var/backups/arsy/migration-fetch/`), then analysis
 proceeds exactly as before. The fetch is SSRF-guarded (the same host check `git_build.rs`'s repo-url
 dialing uses, re-validated independently on the agent side rather than trusted from the panel),
 scheme-restricted to `http(s)://`, and size-capped on both the declared `Content-Length` and the
@@ -154,7 +154,7 @@ landed, so a crash or a cap trip can never be mistaken for a complete archive by
   connection strings comfortably (GH #128).
 - The Git Deploy breadcrumb inside a site now shows the site's real domain instead of the literal
   word "Site" (GH #128).
-- README now disambiguates from the unrelated WPF/WinForms `DockPanel` docking control near the top
+- README now disambiguates from the unrelated WPF/WinForms `ARSY` docking control near the top
   (GH #127).
 
 ## [2.238.0]
@@ -257,7 +257,7 @@ unconditional redaction.
 
 ### Immutable audit trail extended to destructive and privilege-sensitive mutations
 
-DockPanel has always had two logging paths: a general activity log (mutable, no protection against
+ARSY has always had two logging paths: a general activity log (mutable, no protection against
 an `UPDATE`/`DELETE`) and an immutable security audit log (a Postgres trigger blocks `UPDATE`/`DELETE`
 on it, plus an append-only tamper-resistant file). The immutable path was scoped narrowly — login
 events, a handful of security-hardening actions, and Git Deploy protection changes — while every
@@ -293,7 +293,7 @@ filter that decides which of an existing container's binds are still declared co
 string after the first `:`, so a 3-segment Docker bind (`host:container:mode`, e.g. a manually
 `docker update`-added `:ro`) would have its mode suffix bleed into the comparison and the bind would
 be dropped as "unmounted" — re-migrated via a no-op `docker cp` on the next deploy rather than any
-actual data loss. DockPanel itself never writes a 3-segment bind for a git deploy today, so this
+actual data loss. ARSY itself never writes a 3-segment bind for a git deploy today, so this
 was not reachable through normal use. Fixed to compare only the container-path segment regardless
 of what follows it.
 
@@ -308,7 +308,7 @@ priced (six named constraints recorded beside the code that would change), rathe
 this ship builds it.
 
 **What shipped.** A `Persistent Volumes` field on the Git Deploy form — container paths only
-(`/data`, not a host path); DockPanel derives and manages the host location under its own data
+(`/data`, not a host path); ARSY derives and manages the host location under its own data
 directory, mirroring how Docker Apps already bind declared volumes. Takes effect on the next
 deploy.
 
@@ -488,7 +488,7 @@ No DB migration needed — Restic never had persisted schema; its password lived
 
 ### Fixed — the container-policy usage figure was fleet-wide for every caller, and so was deploy-time enforcement
 
-p209's ninth deferred finding, carried since v2.223.0 and re-scoped twice since (most recently v2.228.0's changelog, which framed it as needing new container-ownership attribution). Re-reading the code this session before building anything found that framing was wrong: the attribution primitive already existed. `deploy_app` has stamped a `dockpanel.user.id` Docker label on every container since container policies shipped, and `list_deployed_apps` already read it straight back onto `DeployedApp.user_id` in every `/apps` response — nothing needed a new column or a new migration. Two call sites simply never consulted it:
+p209's ninth deferred finding, carried since v2.223.0 and re-scoped twice since (most recently v2.228.0's changelog, which framed it as needing new container-ownership attribution). Re-reading the code this session before building anything found that framing was wrong: the attribution primitive already existed. `deploy_app` has stamped a `arsy.user.id` Docker label on every container since container policies shipped, and `list_deployed_apps` already read it straight back onto `DeployedApp.user_id` in every `/apps` response — nothing needed a new column or a new migration. Two call sites simply never consulted it:
 
 **`GET /api/container-policies/{user_id}/usage`** summed every container on the entire online fleet, for every caller, regardless of the `user_id` in the path — two different users' policies read back the identical number. It now derives its count from a per-user map built off the same fleet walk.
 
@@ -525,11 +525,11 @@ current source this session before acting on it, per this project's own
 audit-verification standard.
 
 The realistic way this bites is an email changing hands **at the provider**
-rather than at DockPanel — a departed employee's mailbox reassigned to a new
+rather than at ARSY — a departed employee's mailbox reassigned to a new
 hire's fresh Google/GitHub/GitLab account. That new account has a different
 permanent id but the same verified email and the same provider name, and the
 old check would have logged the new person straight into the departed
-employee's dockpanel account and role.
+employee's arsy account and role.
 
 Closed by extending the existing three-way link/reject decision to a fourth
 arm: a matching provider name with a mismatched `oauth_id` now fails closed,
@@ -781,7 +781,7 @@ v2.206.0) found and fixed:
 
 ### Added — the CLI can now restore a backup's DATABASE, not just its files
 
-`dockpanel backup restore` talked only to the local agent, which has no access to
+`arsy backup restore` talked only to the local agent, which has no access to
 the panel's database credentials — an archive containing a database dump could
 never be fully restored from the CLI, only from the panel UI. Closed by wiring up
 `routes/api_keys.rs`'s previously-unwired `dp_`-prefixed API key scaffold
@@ -794,8 +794,8 @@ JWT on every `AuthUser`-gated handler:
   `Claims` shape a login would.
 - New `panel/cli/src/backend_client.rs`: a second CLI client (alongside
   `client.rs`, which talks to the local agent) that talks to the panel API over
-  HTTP — base URL resolved from `/etc/dockpanel/api.env`'s own `LISTEN_ADDR`, the
-  key read from `/etc/dockpanel/backend.token` (root-only, mirrors
+  HTTP — base URL resolved from `/etc/arsy/api.env`'s own `LISTEN_ADDR`, the
+  key read from `/etc/arsy/backend.token` (root-only, mirrors
   `agent.token`'s pattern). `cmd_backup_restore` now prefers this path when a key
   is configured, resolving domain → site id and filename → backup id through the
   panel's own listing endpoints, then following the same async restore + SSE
@@ -855,7 +855,7 @@ against the otherwise-fixed code for the three highest-severity findings.
 
 ### Fixed — the graceful-shutdown watchdog's root cause: no long-lived connection ever watched the shutdown signal
 
-The demo deploy's own `systemctl stop dockpanel-api` triggered the graceful-shutdown watchdog
+The demo deploy's own `systemctl stop arsy-api` triggered the graceful-shutdown watchdog
 (`main.rs::shutdown_signal`, a 20s hard timeout) for the first time in 12 sessions of monitoring — a
 genuine forced exit (`std::process::exit(1)`, systemd `status=1/FAILURE`), not another clean
 non-trigger. Root cause: `axum::serve(...).with_graceful_shutdown(...)` waits for every in-flight
@@ -894,7 +894,7 @@ New pin suite `tests/shutdown-drain-race-pin-e2e.sh` (22 assertions, mutation-te
 
 ### Fixed — batched small-file tail audit: drill timeout, ws revocation, and three unscoped backup-management routes
 
-`dockpanel-fanout` run as 3 structured topics (scheduling-runbooks, observability, fleet-lifecycle)
+`arsy-fanout` run as 3 structured topics (scheduling-runbooks, observability, fleet-lifecycle)
 across the last 14 never-audited files in the `panel/backend/src/{routes,services}` rotation. Found
 and fixed 5 issues, 4 on-menu and 1 off-menu:
 
@@ -941,14 +941,14 @@ throughout).
 
 Continuing the `panel/backend/src/{routes,services}` rotation onto its own standing next candidate
 (`routes/telemetry.rs` + `services/telemetry_collector.rs`, a genuine routes+service pair with zero
-non-cosmetic commits and zero prior memory citations). A `dockpanel-fanout` finder/skeptic/critics pass
+non-cosmetic commits and zero prior memory citations). A `arsy-fanout` finder/skeptic/critics pass
 found and fixed three issues, two on the two-file menu and one off-menu:
 
 - **`GET /api/telemetry/preview` asserted "this is exactly what would be sent" over a `system` block
   built from the agent's full host-fingerprint endpoint** (hostname, OS, kernel, memory, disk, cpu,
   uptime, service list) — but the function that actually POSTs to the configured endpoint,
   `send_pending_events`, never receives an `AgentClient` at all, and sends only
-  `{dockpanel_version, installation_id}`. The false claim existed in two independent places: the
+  `{arsy_version, installation_id}`. The false claim existed in two independent places: the
   backend JSON `note` field and a separately hardcoded footer in the frontend's Preview modal
   (`Telemetry.tsx`). Direction of the error is over-claiming what leaves the box, not a leak — but it
   contradicted the tool's own stated honesty commitment on a privacy-sensitive, opt-in feature, live
@@ -963,7 +963,7 @@ found and fixed three issues, two on the two-file menu and one off-menu:
   email/Slack/Discord/PagerDuty/webhook with no consent. Fixed: the member check now requires
   self-or-managed (`id = $2 OR reseller_id = $2`), mirroring `validate_user_routes`.
 - **(setup critic, defense-in-depth) the agent's `remove_database` force-removed a container (with
-  volumes) by id with no check that it actually carries `dockpanel.managed=true`** — unlike its
+  volumes) by id with no check that it actually carries `arsy.managed=true`** — unlike its
   sibling `require_managed()`/`is_managed_labels()` in `docker_apps.rs` (v2.15.0), which this module
   never had. Every current caller of `DELETE /databases/{cid}` sources `container_id` from the panel's
   own DB row (written once, from this module's own create response, never from user input), so this is
@@ -982,7 +982,7 @@ green throughout.
 project, but its own exhaustion status had never been directly re-verified the way the agent crate
 (v2.215.0) and `panel/cli/src` (v2.216.0) both have been. A LOC-rank + two-direction pre-selection check
 (git-log + memory-mention grep, filtering out a cosmetic mass-commit that touches nearly every backend
-file) surfaced five files with genuinely zero prior dedicated scrutiny. A full `dockpanel-fanout`
+file) surfaced five files with genuinely zero prior dedicated scrutiny. A full `arsy-fanout`
 finder/skeptic/critics run found 4 real, independently-verified defects across those files, plus one
 off-menu completeness-critic find in `databases.rs`.
 
@@ -1032,34 +1032,34 @@ of the 5 touched source files: all 21 fix-assertions red pre-fix, all 4 controls
 
 Direct continuation of v2.215.0: `db.rs`, `backup.rs`, and `iac.rs` were the 3 files that session's
 finder excluded from `panel/cli/src`'s fanout, reasoning "already partially checked at v2.197.0" — true
-only for one narrow bug class (plaintext DB passwords in argv). A full `dockpanel-fanout` finder/skeptic/
+only for one narrow bug class (plaintext DB passwords in argv). A full `arsy-fanout` finder/skeptic/
 critics run this session found 7 real, independently-verified defects across those 3 files plus one
 off-menu completeness-critic find in the agent crate.
 
-**`dockpanel backup verify --type database` always attempted a Postgres restore, regardless of the
+**`arsy backup verify --type database` always attempted a Postgres restore, regardless of the
 database's real engine.** `db_type` was hardcoded to `"postgres"` with no `--db-type` flag to override
 it, so a mysql/mariadb backup could never be successfully verified through the CLI — it would always
 misdispatch to the Postgres restore path and report the backup FAILED, even when it was fine. Fixed:
-`dockpanel backup verify` now takes `--db-type` (default `postgres`, for backward compatibility).
+`arsy backup verify` now takes `--db-type` (default `postgres`, for backward compatibility).
 
-**`dockpanel backup health` miscounted "site backups" by folding in every other backup subsystem's own
-root.** The top-level walk under `/var/backups/dockpanel` treated `databases/`, `volumes/`,
+**`arsy backup health` miscounted "site backups" by folding in every other backup subsystem's own
+root.** The top-level walk under `/var/backups/arsy` treated `databases/`, `volumes/`,
 `wp-snapshots/`, `snapshots/`, `.staging/`, `.snapshot-staging/`, and an unrelated ops `db/` dump
 directory as if each were a site's own backup folder — live-reproduced on this box as ~9x the real file
 count and ~50000x the real size. Fixed: the walk now excludes every known non-site subsystem root and
 any dotfile/dotdir.
 
-**`dockpanel apply` silently dropped an exported file's firewall rules.** `cmd_export`'s own output
+**`arsy apply` silently dropped an exported file's firewall rules.** `cmd_export`'s own output
 includes a `firewall` section, but `cmd_apply` never read it at all — no create, no warning, nothing. An
 operator editing firewall rules in the file and re-applying got total silent no-op. Fixed: `apply` now
-warns when the file names firewall rules, naming `dockpanel security firewall` as the actual way to
+warns when the file names firewall rules, naming `arsy security firewall` as the actual way to
 manage them (full reconciliation is out of scope here — this is honesty, not a new feature).
 
-**`dockpanel apply` silently no-op'd `ssl: true` when no `--email` was given** — the site-creation line
+**`arsy apply` silently no-op'd `ssl: true` when no `--email` was given** — the site-creation line
 still printed a bare success tick as if SSL had been handled. Fixed: prints a warning naming what to
 re-run with.
 
-**`dockpanel apply --dry-run` always reported every cron job as "to create,"** even when byte-identical
+**`arsy apply --dry-run` always reported every cron job as "to create,"** even when byte-identical
 to what's already scheduled — the one resource type that DOES reconcile on a real apply (`/crons/sync`
 replaces every id it's given), so the dry-run plan was actively wrong, not just incomplete. Fixed: the
 dry-run plan now diffs against `/iac/export`'s own current-state cron list, same source every other
@@ -1093,11 +1093,11 @@ New pin suite `tests/cli-io-crate-audit-pin-e2e.sh`, 19 assertions, mutation-tes
 Fresh audit rotation. The `panel/agent/src/{routes,services}` pool (79 files) is now exhausted of
 substantive never-primaried candidates — every remaining file carries real prior scrutiny, confirmed
 via a fresh two-direction pre-selection check this session. Pivoted to `panel/cli/src`, the gate's own
-named-but-never-fully-checked candidate pool: a `dockpanel-fanout` against the command files that had
+named-but-never-fully-checked candidate pool: a `arsy-fanout` against the command files that had
 never had a dedicated finder/skeptic pass (`main.rs`, `apps.rs`, `status.rs`, `sites.rs`, `security.rs`,
 `client.rs`, `ssl.rs`, `php.rs`, `logs.rs`).
 
-**`dockpanel security`, `security firewall`, and `security scan` all read field names the agent's
+**`arsy security`, `security firewall`, and `security scan` all read field names the agent's
 structs never had.** Every read resolved to `unwrap_or(default)`, so the bug was silent — no error, no
 panic, just "unknown"/"disabled"/blank output on a box where firewalld and fail2ban were genuinely
 active. `firewall_status`/`fail2ban_status` (strings) should have been `firewall_active`/
@@ -1113,7 +1113,7 @@ two dead SSL/scan-date lines replaced with `ssh_root_login`/`ssh_password_auth` 
 struct already carries for exactly this purpose. Read-only display paths only; the mutating
 `firewall add`/`remove` commands were already correct and untouched.
 
-**Off-menu, completeness-critic-found: `dockpanel backup list <domain>` always printed CREATED as
+**Off-menu, completeness-critic-found: `arsy backup list <domain>` always printed CREATED as
 `-`.** `commands/backup.rs`'s `cmd_backup_list` read `b["created"]`; the agent's `BackupInfo` struct has
 `created_at`, never `created` — and the same file's two sibling functions (`cmd_db_backup_list`,
 `cmd_vol_backup_list`) already read `created_at` correctly, so this was the one call site that never
@@ -1204,7 +1204,7 @@ silently configure the firewall nobody is using. Fixed: check `firewall-cmd --st
 
 **Also reviewed and resized, not fixed this session** (both required a decision this project's own
 gates call for before rushing a fix or a code change):
-- The `dockpanel-db-{name}` per-site container-naming gap was re-investigated and found much larger
+- The `arsy-db-{name}` per-site container-naming gap was re-investigated and found much larger
   than previously recorded — the deterministic name is independently reconstructed at 14+ call
   sites across both the backend and agent crates, not a single-file fix. Resized in the tech-debt
   ledger; needs its own dedicated session.
@@ -1219,7 +1219,7 @@ gates call for before rushing a fix or a code change):
 
 ### Fixed — CMS one-click installers had no timeout on any spawn, two frameworks silently mangled certain passwords, and neither downloaded artifact was integrity-checked
 
-From this session's `dockpanel-fanout` audit of `services/cms.rs` + `routes/cms.rs` — a genuine
+From this session's `arsy-fanout` audit of `services/cms.rs` + `routes/cms.rs` — a genuine
 LOC-ranked rotation pick (never previously a PRIMARY fan-out target), reached only after 32 other
 candidates across `panel/agent/src/{routes,services}` were checked and disqualified by the
 two-direction pre-selection check (in-file citation grep + memory-mention grep), the most
@@ -1324,7 +1324,7 @@ call, then reconfirmed red pre-fix / green post-fix).
 
 ### Fixed — image/SBOM scanner installers trusted a moving target; a timed-out scan could outlive its own timeout; fresh CMS installs left DB credentials world-readable
 
-From the s457 `dockpanel-fanout` audit of `services/image_scanner.rs` + `routes/image_scan.rs` —
+From the s457 `arsy-fanout` audit of `services/image_scanner.rs` + `routes/image_scan.rs` —
 a route/service pair never previously the PRIMARY target of a fan-out, picked via LOC-ranking
 over the remaining unaudited `panel/agent/src/{routes,services}` files.
 
@@ -1374,8 +1374,8 @@ pre-existing `chown` untouched — correctly stayed green).
 
 ### Fixed — six sites could hand a git-deployed site's `.git` to www-data on clone/sync/import; the flagship backup-restore path left every restored site root-owned and unwritable
 
-From the s456 `dockpanel-fanout` audit of the `.git`-blind recursive chown bug class — a
-standing carry since s377, escalated to "recommend its own dedicated dockpanel-fanout rep" in
+From the s456 `arsy-fanout` audit of the `.git`-blind recursive chown bug class — a
+standing carry since s377, escalated to "recommend its own dedicated arsy-fanout rep" in
 this project's own tech-debt ledger and left unaddressed across five more sessions until this
 one closed it directly.
 
@@ -1413,22 +1413,22 @@ correctly stayed green as positive controls on untouched invariants).
 
 ### Fixed — database-container network reconcile could silently orphan unrelated tenants' databases; a non-admin site owner could OOM-kill the shared agent with one file download
 
-From the s455 `dockpanel-fanout` audit of `panel/agent/src/services/database.rs` +
+From the s455 `arsy-fanout` audit of `panel/agent/src/services/database.rs` +
 `panel/agent/src/routes/database.rs` — the direct follow-up on this project's own s297 UNBUILT
 flag ("database.rs never audited"), which s454's fan-out had just found was invisible to the
 rotation's own selection bookkeeping.
 
-**`reconcile_network_icc()` — the one-time migration that hardens the shared `dockpanel-db`
+**`reconcile_network_icc()` — the one-time migration that hardens the shared `arsy-db`
 bridge (disables inter-container communication) for installs whose network predates that
 default — aborted on the FIRST reconnect failure**, and by that point the network had already
 been torn down and recreated: every container later in the batch than the failure was left with
 **zero network attachment**, silently taking their published `127.0.0.1` port bindings offline —
 a live database outage for tenants who had nothing to do with whichever request triggered the
 reconcile, with no server-side record of which containers were left orphaned. Live-proven against
-a real, fully disposable Docker network (never the shared `dockpanel-db`): two real containers
+a real, fully disposable Docker network (never the shared `arsy-db`): two real containers
 straddling a deliberately-unconnectable id both now end up reconnected, and the aggregated error
 names every container that actually failed. Prospective on this box today — no legacy
-(pre-hardening) `dockpanel-db` network currently exists — but real and deterministic in the code
+(pre-hardening) `arsy-db` network currently exists — but real and deterministic in the code
 for any install that hasn't yet run this one-time reconcile.
 
 **`GET /files/{domain}/download` read an entire file into memory before sending a single response
@@ -1449,15 +1449,15 @@ memory use becomes constant regardless of file size, so no arbitrary download ca
 mutation-tested via whole-tree `git stash` — 10/11 correctly failed against pre-fix code, the
 11th a positive control on an untouched sibling function), plus a live Docker-backed regression
 test for the reconcile fix (creates two real disposable containers and a disposable network,
-never the real `dockpanel-db`).
+never the real `arsy-db`).
 
 ## [2.208.0]
 
 ### Fixed — security surface: SSH `Include` drop-ins ignored (live wrong port reported), firewalld-only boxes 424 on firewall rule changes, RHEL auth-log blindness, and a shell quote-splitting bypass in git-deploy hook validation
 
-From the s454 `dockpanel-fanout` audit of `panel/agent/src/services/security.rs` +
+From the s454 `arsy-fanout` audit of `panel/agent/src/services/security.rs` +
 `panel/agent/src/routes/security.rs` (picked as this session's rotation target per
-[[feedback_dockpanel_audit_scope]]'s pre-selection check, after `compose.rs`,
+[[feedback_arsy_audit_scope]]'s pre-selection check, after `compose.rs`,
 `diagnostics.rs`, `database.rs`, `migration.rs`, `command_filter.rs`, `ownership.rs`,
 `wordpress.rs`, `backup_drill.rs`/`backup_verify.rs` and `php.rs` were all disqualified
 by real prior-scrutiny history).
@@ -1509,9 +1509,9 @@ box today (zero git-deploy configs have a `post_deploy_cmd` set).
 
 ### Fixed — site backup/restore: 9 more orphan-on-timeout subprocess sites, two defence-in-depth archive-parsing guards, a silent-failure Restic endpoint, and a `.git`-blind chown
 
-From the s453 `dockpanel-fanout` audit of `panel/agent/src/services/backups.rs` +
+From the s453 `arsy-fanout` audit of `panel/agent/src/services/backups.rs` +
 `panel/agent/src/routes/backups.rs` (picked as this session's rotation target per
-[[feedback_dockpanel_audit_scope]]'s pre-selection check — zero in-file citations, and
+[[feedback_arsy_audit_scope]]'s pre-selection check — zero in-file citations, and
 the file's only two prior memory touches were narrow single-bug sweeps, never a
 PRIMARY finder/skeptic pass).
 
@@ -1536,7 +1536,7 @@ calls this lane), but cheap to close before it ever gets a UI.
 **Two archive-parsing guards, both defence-in-depth (no reachable attack path found —
 both require an attacker to already have direct filesystem write access to a site's
 backup directory, which exceeds what either bug alone would grant):**
-a hand-crafted archive whose top-level `.dockpanel-backup` payload member is itself a
+a hand-crafted archive whose top-level `.arsy-backup` payload member is itself a
 symlink was extracted and read through without complaint; `extract_payload` now refuses
 when that member resolves to a symlink instead of a real directory. A restored
 `manifest.json`'s `file` field (JSON inside the archive) was joined onto the dump
@@ -1568,7 +1568,7 @@ the tree's root directory bit stays `0700` continuously from first boot.
 
 5 new unit tests (2 for the archive-parsing guards, mutation-tested), 12 new pin
 assertions (9 kill_on_drop sites + the `.git`-skip chown, `tests/timeout-orphan-kill-on-drop-pin-e2e.sh`
-29 → 41). See `project_dockpanel_tech_debt_p192` for the full account, including the
+29 → 41). See `project_arsy_tech_debt_p192` for the full account, including the
 UPHELD/RESIZED verdicts on every finding and the carried debt (per-domain Restic
 passwords, the dangling-symlink-on-failed-restore residue, the remaining 7 `.git`-blind
 chown sites, a pin-coverage gap for the permission-timing invariant).
@@ -1577,8 +1577,8 @@ chown sites, a pin-coverage gap for the permission-timing invariant).
 
 ### Fixed — WordPress toolkit: hardening checks could grade a config "pass" while it was actually insecure, and every wp-cli/tar subprocess in the file could be orphaned by a timeout
 
-From the s452 `dockpanel-fanout` audit of `panel/agent/src/services/wp_vulnerability.rs`
-(picked as this session's rotation target per [[feedback_dockpanel_audit_scope]]'s
+From the s452 `arsy-fanout` audit of `panel/agent/src/services/wp_vulnerability.rs`
+(picked as this session's rotation target per [[feedback_arsy_audit_scope]]'s
 pre-selection check, after `deploy.rs` and `ssl.rs` — both zero in-file citations —
 turned out to carry substantial undocumented prior scrutiny under the "zero mentions"
 heuristic).
@@ -1636,9 +1636,9 @@ agent, the same pattern already fixed in `backup_orchestrator.rs`.
 
 ### Fixed — a timed-out database restore or mailbox restore could keep writing after the panel reported failure
 
-From the s451 `dockpanel-fanout` audit of `panel/agent/src/services/database_backup.rs`
+From the s451 `arsy-fanout` audit of `panel/agent/src/services/database_backup.rs`
 (the first PRIMARY pass over this file), rotation-picked per
-[[feedback_dockpanel_audit_scope]] after v2.204.0's own new pin suite was
+[[feedback_arsy_audit_scope]] after v2.204.0's own new pin suite was
 found to falsely claim this file was already covered.
 
 **5 of the file's 6 privileged dump/restore functions never set
@@ -1682,7 +1682,7 @@ mutation-tested. `cargo test`: agent 299/0/4-ignored, backend 473/0
 
 ### Fixed — NodeSource/Cloudflared repo cleanup left trust behind on every routine uninstall, and six timed-out privileged operations could orphan past their deadline
 
-From the s450 `dockpanel-fanout` audit of `panel/agent/src/services/pkg.rs`
+From the s450 `arsy-fanout` audit of `panel/agent/src/services/pkg.rs`
 (the package-manager abstraction behind every `apt-get`/`dnf`/`yum`
 operation the agent runs as root) — the first PRIMARY pass over this file.
 
@@ -1721,7 +1721,7 @@ of `clone_or_pull`), `backups.rs` (the staged `tar czf`), and
 `pkg.rs`'s own `systemd-run --wait`-backed timeout is a related but harder
 problem — proven live that killing the local waiting client has no effect
 on the remote transient unit it started — and is carried forward as sized
-tech debt rather than fixed in this pass; see `project_dockpanel_tech_debt`
+tech debt rather than fixed in this pass; see `project_arsy_tech_debt`
 for the account.
 
 ## [2.203.0]
@@ -1729,7 +1729,7 @@ for the account.
 ### Fixed — repair-walk TOCTOU, manual-prune data loss, auto-healer mid-recreate race, and 4 more from the docker_apps.rs carry list (E–I)
 
 The E–I sized carries from the s446 `docker_apps.rs` fan-out
-(`project_dockpanel_tech_debt_p185`/`p186`), picked up after last session's
+(`project_arsy_tech_debt_p185`/`p186`), picked up after last session's
 fresh-VPS drive verified the fix list's own prerequisite (carry J, GitHub
 #110).
 
@@ -1754,13 +1754,13 @@ pointing at it, not just the one inside the volume.
 **E — the manual "prune unused images" button could delete git-deploy
 rollback images and snapshots with no way to get them back.** `docker image
 prune -af` widens the sweep from dangling (untagged) images to every image
-not backing a running container — including `dockpanel-git-<name>:<hash>`
+not backing a running container — including `arsy-git-<name>:<hash>`
 (the rollback target `deploy_or_update` falls back to, with no pull
-fallback) and `dockpanel-snapshot:*` (manual operator snapshots). The
+fallback) and `arsy-snapshot:*` (manual operator snapshots). The
 project's own unattended-reclaim path already forbids `-a` for exactly this
 reason (pin C4); this was the one door that didn't. Fixed to mirror the
 scoped reclaim exactly — no `-a`, plus the same
-`label!=dockpanel.managed=true` filter.
+`label!=arsy.managed=true` filter.
 
 **G — none of the three recreate doors (Update/change-image/edit-env)
 recorded an expected stop, so the 120s auto-healer could revive a container
@@ -1853,13 +1853,13 @@ backend 1, cli 0).
 `safe_cmd.rs`'s `DockerEnvFile` (the 0600 `--env-file` credential guard
 v2.201.0 shipped) and the older `Capture` (systemd-run stdout/stderr
 staging) both write under the hardcoded production path
-`/var/lib/dockpanel/run`. Their tests call that same code directly, so on
+`/var/lib/arsy/run`. Their tests call that same code directly, so on
 GitHub Actions' unprivileged runner — which cannot `create_dir_all` under
 `/var/lib` — 4 `DockerEnvFile` tests have failed with `PermissionDenied` on
 every push since v2.201.0's release, silently, because the CI run that
 introduced the bug wasn't followed by a session that checked CI status
 before its next push. Not a production defect: this box (and every real
-install) runs the agent as root with `/var/lib/dockpanel` already present,
+install) runs the agent as root with `/var/lib/arsy` already present,
 so nothing shipped was ever broken. Fixed with a `capture_dir()` resolver
 that returns the real path in production and a scratch temp directory
 under `cfg!(test)` — using the `cfg!()` macro rather than a `#[cfg(test)]`
@@ -1873,8 +1873,8 @@ Verified both ways: `cargo test` (debug, matching CI) and `cargo test
 
 ### Fixed — docker_apps.rs fan-out: 4 findings fixed (Update/change-image/edit-env, env mask, registry pulls, remove_image)
 
-`dockpanel-fanout` against `panel/agent/src/{routes,services}/docker_apps.rs` (the
-standing top candidate named in `feedback_dockpanel_audit_scope` — the single
+`arsy-fanout` against `panel/agent/src/{routes,services}/docker_apps.rs` (the
+standing top candidate named in `feedback_arsy_audit_scope` — the single
 largest file in the agent crate, 86 all-time commits, and the file behind
 GitHub #110). The surface turned out to be admin-only end to end (45/46
 backend handlers `require_admin`, no app-ownership predicate exists anywhere),
@@ -1886,7 +1886,7 @@ container vanished, leaving only its bind-mounted data behind.** All three
 agent handlers ran the recreate inline on the request's own connection task,
 and two of the three matching backend handlers (`update_env`, `update_image`)
 did the same rather than spawning like `update_app` already did.
-demo.dockpanel.dev is Cloudflare-proxied with a ~100s origin budget, well
+demo.moonwitness.dev is Cloudflare-proxied with a ~100s origin budget, well
 inside the 900s these calls are allowed to take, so this was routine rather
 than rare. Fixed by wrapping every one of the five calls in
 `tokio::spawn(...).await` — the spawned task now outlives a dropped
@@ -1905,7 +1905,7 @@ route's mask condition.
 **Registry login was inert for every panel-initiated image pull.**
 `GET /apps/registries` read a hardcoded `/root/.docker/config.json`, while
 every `docker` CLI call (including `docker login`) runs with
-`DOCKER_CONFIG=/var/lib/dockpanel/docker` — so the panel's "Configured
+`DOCKER_CONFIG=/var/lib/arsy/docker` — so the panel's "Configured
 registries" list was always empty, and separately, all four production
 `create_image` pulls (template deploy, app update, change-image, compose
 deploy) always passed `credentials: None`, so a private-image deploy failed
@@ -1922,8 +1922,8 @@ matching the existing sibling validator on `change-image`'s `image` field.
 
 ### Security — agent-crate fan-out: 2 findings, both fixed
 
-`dockpanel-fanout`'s first PRIMARY run against `panel/agent/src/{routes,services}`
-(81 files, ~52K LOC — the standing gap named in `feedback_dockpanel_audit_scope`;
+`arsy-fanout`'s first PRIMARY run against `panel/agent/src/{routes,services}`
+(81 files, ~52K LOC — the standing gap named in `feedback_arsy_audit_scope`;
 every prior rotation had only ever picked candidates from `panel/backend`). Two
 findings, both confirmed live before shipping.
 
@@ -2125,7 +2125,7 @@ mutation.
 
 ### Fixed — escalation-policy notification-relay abuse; agent-side git-clone SSRF/DNS-rebind gap; secrets masking panic
 
-Three findings from a fresh `dockpanel-fanout` round targeting
+Three findings from a fresh `arsy-fanout` round targeting
 `auth.rs`/`secrets.rs`/`files.rs`/`git_deploys.rs`/`databases.rs`, plus two
 new-surface finds its completeness and setup critics surfaced outside that
 menu:
@@ -2201,7 +2201,7 @@ decrypted into wrong bytes. A backup encrypted before this fix has no tag;
 it is detected by the trailer's absence and still decrypts, unauthenticated,
 for backward compatibility.
 
-`dockpanel db create` and `dockpanel backup db-create` took the database's
+`arsy db create` and `arsy backup db-create` took the database's
 root/admin password as a required `--password <VALUE>` clap flag (CWE-214):
 visible to any local user via `ps`/`/proc/<pid>/cmdline` for the life of the
 process, and left behind in shell history. `--password` still works
@@ -2238,9 +2238,9 @@ on any account whose current role is `admin`, other than the caller's own.
 minting a new account can't hand over an existing one, and clearing a 2FA
 factor doesn't by itself grant sign-in — it remains the only recovery path
 for an administrator who has lost both their authenticator and their
-recovery codes. Found by a `dockpanel-fanout` completeness-critic pass while
+recovery codes. Found by a `arsy-fanout` completeness-critic pass while
 auditing sibling tenant-scoping fixes from the same arc; not currently
-exploitable on demo.dockpanel.dev (only one admin account exists there
+exploitable on demo.moonwitness.dev (only one admin account exists there
 today).
 
 ## [2.195.0]
@@ -2259,7 +2259,7 @@ reject a leading `-`, matching `is_valid_image_ref`'s existing behavior for
 the same threat class. All four are DiD-only (admin-authority endpoints;
 `safe_command`'s `.args()` already rules out shell injection) — named
 alongside the (now closed) `on_call`/`escalation_policies` tenant-scoping fix
-in `project_dockpanel_tech_debt_p4`'s long-standing carry list.
+in `project_arsy_tech_debt_p4`'s long-standing carry list.
 
 ## [2.194.0]
 
@@ -2276,7 +2276,7 @@ cron/systemd-unit overwrite, not merely a stray file write. All three now
 call `is_valid_domain` first, matching the other 25 handlers in the file.
 
 `remote_backup.rs`'s `upload()` gated the backup filepath with a lexical
-`starts_with()` check that `/var/backups/dockpanel/../../etc/shadow`
+`starts_with()` check that `/var/backups/arsy/../../etc/shadow`
 satisfies — the OS resolves the `..` on open. `ProtectSystem=strict` blocks
 writes outside the agent's allowlist but not reads, so this would have been
 arbitrary root-readable-file exfiltration (shadow, Let's Encrypt private
@@ -2626,7 +2626,7 @@ the disabled guard, then green against the restored one.
 The endpoint was a flat, unscoped `SELECT * FROM volume_backups` gated only
 by `AdminUser` — no `server_id`/`user_id` filter at all — unlike its sibling
 `list_db_backups`, which has always scoped by the caller's own sites. Any
-admin account (DockPanel supports more than one; any admin can promote
+admin account (ARSY supports more than one; any admin can promote
 another user to `role='admin'`, a routine action) could see every other
 admin's container/volume names, filenames, sizes, sha256 hashes, timestamps,
 and server IDs on their own dashboard. Confidentiality-only — the restore
@@ -2808,7 +2808,7 @@ recreate path (image change, env edit, blue-green update) now re-attaches that n
 reasserts the client env var, so an update can never silently strand the app back on the
 default bridge. Portainer stays withdrawn permanently: its core purpose needs write-level
 Docker API access that a safe proxy cannot grant without reopening most of the original risk,
-and it is largely redundant with DockPanel's own native Docker Apps management page. Catalogue:
+and it is largely redundant with ARSY's own native Docker Apps management page. Catalogue:
 146 → 147. Filed and tracked on #125.
 
 ## [2.178.0]
@@ -2825,7 +2825,7 @@ weekly Template Census's start/respond check never caught it the way Dozzle's cr
 The same policy is enforced independently at the Compose-stack level too — both the backend's
 YAML validation and the agent's resolved-path check block a socket mount there as well, plus
 host-root and a few other sensitive paths — so there is no supported way to run a
-Docker-socket-dependent tool through DockPanel at all. Both templates are withdrawn from the
+Docker-socket-dependent tool through ARSY at all. Both templates are withdrawn from the
 catalogue (148 → 146) rather than left broken, or granted an escape hatch that would reverse a
 deliberate security decision.
 
@@ -2839,7 +2839,7 @@ was found to be reading a key nothing ever wrote. That fix documented `encryptio
 deadness at three call sites; `encryption_enabled` had zero readers, zero writers, and no
 comment anywhere, and rode along unexamined through both that fix and a second pass on this
 table, because nothing named it as a thing to check. It's harmless today (0 backup
-destinations configured on demo.dockpanel.dev, so nothing could have gated on it) — DockPanel
+destinations configured on demo.moonwitness.dev, so nothing could have gated on it) — ARSY
 encrypts per-policy (`backup_policies.encrypt`), with one key derived from the process JWT
 secret, never per-destination, so neither column was ever going to be wired to anything. Now
 documented directly above the `BackupDestination` struct, the same defence already used for
@@ -3087,7 +3087,7 @@ needs — `status_page_components`, the monitors joined into them,
 `managed_incidents`, `incident_updates`, and the legacy monitor-based
 `incidents` table — with **no tenant filter at all**. On a single-tenant box
 this is invisible: the one config row is the only data there is to leak. On
-any multi-tenant or reseller install — DockPanel's stated target market, with
+any multi-tenant or reseller install — ARSY's stated target market, with
 `teams`, `resellers` and `reseller_dashboard` all built for exactly that — a
 second tenant's components and incident history would be served on the
 FIRST tenant's public page the moment that second tenant configured and
@@ -3137,7 +3137,7 @@ resource listing" — are CRUD-only and authenticate nothing. All 6 handlers
 (token create/list/delete, `tf_list_sites`, `tf_list_databases`, and the 4
 autoscale handlers sharing this file) take only `AuthUser` (JWT);
 `iac_tokens.token_hash` is written once at creation and read back by no code
-path anywhere in the tree — confirmed live against `demo.dockpanel.dev`, a
+path anywhere in the tree — confirmed live against `demo.moonwitness.dev`, a
 real token 401s identically to a garbage string. The module's own doc
 comment claimed "Authentication via IaC tokens (Bearer token) or regular
 JWT" and named `dns_records` as a resource; neither was ever true — no
@@ -3225,7 +3225,7 @@ mode is refused up front on such a server rather than silently falling back.
 
 Dovecot 2.4 rewrote its settings file format with no compatibility mode: a
 2.3-style config fails `dovecot -n` outright rather than degrading. The
-generated `/etc/dovecot/conf.d/99-dockpanel.conf` used the pre-2.4 syntax
+generated `/etc/dovecot/conf.d/99-arsy.conf` used the pre-2.4 syntax
 unconditionally, so on any distro shipping Dovecot 2.4+ (Debian 13 ships
 2.4.1), the mail installer wrote a config Dovecot immediately refused to
 load, and the mail server never started (reported in #124).
@@ -3437,7 +3437,7 @@ mapped like every other surface.
 The manual/scheduled renewal door's foreign-certificate guard checked
 `site.domain`, but a DNS-01 renewal orders against `subject` — the Cloudflare
 zone apex for a wildcard, recorded at issuance — never `site.domain`. The
-agent resolves the status check to a literal `/etc/dockpanel/ssl/<domain>/`,
+agent resolves the status check to a literal `/etc/arsy/ssl/<domain>/`,
 and a wildcard child typically has no directory of its own there, so the guard
 always answered "no certificate here" regardless of what actually sat at the
 zone apex about to be overwritten. A foreign wildcard certificate installed at
@@ -3458,7 +3458,7 @@ now runs the same auto-fix pass the scheduled one does.
 ### Added — a way past a foreign-certificate refusal, from the panel itself
 
 Provisioning over a certificate this product did not issue has refused since
-2.162.0, correctly — but the only way past it was `dockpanel ssl provision
+2.162.0, correctly — but the only way past it was `arsy ssl provision
 --force` on the CLI, with the panel's own *Provision SSL* button offering no
 path forward at all. The agent's refusal was always labelled; nothing between
 it and the browser carried the label past a sentence. It now does, end to end,
@@ -3471,7 +3471,7 @@ and the panel shows the refusal with the certificate's issuer and an explicit
 ### Security — every ACME order now asks whose certificate it is about to replace
 
 `provision_cert` writes `fullchain.pem` and `privkey.pem` into
-`/etc/dockpanel/ssl/<domain>/` unconditionally, so an ACME order aimed at a
+`/etc/arsy/ssl/<domain>/` unconditionally, so an ACME order aimed at a
 domain that already carries somebody else's certificate does not refresh it — it
 **destroys** it. A purchased wildcard, a Cloudflare Origin CA certificate, a
 corporate PKI certificate: replaced with a ninety-day Let's Encrypt one, and for
@@ -3481,8 +3481,8 @@ leaves neither.
 Twenty-six reachable paths in this product order a certificate. **Three of them
 asked.** The rest — Compose stack create, update and rollback; template-app and
 Git deploys, including the unattended rollback watchdog and the scheduled and
-webhook deploys; `dockpanel ssl provision`, `dockpanel sites create --ssl` and
-both halves of `dockpanel apply`; and the panel's own *Provision SSL* button —
+webhook deploys; `arsy ssl provision`, `arsy sites create --ssl` and
+both halves of `arsy apply`; and the panel's own *Provision SSL* button —
 did not. The census that was supposed to enumerate them had been short twice.
 
 **The question is now asked where all twenty-six converge**, inside the two
@@ -3493,7 +3493,7 @@ proceeds: no certificate on disk, an unreadable file or an issuer the parser
 cannot produce are all "not proven foreign", because refusing on doubt is how a
 real certificate lapses and a site goes dark.
 
-`dockpanel ssl provision --force` replaces one deliberately, after the refusal
+`arsy ssl provision --force` replaces one deliberately, after the refusal
 has named the issuer that would be lost.
 
 The worst case this closes is the DNS-01 wildcard door, whose write target is the
@@ -3526,7 +3526,7 @@ marked as such.
 
 ### Fixed — the Certificates page can finally do something about a stack's certificate
 
-The page rendered *"Not managed here"* over a certificate DockPanel had issued
+The page rendered *"Not managed here"* over a certificate ARSY had issued
 and, since 2.161.0, renews every week. Both of its controls address a site, and a
 stack has no site row. Stack rows now carry a **Renew** button with a route that
 can reach them, guarded by the same mode and issuer checks as the scheduled
@@ -3552,11 +3552,11 @@ unconditionally. A stack edited more often than every ninety days therefore neve
 lapsed by accident, and one left alone lapsed with certainty.
 
 It was not silent, which made it worse. The agent's weekly walk of
-`/etc/dockpanel/ssl` **did** raise a critical `ssl_expiry` finding naming the
+`/etc/arsy/ssl` **did** raise a critical `ssl_expiry` finding naming the
 domain — and the operator then met two dead ends: remediation text pointing at
 the Sites panel, where the certificate is not, and a Diagnostics **Fix** button
-that answered *"this is a certificate DockPanel does not manage"* about a
-certificate DockPanel itself had issued.
+that answered *"this is a certificate ARSY does not manage"* about a
+certificate ARSY itself had issued.
 
 **What now happens.** The weekly security scan — the only automatic renewal on a
 stock install, since auto-healing is opt-in and seeded off — resolves a finding
@@ -3568,7 +3568,7 @@ published port. A failure raises an alert that a later success **clears**.
 **What it will not touch.** A stack serving a registered certificate is declined:
 its certificate is the operator's own and lives outside the per-domain tree. And
 as at every other renewal door, the installed certificate's **issuer** is checked
-first — a certificate DockPanel did not issue is never replaced, however the
+first — a certificate ARSY did not issue is never replaced, however the
 database describes the stack. A certificate whose issuer cannot be read is still
 renewed, because refusing on doubt would let a real certificate lapse.
 
@@ -3576,7 +3576,7 @@ renewed, because refusing on doubt would let a real certificate lapse.
 
 The "who claims this domain" lookup behind that refusal knew about mail domains,
 Git deploys and Docker apps, but not Compose stacks, so a stack's domain fell
-through to the sentence reserved for certificates from outside DockPanel. Stacks
+through to the sentence reserved for certificates from outside ARSY. Stacks
 now join that list, matched case-insensitively like every other reader of the
 column. A stack serving a registered certificate gets its own sentence: the
 expiring file is a leftover, nothing serves it, and removing it is safe.
@@ -3835,7 +3835,7 @@ survived in both directions at once.
 The config importer defaulted `alert_backup_failure`, `alert_ssl_expiry` and
 `alert_service_health` to **off** when the field was absent, while CPU, memory,
 disk and offline defaulted **on**. The database declares all seven `DEFAULT
-TRUE`. A configuration written by an older DockPanel, hand-edited, or produced
+TRUE`. A configuration written by an older ARSY, hand-edited, or produced
 by anything but this build's own export therefore turned off backup, certificate
 and service-health alerting on import, with nothing to say so.
 
@@ -3867,11 +3867,11 @@ not shipped.
 
 Creating a mail domain fires an automatic certificate issuance for the mail
 host. That issuance is an ordinary HTTP-01 order for a single name, and the
-agent writes the result to `/etc/dockpanel/ssl/<domain>/fullchain.pem`
+agent writes the result to `/etc/arsy/ssl/<domain>/fullchain.pem`
 unconditionally.
 
 That file is not the mail host's private property. A site of the same name
-reads it — and so does a **DNS-01 wildcard**, which DockPanel stores under the
+reads it — and so does a **DNS-01 wildcard**, which ARSY stores under the
 zone apex, which is exactly the name a mail domain is normally created at. So
 adding mail for `example.com` on a server already holding a wildcard for
 `*.example.com` replaced a certificate covering every subdomain with one
@@ -3884,7 +3884,7 @@ The vhost repair added in v2.150.0 could not help: it restores the site's
 *configuration*, and what was lost was the file that configuration points at.
 
 Mail auto-SSL now takes a verdict before it orders anything. It declines when
-the name already holds a DNS-01/wildcard certificate, or one DockPanel did not
+the name already holds a DNS-01/wildcard certificate, or one ARSY did not
 issue, and raises a `warning` alert naming what it protected and where to issue
 a certificate deliberately if that is really what you want.
 
@@ -3922,7 +3922,7 @@ Every alert is fired with a real severity — `critical`, `warning` or `info` �
 recorded on the row and used to colour the initial page. But the outbound
 payload for every channel (PagerDuty's own `severity` field, the webhook JSON,
 the `{{severity}}` template token) was never given that value. Instead it
-keyword-scanned the subject line — "DockPanel Alert: <title>" — for words like
+keyword-scanned the subject line — "ARSY Alert: <title>" — for words like
 "FAIL", "down" or "critical", and fell back to the generic `"error"` for
 anything that didn't happen to contain one. A certificate alert stored as
 `critical` reached PagerDuty as `"error"` unless its title happened to spell
@@ -4010,7 +4010,7 @@ Chains that still have steps left behave exactly as before.
 ### Fixed — half the alerts that can page you had no off switch
 
 Settings → Notifications offers a grid of checkboxes for suppressing alert types
-from Slack, Discord, PagerDuty and webhooks. The grid listed ten types. DockPanel
+from Slack, Discord, PagerDuty and webhooks. The grid listed ten types. ARSY
 raises twenty. The ten it listed were the ten that existed when the grid was
 written, and everything added since — every certificate renewal failure, failed
 cron jobs, backup verification failures, security scan findings, container
@@ -4030,7 +4030,7 @@ checkbox for it would switch off nothing — which is the fault being fixed here
 not one to spread. It will join the grid when that path is corrected.
 
 Two related repairs come with it: a suppression entry naming an alert type
-DockPanel does not raise is now refused when you save it, instead of being stored
+ARSY does not raise is now refused when you save it, instead of being stored
 and quietly matching nothing for ever; and the Alerts page now labels and filters
 the four types it used to print as raw database values.
 
@@ -4039,7 +4039,7 @@ the four types it used to print as raw database values.
 ### Fixed — a warning about one certificate problem silenced the alarm about a worse one
 
 Every alert about a certificate that will not renew was filed under the same
-subject. DockPanel raises five different ones for a site — the certificate was
+subject. ARSY raises five different ones for a site — the certificate was
 issued by somebody else, the renewal failed, the renewal could not be attempted,
 the Cloudflare zone is missing, the certificate was downgraded — and four of the
 five are critical. Because they shared a subject, the alert system treated them
@@ -4068,7 +4068,7 @@ longer stand in for a critical.
 ### Fixed — six-day certificates skipped the warning and went straight to the downgrade
 
 When a certificate issued over DNS-01 comes up for renewal and its Cloudflare
-zone is no longer reachable, DockPanel refuses the renewal while there is still
+zone is no longer reachable, ARSY refuses the renewal while there is still
 time to fix it and tells you what to repair. Only in the certificate's last week
 does it give up and reissue a reduced, single-name certificate on purpose.
 
@@ -4088,7 +4088,7 @@ before expiry, so a site never loses its certificate entirely.
 
 ### Fixed — the panel told you to replace a certificate on a page with no way to replace it
 
-When DockPanel declines to renew a certificate it did not issue — a commercial
+When ARSY declines to renew a certificate it did not issue — a commercial
 certificate, a Cloudflare Origin CA certificate, a corporate PKI certificate —
 it says so and tells you to *"install a replacement under the site's SSL tab
 instead"*. It says it in three places: the Renew button's refusal, the
@@ -4106,7 +4106,7 @@ certificate about to expire, had no way forward at all.
 The upload form is now shared by both states rather than living inside the
 "not configured" branch, and an SSL-enabled site has a **Replace certificate**
 control that opens it. Nothing about how certificates are renewed has changed,
-and the refusals are still correct: renewing a certificate DockPanel did not
+and the refusals are still correct: renewing a certificate ARSY did not
 issue would replace it. You can now do what they ask.
 
 ### Fixed — every secured site was labelled "Let's Encrypt", including ones that were not
@@ -4118,7 +4118,7 @@ that had already refused to renew it *because* it came from somewhere else, in a
 message naming the real issuer.
 
 The row now shows the issuer the certificate actually carries, and a certificate
-DockPanel did not issue is labelled with its own issuer plus a line saying the
+ARSY did not issue is labelled with its own issuer plus a line saying the
 panel will not renew it. The backend already knew this: the answer is computed
 from the certificate status it was already fetching, so the honesty costs no
 extra work.
@@ -4225,7 +4225,7 @@ when a door appears that nobody has decided about.
   said that stopping a Git Deploy was reverted by the health monitor within 120
   seconds. That is not true, and it never was. A fresh-box drive of both versions
   established why: the agent's app listing keeps only containers carrying a
-  `dockpanel.app.template` label, and a Git Deploy's container carries no such
+  `arsy.app.template` label, and a Git Deploy's container carries no such
   label — so it never appears in that listing, and both the auto-healer and the
   alert engine read exactly that listing.
 
@@ -4275,7 +4275,7 @@ when a door appears that nobody has decided about.
 monitor **URLs are not published**. That was true of the monitor list and false
 of incident causes.
 
-When an HTTP check failed, DockPanel stored the HTTP client's own error message.
+When an HTTP check failed, ARSY stored the HTTP client's own error message.
 That message ends with `for url (…)`, so the monitor's full address — scheme,
 host, path and **query string** — was written into the incident's cause, into
 the incident's description, and into the *"Auto-detected: …"* entry on its
@@ -4323,8 +4323,8 @@ v2.148.0's new certificate-upload check refuses a private key pasted into the
 certificate field, and told the operator that storing it there *"would leave it
 readable by every account on this server."* Driving the case on a fresh install
 showed that is not true: the key does land in `fullchain.pem` at 0644 while the
-key file beside it is deliberately 0600, but `/etc/dockpanel` and
-`/etc/dockpanel/ssl` are both 0700, so no other local account can reach it. The
+key file beside it is deliberately 0600, but `/etc/arsy` and
+`/etc/arsy/ssl` are both 0700, so no other local account can reach it. The
 protection comes from the directory rather than from the write.
 
 The refusal stands — the certificate field should hold a certificate, and that
@@ -4346,7 +4346,7 @@ compare a certificate against the site it is serving, so it started without
 complaint, the panel wrote *SSL enabled* and drew a padlock, and the expiry
 countdown and the renewal alerts all treated the site as healthy. The only thing
 that disagreed was the visitor's browser, with `ERR_CERT_COMMON_NAME_INVALID`.
-Nothing in DockPanel would ever have told you.
+Nothing in ARSY would ever have told you.
 
 The upload is now refused, **before anything is written to disk**, if the
 certificate does not name the site: its subjectAltName entries are checked, or
@@ -4405,7 +4405,7 @@ Git Deploys, the first of which turns the obvious patch into data loss.
 
 ### Fixed — removing a container let it silence the next container of the same name
 
-When you stop a container from the panel, DockPanel records that the stop was
+When you stop a container from the panel, ARSY records that the stop was
 deliberate so it does not then alarm about a container being down. That record is
 kept against the container's **name**.
 
@@ -4547,7 +4547,7 @@ serving. The panel then reported a successful renewal.
 It failed in two opposite directions, and both were silent.
 
 **When the site is the Cloudflare zone apex**, the certificate directory is
-named after the site, so the guard that protects certificates DockPanel did not
+named after the site, so the guard that protects certificates ARSY did not
 issue finds the wildcard, sees a Let's Encrypt issuer, and returns "not foreign"
 — permission to proceed. A single-name certificate was written over the shared
 `fullchain.pem` in place, and every sibling vhost pointing at that directory
@@ -4959,7 +4959,7 @@ yourself to import — keeps its contents.
 
 ### Fixed — long operations on remote servers ignored their own concurrency limit
 
-DockPanel keeps a small pool for slow work (builds, imports, restores) so it
+ARSY keeps a small pool for slow work (builds, imports, restores) so it
 cannot crowd out ordinary requests. On any server other than the panel's own, three
 kinds of long operation took the *ordinary* pool instead, so the limit applied to
 one machine in the fleet and no others.
@@ -4974,17 +4974,17 @@ slot says so rather than reporting that it ran and overran.
 ### Fixed — an uploaded certificate inherited the previous one's renewal settings
 
 Installing your own certificate left behind the ACME profile describing the
-certificate DockPanel used to issue for that site, and both renewal paths went on
+certificate ARSY used to issue for that site, and both renewal paths went on
 applying it. It is now cleared, so any future renewal decides for itself.
 
 ## [2.139.1]
 
-### Fixed — a certificate DockPanel deliberately left alone was reported as a failure
+### Fixed — a certificate ARSY deliberately left alone was reported as a failure
 
 2.139.0 stopped the automatic renewal from replacing certificates it did not
 issue, and told you about the skip by reusing the alert that already existed for
 renewals that go wrong. That alert says **"SSL renewal failed"**, explains that
-DockPanel *could not* renew the certificate, and pages at **critical** severity.
+ARSY *could not* renew the certificate, and pages at **critical** severity.
 
 All three are untrue when the panel declined on purpose. Nothing failed, nothing
 was prevented, and the situation is not an emergency — it is a certificate you
@@ -5002,12 +5002,12 @@ renew it. Genuine renewal failures are unchanged.
 ### Fixed — a renewal is a replacement, and nothing was checking whose certificate it was
 
 If you uploaded your own certificate — a commercial wildcard, a Cloudflare Origin
-CA certificate, anything from a corporate PKI — DockPanel was quietly destroying
+CA certificate, anything from a corporate PKI — ARSY was quietly destroying
 it, roughly a month before it expired, on a weekly schedule, on a default
 install.
 
 The weekly security scan asks the agent what it found. The agent walks
-`/etc/dockpanel/ssl` and runs `openssl x509 -checkend`, which reads a date and
+`/etc/arsy/ssl` and runs `openssl x509 -checkend`, which reads a date and
 nothing else: not the issuer, not the database. Anything expiring within 30 days
 came back as "SSL certificate expiring", and the panel's auto-fix answered by
 placing a fresh Let's Encrypt order and writing it to the same `fullchain.pem`
@@ -5017,7 +5017,7 @@ could not answer an HTTP-01 challenge from that box, the order failed instead an
 you were left with neither.
 
 The panel's ACME client can only ever produce a Let's Encrypt certificate, so an
-issuer that is not Let's Encrypt is proof DockPanel did not issue it. Every path
+issuer that is not Let's Encrypt is proof ARSY did not issue it. Every path
 that can overwrite a certificate now asks that question first — the weekly
 scanner, the auto-healer, and the two buttons — and a certificate that is not
 ours is left alone, with the reason recorded as an alert rather than a log line.
@@ -5096,7 +5096,7 @@ pin fails the build when a fix is added or removed without the list catching up.
 ### Added — import a database dump you already have
 
 **Databases → Import** loads a `.sql.gz` into an existing database. It is the
-other half of [#121](https://github.com/ovexro/dockpanel/issues/121), which asked
+other half of [#121](https://github.com/A-L-L-A-H/mw-arsy/issues/121), which asked
 for database import alongside the upload failure fixed in 2.137.0.
 
 The panel does not take the dump through the browser, and that is a decision
@@ -5135,7 +5135,7 @@ the same sentence rather than a failure from inside a decompression pipe.
 used to skip anything that was not `.sql.gz`, so an operator who copied `dump.sql`
 into the directory saw an empty list with no explanation anywhere in the product.
 Such files now appear greyed out with the reason and the exact `gzip` command that
-fixes it — in the panel and in `dockpanel backup db-list` alike. Only gzipped
+fixes it — in the panel and in `arsy backup db-list` alike. Only gzipped
 dumps can be imported, because the restore path streams through `gunzip`; the
 answer to that was to say so, not to widen the gate.
 
@@ -5207,7 +5207,7 @@ Uploading anything larger than about 1.5 MB failed, and the panel gave no reason
 A batch reported `0 uploaded, 1 failed` and erased that after three seconds. No
 size was named, no limit was named, and nothing distinguished a file that was too
 big from a server that was down. Reported as
-[#121](https://github.com/ovexro/dockpanel/issues/121) against a 33 MB upload.
+[#121](https://github.com/A-L-L-A-H/mw-arsy/issues/121) against a 33 MB upload.
 
 Two separate faults, and the fix needed both.
 
@@ -5376,7 +5376,7 @@ rendered inside the card that arms it.
 
 Private repositories clone over SSH with a generated deploy key. The guide
 documented a different procedure — generate a key by hand, drop it in
-`/etc/dockpanel/deploy-keys/` — which cannot work: the only thing that records
+`/etc/arsy/deploy-keys/` — which cannot work: the only thing that records
 where a deploy's key lives is the **Generate Deploy Key** button, and clicking it
 later deletes a hand-placed key. The one path that works appeared in no document.
 
@@ -5634,7 +5634,7 @@ The durable half is a set of checks over the *class*, not over these defects:
 The per-user site-creation limit has been operator-settable since 2.46.0, under
 **Settings > Account > Security Hardening**. The one place a person actually
 meets it — the `429` when they hit it — said only that the limit exists. So
-[#116](https://github.com/ovexro/dockpanel/issues/116) arrived asking us to make
+[#116](https://github.com/A-L-L-A-H/mw-arsy/issues/116) arrived asking us to make
 configurable a number that already has a control, which is the correct
 conclusion to draw from the message we were sending. All three refusals (site
 create, its sibling in the same file, and staging) now name the screen and note
@@ -5657,7 +5657,7 @@ hand-armed with the four legacy paths produces **four** on a single press — on
 short of locking every non-admin out of the panel for 24 hours, for pressing the
 button the panel had just told them to press. Caught on the live engine
 immediately after the 2.132.0 deploy, which raised exactly one such alert for
-`/var/www/.dockpanel-canary`, the only pre-existing path in the new plant set.
+`/var/www/.arsy-canary`, the only pre-existing path in the new plant set.
 
 `canary_arm` now deletes the stored baseline for each path the agent reports it
 created, which puts the sweeper back on its first-run branch: it records the new
@@ -5677,7 +5677,7 @@ alerting direction. 2604 → 2606 assertions; 3/3 mutations killed.
 wire.** `security_canary_enabled` is seeded `true`, the sweeper runs every two
 minutes outside the auto-healer's own switch, Settings rendered the toggle ON,
 and `docs/guides/security-hardening.md` stated without qualification that
-DockPanel "checks hidden canary files in sensitive directories (`/etc/`,
+ARSY "checks hidden canary files in sensitive directories (`/etc/`,
 `/root/`, `/home/`, `/var/www/`) every 2 minutes and alerts if their access times
 change".
 
@@ -5704,7 +5704,7 @@ worth.
 
 **What changed.** The canaries now go where the agent can actually write them and
 this process can actually read them, which is also where this product keeps its
-own secrets: `/etc/dockpanel/`, `/var/lib/dockpanel/`, `/var/backups/dockpanel/`
+own secrets: `/etc/arsy/`, `/var/lib/arsy/`, `/var/backups/arsy/`
 and `/var/www/` — the agent token, the panel database dumps, the runtime state
 and the web root. Someone looking for credentials goes there first, which makes
 them better tripwires than a home directory nobody can watch. The three legacy
@@ -6126,7 +6126,7 @@ whole test, so `WP_AUTO_UPDATE_CORE false` reported `pass`.
 literals — `DISALLOW_FILE_EDIT true`, `WP_DEBUG false`, `FORCE_SSL_ADMIN true`,
 `WP_AUTO_UPDATE_CORE true` — so after a single hardening run the file contains
 both words, and three of the four checks can never report a regression again.
-Turn `DISALLOW_FILE_EDIT` back off on a site DockPanel has hardened and the panel
+Turn `DISALLOW_FILE_EDIT` back off on a site ARSY has hardened and the panel
 still says "File Editing Disabled: pass". A site following wordpress.org's own
 debugging recipe — `WP_DEBUG` on beside `WP_DEBUG_DISPLAY` off — reported "Debug
 Mode Disabled: pass" with debug on.
@@ -6213,7 +6213,7 @@ bare `std::fs::write`, and **WordPress core does not ship `wp-content/uploads`**
 else. Wherever that directory is absent the write returned "No such file or
 directory" and the fix silently did not apply. Five of six worked, not six.
 
-Scope, measured rather than assumed: a site installed through DockPanel's own
+Scope, measured rather than assumed: a site installed through ARSY's own
 WordPress flow is **not** affected — `wp core install` creates the uploads tree
 on the way through, so the directory is already there. The toolkit hardens any
 site carrying a `wp-config.php`, though, so the ones it bit are the ones it did
@@ -6422,7 +6422,7 @@ Marking the file in `ReadWritePaths` cannot fix it: marking a path that does not
 exist yet is inert, and *creating* it would need `/etc` itself writable, which is
 what the sandbox exists to prevent. This is the same shape as `/etc/opendkim.conf`
 in v2.36.0, and it takes the same cure the mail installer already took — the
-config now lives at **`/etc/dockpanel/msmtprc`**, inside `ReadWritePaths`, and
+config now lives at **`/etc/arsy/msmtprc`**, inside `ReadWritePaths`, and
 every reader is told where it is: Test Email passes `--file`, and PHP's
 `sendmail_path` carries it too.
 
@@ -6974,7 +6974,7 @@ where an expression ends at the first line break that completes it. Only its fir
 branch was bound; the rest were re-read as text. Four consequences, of which one was
 reported:
 
-- Every report opened with a paragraph of raw template source above the DockPanel
+- Every report opened with a paragraph of raw template source above the ARSY
   masthead.
 - The resource label was blank for database and volume backups — the value the
   template computed was empty for every kind except site.
@@ -7229,11 +7229,11 @@ undisclosed reads as broader than it is.
 
 ### Fixed — an updated app's rescued data was left where the panel could not find it
 
-When an app is updated, DockPanel moves any data its template calls persistent out
+When an app is updated, ARSY moves any data its template calls persistent out
 of the container's writable layer and onto a directory you can see and back up. It
 was naming that directory after the **container** rather than after the app — so the
-data went to `/var/lib/dockpanel/apps/dockpanel-app-<app>/…` while every other part
-of the panel looks under `/var/lib/dockpanel/apps/<app>/…`.
+data went to `/var/lib/arsy/apps/arsy-app-<app>/…` while every other part
+of the panel looks under `/var/lib/arsy/apps/<app>/…`.
 
 The app kept working, because its mount pointed at the real location. What broke was
 everything else that needed to find it. Deleting the app left the data behind on disk,
@@ -7264,7 +7264,7 @@ Affected: ntfy, trivy, minio, cloudflared, keycloak and plausible.
 
 ### Fixed — the webmail container lost its accounts on every update
 
-The Roundcube container installed by the Mail stack carries DockPanel's own management
+The Roundcube container installed by the Mail stack carries ARSY's own management
 labels, so it appears on the Apps page and can be updated from there. It named no
 template in the catalogue, and the migration only knew how to preserve data for
 templates it could look up — so it preserved nothing at all. Its image declares no
@@ -7272,7 +7272,7 @@ volume either, which left its entire SQLite database in the writable layer that 
 recreate deletes: accounts, identities, contacts and preferences, gone on the first
 Update, with no warning.
 
-Webmail now stores that database under `/var/lib/dockpanel/apps/roundcube/`, and an
+Webmail now stores that database under `/var/lib/arsy/apps/roundcube/`, and an
 existing install has it migrated there the next time it is updated rather than lost.
 
 ### Added — the template census now reports data that a recreate cannot follow
@@ -7300,7 +7300,7 @@ disjoint sets, and the only remedy was an operator running `chown -R` over SSH �
 which assumes they knew that was the problem.
 
 Updating an app now repairs it. In the same window the migration already uses —
-container stopped, not yet removed — DockPanel walks the app's own data
+container stopped, not yet removed — ARSY walks the app's own data
 directories and hands any **root-owned** path back to the account the image
 declares it runs as. If your app has been failing to start since the last time
 you updated it, this is the release that fixes it, and the update log now says so
@@ -7383,7 +7383,7 @@ Both defects were in the census added in v2.113.0, and its own first run found
 them. Nothing about the catalogue changed.
 
 **It needs to run as root.** `deploy_app` creates each app's data directory under
-`/var/lib/dockpanel` and chowns it to the uid the image names — both root-only,
+`/var/lib/arsy` and chowns it to the uid the image names — both root-only,
 and the agent runs as root in production, so root is the faithful configuration
 rather than a convenience. A GitHub runner is not root, `create_dir_all` fails
 there, and the error is swallowed before `canonicalize` reports the absence — so
@@ -7553,7 +7553,7 @@ subsystems disagreed about what had been configured. Both now read it as unset.
 
 ### Fixed — pressing Update on a Docker App could destroy the app's data
 
-Reported as [#110](https://github.com/ovexro/dockpanel/issues/110): an operator
+Reported as [#110](https://github.com/A-L-L-A-H/mw-arsy/issues/110): an operator
 installed n8n, created an account, pressed **Update** under Running Apps, and got
 back an n8n at first-run state. The account, the workflows and the stored
 credentials were gone, and nothing in the panel had warned that they would be.
@@ -7587,7 +7587,7 @@ Four things changed.
   intact. This is the half that reaches boxes already in the field: declaring a
   volume fixes the next deploy and does nothing for the container already
   running. The migration declines rather than merging if the destination
-  directory already holds data, and touches only DockPanel-managed template apps.
+  directory already holds data, and touches only ARSY-managed template apps.
 
 - **Blue-green no longer runs two containers against one mount.** It starts the
   replacement while the original is still serving and only stops the original
@@ -7646,7 +7646,7 @@ of those mutations found real defects in the suite's own arms first.
 
 ### Fixed — the lockdown blocked the terminal, said so on the page, and left a second shell open
 
-DockPanel has two surfaces that hand an operator a live shell. The Terminal page
+ARSY has two surfaces that hand an operator a live shell. The Terminal page
 is one. The other is the shell console on the Apps page, which posts a command
 string the agent runs as `docker exec <container> sh -c <command>`.
 
@@ -7759,7 +7759,7 @@ cleared; a monitor that is genuinely still slow re-fires within one interval.
 `resolve_alert` discarded the result of its own UPDATE and notified
 unconditionally, and two auto-healer callers reach it without checking whether
 anything was firing first. A successful heal on a server that had raised no
-alert still sent "DockPanel Resolved: …" on every channel. The notice is now
+alert still sent "ARSY Resolved: …" on every channel. The notice is now
 sent only when the UPDATE actually resolved something, and a failed UPDATE is no
 longer treated as a recovery.
 
@@ -7835,7 +7835,7 @@ permanent failure that gives up after three attempts and leaves no partial file.
 ### Fixed — published figures that were wrong where readers could see them
 
 - `docs/guides/multi-server.md` described the agent as `~20MB, ~30MB RAM`
-  against a register reading 21 MB / ~35 MB — served on docs.dockpanel.dev for
+  against a register reading 21 MB / ~35 MB — served on docs.moonwitness.dev for
   146 days. Neither agent metric had a row in the pin suite's surface map, so no
   arm could have caught it even if the file had been listed.
 - The marketing site's four meta tags hardcoded `22 MB on disk, ~52 MB of
@@ -7956,7 +7956,7 @@ from the right host, and DKIM passed because it genuinely was signed by the
 victim's key — so DMARC passed on both legs, at the recipient, on a message the
 victim never sent.
 
-DockPanel now generates `/etc/postfix/sender_login_maps` and enforces
+ARSY now generates `/etc/postfix/sender_login_maps` and enforces
 `reject_authenticated_sender_login_mismatch`. Every mailbox owns its own
 address, and each hosted domain is owned by the mailboxes inside it — which is
 what also covers aliases, catch-alls and invented local parts, since Postfix
@@ -7996,7 +7996,7 @@ between — a single failed download is enough — left a container holding one
 password and no `api.env` at all. The next run found no `api.env`, generated a
 *new* password, found the container already present, started it unchanged, and
 wrote the new password. The panel then crash-looped for ever on
-`password authentication failed for user "dockpanel"`, and re-running never
+`password authentication failed for user "arsy"`, and re-running never
 helped, because each run only minted another password the container had never
 heard of.
 
@@ -8352,7 +8352,7 @@ The name was the trap, so the name is the fix:
   endpoint, and runs the suite. This is the repository's first service container.
   Like `nginx-contract` and `update-rollback`, it runs on pushes to `main` and on
   pull requests; only the shared `regression-pins` workflow gates a release.
-- The suite reaches its database through `DOCKPANEL_TEST_DB_CONTAINER` instead of
+- The suite reaches its database through `ARSY_TEST_DB_CONTAINER` instead of
   a hardcoded container name. The default is unchanged.
 - It now says which of those two things failed. Every database error was
   swallowed, so a wrong container name reported `Admin user row not found` and
@@ -8423,7 +8423,7 @@ comment. This release fixes the rest of the family, found by sweeping for it:
 
 ### Fixed — two stale licence claims from one commit
 
-DockPanel has been AGPL-3.0 since the relicense. That commit updated five
+ARSY has been AGPL-3.0 since the relicense. That commit updated five
 manifests and stopped: `website/server/package.json` still declared `ISC`, and
 `COMPARISON.md` still told readers the project was MIT. Both corrected, and both
 now pinned — nothing had ever checked a licence claim, which is why one commit
@@ -8437,7 +8437,7 @@ could leave two behind.
   nothing produces is a test that cannot fail.
 - `docs-claims-pin-e2e.sh` grew a licence section: `LICENSE` is the AGPL text,
   every first-party manifest is enumerated from disk and must declare
-  `AGPL-3.0-only`, and no reader-facing table may claim MIT for DockPanel.
+  `AGPL-3.0-only`, and no reader-facing table may claim MIT for ARSY.
 
 ## [2.99.1]
 
@@ -8673,7 +8673,7 @@ existing deployment can be disturbed by the change — there was nothing to dist
 **Four templates were withdrawn rather than repointed**: Discourse, Zabbix,
 Strapi and Stable Diffusion WebUI. For each, the only pullable candidate was a
 frozen vendor archive that no longer receives security patches, a personal
-account's rebuild, or an amd64-only image — and DockPanel publishes an arm64
+account's rebuild, or an amd64-only image — and ARSY publishes an arm64
 build. Shipping one of those as a one-click default is worse than not offering
 the app. The catalogue is now 149 templates, and every count claim on ten
 published surfaces was updated with it.
@@ -9076,7 +9076,7 @@ socket, and a version mismatch fails the deploy.
 
 `scripts/install-agent.sh` — the installer the Add-Server dialog tells an operator
 to pipe into `sudo bash` — had no integrity check of any kind, and wrote the
-downloaded bytes straight onto `/usr/local/bin/dockpanel-agent`. It now downloads
+downloaded bytes straight onto `/usr/local/bin/arsy-agent`. It now downloads
 to a quarantine path, verifies sha256 against the release's `checksums.txt`
 (mismatch fatal, missing manifest warns, matching `setup.sh`'s fresh-install
 policy), and only then renames onto the live path. That also fixes a re-run on a
@@ -9264,7 +9264,7 @@ read as approved, so no one who could sign in yesterday is locked out today.
 ### Fixed — the audit log promised on-disk tamper-proofing that nothing provided
 
 The hardening guide stated that security events are written to *"append-only files
-on disk"*. Nothing in DockPanel ever made them append-only: the only code that set
+on disk"*. Nothing in ARSY ever made them append-only: the only code that set
 the attribute lived in a route with no caller anywhere, and it set it on the audit
 **directory** rather than on the files.
 
@@ -9340,7 +9340,7 @@ repository: no nginx include, no template, nothing compiled into either binary.
 It had been inert since 2026-03-15, while telling the operator "Whitelist saved
 (N IPs)" and writing an audit-log entry for a change that had no effect.
 
-DockPanel's real IP restriction arrived a week later and is unaffected: **Panel
+ARSY's real IP restriction arrived a week later and is unaffected: **Panel
 IP Allowlist**, in Settings → Account → Security Hardening, enforced at every
 door that mints a session, CIDR-aware, validated on save, and documented with a
 recovery path. It is now the only such control in the panel.
@@ -9380,7 +9380,7 @@ To keep the pre-upgrade dump root-only, v2.88.0 set `umask 077` in `update.sh`.
 It set it at **top-level scope**, in an 1100-line script, so it governed every
 directory and file the rest of the upgrade created — roughly 840 lines of it.
 
-Two of those directories have a non-root reader. `/opt/dockpanel/frontend` is
+Two of those directories have a non-root reader. `/opt/arsy/frontend` is
 where nginx serves the panel's own interface from, as `www-data`; created `0700`
 it cannot be traversed, so **every panel asset returns 403**. And
 `/var/www/acme/.well-known/acme-challenge` is where HTTP-01 challenges are
@@ -9451,7 +9451,7 @@ standing between a caller and a secret.
 
 ### Fixed — a hosted site could read the panel's database backup
 
-`/var/backups/dockpanel` was created world-traversable and every writer used a
+`/var/backups/arsy` was created world-traversable and every writer used a
 plain shell redirect or an unmoded write, so the dumps landed `0644`. Both panel
 services run as root and neither ever needed those bits — but on a panel host
 that also serves websites, `www-data` is the uid **every** hosted site's PHP runs
@@ -9612,7 +9612,7 @@ v2.85.0 guarded the door that *plants* a passkey. This release audits what the
 two ceremonies actually verify once a credential exists, and fixes four places
 where a check was present but arranged so that it could not do its job.
 
-**The clone check ran before the signature was verified.** DockPanel has
+**The clone check ran before the signature was verified.** ARSY has
 detected cloned authenticators since passkeys shipped: an assertion whose
 signature counter has not advanced is refused with "Credential may be cloned".
 But that test ran *twenty lines above* the signature verification, and WebAuthn
@@ -9675,10 +9675,10 @@ it. It is now a membership test over all four surfaces that can mint a session.
 
 `nanoid` 3.3.16 → 3.3.18 in both the panel and the marketing site, closing a
 high-severity advisory, and `dompurify` 3.4.12 → 3.4.13 in the panel, closing a
-moderate cross-site-scripting one. **Neither was exploitable in DockPanel.**
+moderate cross-site-scripting one. **Neither was exploitable in ARSY.**
 `nanoid` is never imported by this project — it arrives under PostCSS inside
 Vite and runs only at build time — and the DOMPurify issue requires a removed
-`IN_PLACE` hook, where DockPanel registers no hooks at all and calls
+`IN_PLACE` hook, where ARSY registers no hooks at all and calls
 `sanitize()` directly. Patched because a dependency that has a fix should carry
 it, not because anything here was at risk.
 
@@ -9697,7 +9697,7 @@ end to end. The pin suite records the gap so it is not mistaken for an oversight
 
 ### Security — adding a passkey now requires you to confirm who you are
 
-A passkey is the only credential DockPanel mints that survives every reset it
+A passkey is the only credential ARSY mints that survives every reset it
 offers. Clearing a user's 2FA, resetting their password and signing out all of
 their sessions all leave an enrolled passkey working, and passkey sign-in
 deliberately does not take the 2FA step. Enrolment, meanwhile, required nothing
@@ -10014,12 +10014,12 @@ handed over by an administrator instead of inviting the person to create one.
 The MariaDB branch of the agent's password reset connected as the container's
 root account with no credential, on the stated premise that root can
 authenticate over the unix socket inside the container. That premise was never
-true of a container DockPanel itself creates: the database container is started
+true of a container ARSY itself creates: the database container is started
 with a random root password, which gives `root@localhost` a random
 `mysql_native_password` and does not enable socket authentication. Every reset
 therefore failed with `ERROR 1045 … Access denied for user 'root'@'localhost'`
 and surfaced as a 500. Measured on `mariadb:11` with exactly the environment
-DockPanel sets; the PostgreSQL branch was unaffected.
+ARSY sets; the PostgreSQL branch was unaffected.
 
 The reset now authenticates **as the tenant** using the current password the
 panel already sends, and asks the server to change its own account — the same
@@ -10225,15 +10225,15 @@ through an agent must take the host from the row. Two new arms cover what no
 route-scoped census can see — background services holding the local handle, and
 the agentless DNS shape.
 
-### Changed — DockPanel is now free software under the AGPL v3
+### Changed — ARSY is now free software under the AGPL v3
 
 The licence moves from the Business Source License 1.1 to the **GNU Affero General
 Public License v3**. BSL was source-available, not open source: it carried a use
 restriction and a 2030 conversion date. That restriction and that date are both gone.
 
-You may now run, read, modify and redistribute DockPanel on any number of servers,
+You may now run, read, modify and redistribute ARSY on any number of servers,
 commercially included, with no conversion date to wait for. The one obligation the
-AGPL adds over the GPL is the network clause: if you modify DockPanel and offer it
+AGPL adds over the GPL is the network clause: if you modify ARSY and offer it
 to other people *as a service*, you must make your modified source available to
 those users. Running it — modified or not — for yourself or your own organisation
 obliges you nothing.
@@ -10256,7 +10256,7 @@ hardware, so releases are verified on more distributions before they ship.
 `POST /api/ssl/{id}/renew` and `DELETE /api/ssl/{id}` loaded the site with
 `SELECT * FROM sites WHERE id = $1` — no owner term and no server term — while
 three other handlers in the same file went through the shared caller predicate.
-An administrator in DockPanel is not a superuser: their reach is the local box
+An administrator in ARSY is not a superuser: their reach is the local box
 plus the machines they registered themselves. With that predicate missing, the
 only thing holding that line was the server-scope extractor's check on a request
 header, which is not an authorisation the site's row ever agreed to.
@@ -10438,7 +10438,7 @@ lines below in the same file, had already been fixed for exactly this reason.
 
 **Not defects, stated plainly:** the file manager was never gated — all eight
 handlers take the ownership path and it is the first card on a site's page, in the
-reporter's own version. And DockPanel has no FTP, has never claimed one, and has no
+reporter's own version. And ARSY has no FTP, has never claimed one, and has no
 per-site system user to hang one on; the file manager and the per-site shell are
 the two ways in.
 
@@ -10707,7 +10707,7 @@ terminal all refused, and the only thing left was to transfer it back. v2.71.0
 added a read-only list of every site on the box and called that the way back. The
 operator using the feature replied that an administrator who cannot fix a
 tenant's site is not much use on a server they are responsible for, and he was
-right ([#51](https://github.com/ovexro/dockpanel/issues/51)).
+right ([#51](https://github.com/A-L-L-A-H/mw-arsy/issues/51)).
 
 Ownership still decides whose a site is, who sees it on their own Sites page, and
 who a transfer moves it to. It no longer decides what an operator may repair.
@@ -11522,7 +11522,7 @@ server-sent-event handler may resolve a per-server agent.
 
 **The panel stops lying.**
 
-Five places where DockPanel told the operator something that was not true. None
+Five places where ARSY told the operator something that was not true. None
 of them were failures of the underlying feature — in each case the machinery
 worked and the account of it did not.
 
@@ -11611,7 +11611,7 @@ Two of them were reading their own rows back as a rate limit.
 `auto_renew_ssl` gates its retries on a count of its own audit rows — the
 cooldown whose comment says it exists "to prevent hammering the CA if renewal
 keeps failing". That count could only ever return zero, so the gate never
-engaged: a certificate DockPanel could not renew was re-ordered from Let's
+engaged: a certificate ARSY could not renew was re-ordered from Let's
 Encrypt **on every 120-second tick, indefinitely**. The agent does not refuse
 these cheaply either; it validates the domain's shape and places a real ACME
 order. Renewal attempts are now recorded against the site's owner and stamped
@@ -11670,7 +11670,7 @@ hid the login writer from a call-site grep for eight releases.
 
 Four releases threaded background services so an unattended action names the host
 it acts on. This one fixes the half none of them looked at: which hosts the panel
-can *see*. DockPanel kept per-host telemetry in two stores written by mutually
+can *see*. ARSY kept per-host telemetry in two stores written by mutually
 exclusive halves of the fleet, so every check built on one was structurally blind
 to the other.
 
@@ -11852,11 +11852,11 @@ wrong, and the chain that made v2.56.0's own fix insufficient.
 
 Driven on a two-box fleet on the published v2.56.0. A member's cron git deploy
 ran **entirely on the panel host** — cloned into the panel's own
-`/var/lib/dockpanel/git/api`, built there, bound the panel's port — while the
+`/var/lib/arsy/git/api`, built there, bound the panel's port — while the
 member ran nothing at all. Six times, each logged as
 `Deploy success (scheduled)`.
 
-The sharp edge is the checkout path, `/var/lib/dockpanel/git/{name}`, which is
+The sharp edge is the checkout path, `/var/lib/arsy/git/{name}`, which is
 keyed by **name alone** while `idx_git_deploys_name_server` makes a deploy name
 unique only **per server**. Two servers may legitimately own an `api`, so on the
 executing host they share one working directory: whichever cloned first owns
@@ -11915,7 +11915,7 @@ v2.56.0, no skips.
 
 **An unattended service must name the host it acts on.**
 
-DockPanel's multi-server migration reached every HTTP route and **not one
+ARSY's multi-server migration reached every HTTP route and **not one
 background service**. `AppState` has carried both handles for releases —
 `agents: AgentRegistry` ("dispatches to local or remote agents by server_id")
 and `agent: AgentClient` ("Legacy single-agent accessor") — and all twelve
@@ -11975,7 +11975,7 @@ Three further defects, each of which made it worse:
   `alerts` row resolves, the operator is told the server recovered, and retention
   can reach the row.
 - **`docker system prune -af --volumes` is gone.** A new `docker-reclaim` frees
-  dangling images, build cache and unattached networks that DockPanel does not
+  dangling images, build cache and unattached networks that ARSY does not
   manage. **Volumes are deliberately never reclaimed** — an unattached volume is
   indistinguishable from one whose container the panel stopped on purpose. The
   old `docker-prune` id now routes to the scoped reclaim, so an older panel
@@ -11986,7 +11986,7 @@ Three further defects, each of which made it worse:
   logs" where the code also pruned Docker host-wide, and promised "All actions
   are logged in the Audit Log" — the log write that always failed.
 - **Backup retention no longer destroys the only record of an archive it did not
-  delete.** The policy sweep unlinked `/var/backups/dockpanel/databases/{filename}`
+  delete.** The policy sweep unlinked `/var/backups/arsy/databases/{filename}`
   while the writer creates `.../databases/{db_name}/{filename}` (and the same for
   volumes, per container) — a path that can never exist, whose `ENOENT` was
   discarded, with the row deleted regardless. Every database and volume dump was
@@ -12001,7 +12001,7 @@ Three further defects, each of which made it worse:
 
 **A container name is not a key anybody owns.**
 
-`dockpanel-git-{X}` is the container of a git deployment called `X`. It was also
+`arsy-git-{X}` is the container of a git deployment called `X`. It was also
 the container of a *preview* of config `C` on branch `B` whenever
 `{C}-pr-{slug(B)}` spelled `X` — and `X` is a name the panel will happily
 create, because `is_valid_name` accepts hyphens. The agent resolved that name
@@ -12037,7 +12037,7 @@ The largest thing the agent destroys had none.
 - **The blue-green stand-in no longer occupies a real name.** `{name}-blue` is a
   name `is_valid_name` accepts, so updating the app `api` force-removed the
   running container of the app `api-blue`. The separator is now `.`, and the
-  leftover-clearing step refuses anything not managed by DockPanel. Both twins.
+  leftover-clearing step refuses anything not managed by ARSY. Both twins.
 - **A blue-green swap frees the promoted name before it destroys anything, and
   reports when it cannot.** The commit phase removed the old container and
   renamed the new one with both results discarded — so a failed removal made the
@@ -12076,7 +12076,7 @@ The largest thing the agent destroys had none.
 
 **A stack is a network, a namespace, and an honest status.**
 
-DockPanel's Compose support does not run `docker compose` — it creates each
+ARSY's Compose support does not run `docker compose` — it creates each
 service directly through the Docker API, which is what lets the panel apply its
 own sandboxing to a pasted compose file. What that hand-rolled path has to
 reproduce deliberately is everything `docker compose` would have done for free,
@@ -12104,7 +12104,7 @@ Both halves were accurate, and neither was about his box.
   becomes an additional alias rather than the host-level Docker name.
 - **Names are scoped per stack.** Container names, the network and named volumes
   all carry the stack's scope, so the `db` service of two packages can coexist;
-  before, WordPress, Ghost and Nextcloud all wanted `dockpanel-compose-db` and
+  before, WordPress, Ghost and Nextcloud all wanted `arsy-compose-db` and
   the second package to be deployed failed on a name conflict. An existing
   volume is reused rather than renamed, so an upgrade never orphans data.
 - **`command:`, `depends_on:`, `labels:` and long-form `ports:` are no longer
@@ -12112,7 +12112,7 @@ Both halves were accurate, and neither was about his box.
   serde dropped them silently — which turned Domain Watchdog's
   `messenger:consume` worker into a second copy of its web server, and made
   `docker compose config` output deploy with no published port at all. Author
-  labels now reach Docker; `dockpanel.*` keys stay the panel's.
+  labels now reach Docker; `arsy.*` keys stay the panel's.
 - **Services deploy in dependency order**, and over a deterministic iteration
   order — a `HashMap` had been randomising it per process.
 - **A service is reported running because it is.** The deploy waits for the
@@ -12135,7 +12135,7 @@ stack cannot delete a domain a site has since taken over.
 
 ### Fixed — the dashboard advertised an update that was not one (#98)
 
-Reported by @brunoDruon: after `update.sh` the banner still read *"DockPanel
+Reported by @brunoDruon: after `update.sh` the banner still read *"ARSY
 v2.49.0 is available (current: v2.52.0)"*. Two independent defects, and the
 second one fires on **every install**:
 
@@ -12194,10 +12194,10 @@ key it had never checked — and the key lied in two different ways.
 
 ### Fixed — removing a Docker app could destroy a site's configuration and certificates
 
-An app's domain lives in the `dockpanel.app.domain` container label. Removing the
+An app's domain lives in the `arsy.app.domain` container label. Removing the
 app deleted, on the strength of that label alone: the nginx vhost, the
 certificate directory, both access logs, the Traefik route, and the data tree
-named by its `dockpanel.app.name` label. None of it checked that the app still
+named by its `arsy.app.name` label. None of it checked that the app still
 owned any of those things.
 
 On a box installed before v2.52.0 nothing stopped a site from claiming a domain
@@ -12218,7 +12218,7 @@ Two paths removed `/etc/letsencrypt/live`, `/etc/letsencrypt/archive` and the
 SSL revoke, via `certbot delete --cert-name`.
 
 **Neither tree issues through certbot.** Certificates the panel provisions go to
-`/etc/dockpanel/ssl` through its own ACME client, so every lineage those deletes
+`/etc/arsy/ssl` through its own ACME client, so every lineage those deletes
 could reach had been created by the operator, out of band — and a certbot lineage
 carries all its SANs, so deleting the one named `example.com` took `www.` and
 `mail.` with it, along with the automation that would have renewed them. On a box
@@ -12237,12 +12237,12 @@ Three separate keys were not keys at all:
 - **Systemd units and Fail2Ban jails.** `domain.replace('.', "-")` maps
   `a.b.com` and `a-b.com` onto one name, and `-` is legal inside a domain label,
   so both are separately claimable and both resolve to
-  `dockpanel-app-a-b-com`. Deleting one site stopped, disabled and unlinked the
+  `arsy-app-a-b-com`. Deleting one site stopped, disabled and unlinked the
   other's app unit, and removed its jail; creating one silently overwrote the
   other's unit with the wrong `WorkingDirectory`, latent until the next reboot.
   Both now read the file — a unit records the docroot it runs, a jail records the
   log it watches — and refuse when it names someone else.
-- **Cron sync.** The `# dockpanel:` marker is panel-wide, but the payload was one
+- **Cron sync.** The `# arsy:` marker is panel-wide, but the payload was one
   site's rows. So any tenant touching a single cron on their own site stripped
   **every other site's jobs** from the crontab, box-wide and silently: the `crons`
   rows are untouched, so the panel kept listing them as enabled while they never
@@ -12346,7 +12346,7 @@ of the checks. `sites.rs` had a shared helper whose comment said it existed
 called it.
 
 - **Docker apps were invisible to every guard.** An app's domain lives only in
-  the `dockpanel.app.domain` container label, never in the database, so no SQL
+  the `arsy.app.domain` container label, never in the database, so no SQL
   check could see it. Creating or renaming a site onto a domain an app owned
   passed every check and then replaced the app's vhost. The panel now asks the
   agent, which has been returning that domain all along.
@@ -12402,7 +12402,7 @@ and both turned out to be wider than the reports that led to them.
 
 ### Fixed — the scheme is derived, never assumed (#96)
 
-DockPanel printed and fetched `https://<your domain>` in five places while the
+ARSY printed and fetched `https://<your domain>` in five places while the
 answer was in scope. For anyone terminating TLS at a proxy in front of the
 server — where the origin only ever serves plain HTTP — every one of them was
 wrong.
@@ -12758,8 +12758,8 @@ of them make the panel state something false about data protection.
   test creates and probes it.
 
 - **One `known_hosts`, not two.** v2.48.5 pointed the backup uploader's ssh at
-  `/var/lib/dockpanel/known_hosts`, when `deploy.rs` had already established
-  `/etc/dockpanel/known_hosts` for git deploys, for exactly the same reason and
+  `/var/lib/arsy/known_hosts`, when `deploy.rs` had already established
+  `/etc/arsy/known_hosts` for git deploys, for exactly the same reason and
   with a docstring saying so. Two trust stores means a host pinned by a git
   deploy is an unknown host to a backup upload. Aligned to the existing path.
   (Both are writable under the unit; this is consistency, not a failure.)
@@ -12797,7 +12797,7 @@ one up and pressing Test — neither is visible in the code that implements SFTP
 
   Every SFTP destination failed there, before it opened a connection — so none
   could be tested and none could be uploaded to. `known_hosts` now lives at
-  `/var/lib/dockpanel/known_hosts`, which the unit already allows. First-use
+  `/var/lib/arsy/known_hosts`, which the unit already allows. First-use
   pinning is kept; `StrictHostKeyChecking=no` would have "fixed" this by throwing
   away host verification.
 
@@ -12927,7 +12927,7 @@ saying so.
 ## [2.48.2] - 2026-07-30
 
 Three people reported three different bugs this week. All three had been told
-"Agent offline — the DockPanel agent is not responding" by a panel whose agent
+"Agent offline — the ARSY agent is not responding" by a panel whose agent
 was answering perfectly clearly.
 
 ### Fixed
@@ -12987,8 +12987,8 @@ the process that was reporting on it.
 ### Fixed
 
 - **The agent no longer gets restarted out from under its own update.** A
-  panel-driven update runs apt from inside `dockpanel-agent`; because the agent
-  links libc, an ordinary `libc6` upgrade put `dockpanel-agent.service` on
+  panel-driven update runs apt from inside `arsy-agent`; because the agent
+  links libc, an ordinary `libc6` upgrade put `arsy-agent.service` on
   needrestart's restart list. needrestart then SIGTERMed the process that was
   streaming that very update's progress. apt itself was untouched — it runs in a
   `systemd-run` transient scope — but the NDJSON stream died before its final
@@ -12999,7 +12999,7 @@ the process that was reporting on it.
   avoid this; the escape hatch that lifts apt out of the agent's sandbox also
   lifts it out of the agent's cgroup, so that protection never applied.
   `setup.sh`, `update.sh` and `install-agent.sh` now drop a needrestart override
-  excluding only `dockpanel-agent` — every other service still restarts, which is
+  excluding only `arsy-agent` — every other service still restarts, which is
   the part that matters for security. The agent picks up new libraries on the
   next reboot or agent restart.
 
@@ -13101,7 +13101,7 @@ a rollback; the other made a failed update look like an update still running.
 - **A failure while finishing a rollback could quietly undo that rollback.** The
   restore reverts the database, then puts the previous binaries back. Between
   those two steps it verifies the restored schema and records the rollback — and
-  if either step failed, the exit trap restarted `dockpanel-api` to avoid leaving
+  if either step failed, the exit trap restarted `arsy-api` to avoid leaving
   the panel down. But the binary it restarted was still the *newer* one, so it
   migrated the just-reverted database forward again. The panel came back on the
   schema the operator had rolled away from, while the result file reported the
@@ -13127,7 +13127,7 @@ a rollback; the other made a failed update look like an update still running.
   watched an update sit in progress, frozen on its first log line, until the
   fifteen-minute window expired.
 
-  `update.sh` now records its outcome to `/var/lib/dockpanel/last-panel-update.json`
+  `update.sh` now records its outcome to `/var/lib/arsy/last-panel-update.json`
   on every exit path — including aborts and signals — and the panel reads that
   instead of inferring from the process it launched. A completed in-flight
   rollback is recorded distinctly from a failed one, since a panel healthy on its
@@ -13281,7 +13281,7 @@ users out.
   counts "N suspicious events within M minutes". Before 2.46.0, ingestion of
   those events sat under `auto_heal_enabled`, which is seeded **off**, so on a
   stock install the agent wrote them to
-  `/var/lib/dockpanel/suspicious-events.jsonl` and nothing ever drained the file.
+  `/var/lib/arsy/suspicious-events.jsonl` and nothing ever drained the file.
   2.46.0 correctly detached security monitoring from that switch — and the first
   tick after upgrading then read the entire accumulated backlog and stamped every
   line with the time it was *read* rather than the time it *happened*. However
@@ -13479,7 +13479,7 @@ the same shape: visible, believed, and silently bypassed by a sibling.
 
 ### Added
 
-- **`scripts/deploy-demo.sh`.** The third path that installs DockPanel onto a
+- **`scripts/deploy-demo.sh`.** The third path that installs ARSY onto a
   running machine — after `setup.sh` (fresh install) and `update.sh` (upgrade in
   place) — deploying from published release assets rather than a checkout. It
   existed outside this repository, which is exactly why it rotted: no pin, no CI
@@ -13505,7 +13505,7 @@ the same shape: visible, believed, and silently bypassed by a sibling.
   to exist fails, rather than reporting a clean run over nothing.
 
 - **`{panel}/install-agent.sh` had no check, while its sibling did.** The
-  scheduled live-surfaces check has verified `dockpanel.dev/install.sh` since
+  scheduled live-surfaces check has verified `moonwitness.dev/install.sh` since
   2.44.0 — that a missing file answers `200` with SPA fallback HTML rather than
   `404`, so the advertised command pipes a web page into `bash`. The URL the
   panel's own Add-Server dialog prints has the identical failure mode and nothing
@@ -13533,7 +13533,7 @@ scanned, and a waiver whose reasoning nothing checked.
   app they deploy). Now `1.7.x-apache`.
 
   Deliberately the `.x` line rather than an exact patch: this is a web-facing PHP
-  application and nothing in DockPanel would ever bump a frozen tag, so pinning
+  application and nothing in ARSY would ever bump a frozen tag, so pinning
   to `1.7.2` would have quietly stopped its security rebuilds. Verified by digest
   at the time of pinning — `latest`, `latest-apache` and `1.7.2-apache` were all
   `sha256:aed1b9b5dc34`, so this changed the guarantee without changing the image.
@@ -13599,7 +13599,7 @@ scanned, and a waiver whose reasoning nothing checked.
   with the bundled PostgreSQL the stack is ~109 MB, not the published ~85 MB.
 
   The comparison against cPanel and CloudPanel was also unfair in our favour: it
-  set DockPanel's services, without a database, against competitors' figures that
+  set ARSY's services, without a database, against competitors' figures that
   include theirs. Stack against stack it is about 7x lighter rather than 10x —
   still the strongest claim on the page, and now one that survives being checked.
 
@@ -13656,7 +13656,7 @@ scanned, and a waiver whose reasoning nothing checked.
   and every box upgraded through `update.sh` were correctly confined; the remote
   servers those panels manage were not, from v2.28.0 to here.
 
-  There is now one unit. `panel/agent/dockpanel-agent.service` is compiled into
+  There is now one unit. `panel/agent/arsy-agent.service` is compiled into
   the agent (`--print-unit`) exactly as `agent-self-update.sh` already was, so it
   cannot drift from the binary that runs under it, and all three installers
   obtain it from the same place instead of keeping copies. The unit gained an
@@ -13728,7 +13728,7 @@ scanned, and a waiver whose reasoning nothing checked.
 
 - **The spam filter could not be installed on the RHEL family at all.** `rspamd`
   is not in EPEL, so on a stock Rocky 9 with EPEL *and* CRB enabled the panel's
-  Install button returned `Unable to find a match: rspamd`. DockPanel now adds
+  Install button returned `Unable to find a match: rspamd`. ARSY now adds
   upstream's rpm repository — on the RPM family only, since Debian and Ubuntu
   package rspamd themselves and that path already worked.
 
@@ -13943,7 +13943,7 @@ scanned, and a waiver whose reasoning nothing checked.
   binary moved into `/usr/local/bin` keeps the label it had at its source — a
   rename within one filesystem preserves it, it does not adopt the
   destination's. `agent-self-update.sh` stages the download under
-  `/var/lib/dockpanel` and `update.sh` moves the release binaries in from
+  `/var/lib/arsy` and `update.sh` moves the release binaries in from
   `/tmp`, so on Rocky, AlmaLinux, CentOS Stream and Fedora the new binary
   arrived labelled `var_lib_t` or `user_tmp_t` instead of `bin_t`, and systemd
   then refused to execute it (`status=203/EXEC`, "Permission denied") — while
@@ -13989,7 +13989,7 @@ scanned, and a waiver whose reasoning nothing checked.
   agent's sandbox, which was ruled out by reproducing the failure with every
   restriction disabled. Until it is resolved, these endpoints report the
   limitation and point at the system package manager rather than surfacing a
-  D-Bus error. **DockPanel does not claim panel-driven service installation on
+  D-Bus error. **ARSY does not claim panel-driven service installation on
   RHEL-family systems in this release.**
 
 - **UFW installation is refused on systems running firewalld**, naming the
@@ -14062,7 +14062,7 @@ scanned, and a waiver whose reasoning nothing checked.
 
 ### Fixed
 
-- **DockPanel could not install on any RPM-family distro.** The README, the docs
+- **ARSY could not install on any RPM-family distro.** The README, the docs
   and the website all claimed CentOS 9+, Rocky 9+, Fedora 39+ and Amazon Linux
   2023, and the release smoke-test matrix contained only Debian and Ubuntu
   images. Driving all four on real servers found every one of them failing, in
@@ -14114,7 +14114,7 @@ scanned, and a waiver whose reasoning nothing checked.
   `Failed to write opendkim.conf: Read-only file system`: the agent runs
   `ProtectSystem=strict`, and `/etc/opendkim.conf` is a bare file in `/etc` — the one
   mail path the unit's `ReadWritePaths` does not cover. Everything after that line
-  never ran. OpenDKIM's config now lives at `/etc/dockpanel/opendkim.conf`, inside the
+  never ran. OpenDKIM's config now lives at `/etc/arsy/opendkim.conf`, inside the
   permitted paths, with a systemd drop-in pointing the daemon at it. The sandbox is not
   widened.
 - **No outgoing message had ever been DKIM-signed.** OpenDKIM's `KeyTable` and
@@ -14160,15 +14160,15 @@ scanned, and a waiver whose reasoning nothing checked.
   before it will run — so with `HOME=/root` mounted read-only, every Dockerfile-based
   deploy aborted at `mkdir /root/.docker: read-only file system`. The repository was
   cloned, the build never ran once, on any install. The docker CLI is now pointed at
-  `DOCKER_CONFIG=/var/lib/dockpanel/docker`, inside the unit's `ReadWritePaths`. Set in
+  `DOCKER_CONFIG=/var/lib/arsy/docker`, inside the unit's `ReadWritePaths`. Set in
   the shared `safe_cmd` helpers rather than at a call site: `env_clear()` means a
   unit-level `Environment=` never reaches the child, and ~77 docker invocations share
   those helpers. The sandbox itself is unchanged — `/root` and `/usr/local/bin` stay
   read-only.
 - **The Dockerfile-less fallback could not rescue it either.** nixpacks installed itself
   into `/usr/local/bin` (read-only under the same sandbox) and cached into
-  `/var/cache/dockpanel` (never in `ReadWritePaths`). Both now live under
-  `/var/lib/dockpanel`, matching how the image scanner already handles this. A
+  `/var/cache/arsy` (never in `ReadWritePaths`). Both now live under
+  `/var/lib/arsy`, matching how the image scanner already handles this. A
   previously downloaded copy is also found again, instead of being re-fetched on every
   agent restart because it sits off the agent's `PATH`.
 - **`update.sh`'s agent health check could never pass.** It probed the panel's
@@ -14177,9 +14177,9 @@ scanned, and a waiver whose reasoning nothing checked.
   "Agent connectivity check failed" whether the agent was healthy or dead. It now asks
   the agent's own `/health` over its unix socket, which is auth-exempt by design, and
   falls back to the legacy `/var/run` socket path on older boxes.
-- **`DOCKPANEL_VERSION` was read by the installer and ignored by its only consumer.**
+- **`ARSY_VERSION` was read by the installer and ignored by its only consumer.**
   `install.sh` clones the requested ref, but `setup.sh` always downloaded
-  `releases/latest` — so `DOCKPANEL_VERSION=v2.31.2` produced a v2.31.2 tree running
+  `releases/latest` — so `ARSY_VERSION=v2.31.2` produced a v2.31.2 tree running
   the newest binaries and reported the newest version on completion. Unit files, nginx
   templates and `install-agent.sh` are deployed from the tree, so that skew is the same
   class that once stranded the v2.8.13 → v2.8.14 upgrade. `setup.sh` now honours the
@@ -14194,13 +14194,13 @@ scanned, and a waiver whose reasoning nothing checked.
   and a backup taken after the upgrade carried its database (`1/1`) while the
   pre-upgrade row correctly stayed `0/0`. A full restore drill on the upgraded box
   brought back a deleted WordPress post. Evidence:
-  `dockpanel-update-path-drill-s261.md`.
+  `arsy-update-path-drill-s261.md`.
 
 ## [2.34.2] - 2026-07-26
 
 ### Fixed
 
-- **Hardening:** the single-file restore now explicitly refuses `.dockpanel-backup`, the archive
+- **Hardening:** the single-file restore now explicitly refuses `.arsy-backup`, the archive
   directory holding a backup's database dumps. It could not reach them in practice — that function
   prefixes every request with `./` while the payload members carry no prefix — but the protection
   was an accident of how tar names members rather than a decision, and those dumps are the site's
@@ -14227,14 +14227,14 @@ scanned, and a waiver whose reasoning nothing checked.
 - **Site backups now contain the site's databases.** A backup was a `tar` of the document root and
   nothing else, so restoring a WordPress site returned its files and not one post, page, comment or
   setting — and the panel reported it as a success. Each of the site's databases is now dumped into
-  the same archive, under `.dockpanel-backup/db/`, alongside a manifest describing what is inside.
+  the same archive, under `.arsy-backup/db/`, alongside a manifest describing what is inside.
   Restoring puts the files back and then loads each dump over the live database. Verified on a fresh
   server the way the gap was found: a published post was deleted and came back.
 
 ### Fixed
 
 - **Restoring a MySQL or MariaDB database never worked.** The restore ran `mysql` inside the
-  database container, but DockPanel provisions `mariadb:11`, which no longer ships the mysql-named
+  database container, but ARSY provisions `mariadb:11`, which no longer ships the mysql-named
   client symlinks — so every restore failed with "executable file not found" while the *dump* half,
   which correctly calls `mariadb-dump`, worked fine. Every sibling call site in the codebase already
   used `mariadb`; this one did not. Affected the Databases page, the backup orchestrator, and
@@ -14251,7 +14251,7 @@ scanned, and a waiver whose reasoning nothing checked.
 
 ### Changed
 
-- The `dockpanel backup` CLI states that its archives contain files only, and why: it authenticates
+- The `arsy backup` CLI states that its archives contain files only, and why: it authenticates
   to the agent, which has no access to the panel's database records. Restoring an archive that
   carries database dumps fails from the CLI rather than restoring the files and calling it done. The
   documented sample output for both commands now matches what the CLI actually prints.
@@ -14394,7 +14394,7 @@ scanned, and a waiver whose reasoning nothing checked.
 
 ## [2.31.0] - 2026-07-25
 
-The first ten minutes with DockPanel. Everything here is something a new operator meets before they
+The first ten minutes with ARSY. Everything here is something a new operator meets before they
 have any way to know what the product expects of them — the account-creation screen, the checklist,
 the certificate buttons, the dashboard on a box with nothing on it yet.
 
@@ -14431,7 +14431,7 @@ the create-your-admin-password form over plain HTTP.
   reports one is actually required.
 - Reserved control-plane domains are now derived from this install's own panel host (`BASE_URL`),
   plus anything in a new `RESERVED_DOMAINS` variable. The list used to be the hardcoded triple
-  `dockpanel.dev`, `docs.dockpanel.dev`, `panel.example.com` — our marketing domains and a
+  `moonwitness.dev`, `docs.moonwitness.dev`, `panel.example.com` — our marketing domains and a
   documentation placeholder, compiled into every customer's build, protecting nothing of theirs.
   Matching is on the exact host, so a panel at an apex no longer blocks its own subdomains.
 
@@ -14463,7 +14463,7 @@ product, in a way that broke a real user's mail.
   than warns. A check now decides *which* outcome a situation is; it cannot decide what that outcome
   says, because the four hand-rolled `PrereqResult` constructors are gone and the only remaining path
   goes through the registry.
-- **The documentation is generated from it.** `dockpanel-api --emit-guidance <repo>` writes
+- **The documentation is generated from it.** `arsy-api --emit-guidance <repo>` writes
   `docs/guides/prerequisites.md` — the shipped binary emits its own manual. A test regenerates and
   compares, so changing a sentence without regenerating fails the suite, naming the line and the
   command to fix it. This is the mechanism, not a convention: a page that is emitted cannot describe
@@ -14480,7 +14480,7 @@ product, in a way that broke a real user's mail.
 ### Fixed
 
 - **The manual told you to publish a DKIM record that could never verify.** `docs/guides/email.md`
-  documented the selector as `default`; DockPanel has used `dockpanel` for its entire life. Anyone
+  documented the selector as `default`; ARSY has used `arsy` for its entire life. Anyone
   who set mail up from the documentation rather than from the panel got a record at the wrong name,
   unsigned mail, and — since v2.29.0 — a DNS check correctly reporting it missing while the manual
   insisted it was right. The same page described the mail host as `mail.example.com` and the SPF
@@ -14515,7 +14515,7 @@ One gap only a fresh box could show, found by driving v2.29.0 on one rather than
 ### Fixed
 
 - **The app name-collision check was inert.** The agent lists containers under the name it actually
-  creates them with (`dockpanel-app-pg-ok`), while the deploy form submits the bare name (`pg-ok`), so
+  creates them with (`arsy-app-pg-ok`), while the deploy form submits the bare name (`pg-ok`), so
   the check compared two strings that could never be equal and reported every colliding name as
   available. Deploying a second app with an existing name still failed — at Docker, after the image
   pull, which is exactly what the check exists to prevent. The panel now strips the container prefix
@@ -14610,7 +14610,7 @@ First slice of the guidance layer, plus the backend-correctness cluster found al
 from a behavioural audit that installed v2.27.0 on a genuinely fresh box with the public one-liner and
 drove the real flows, rather than reading the source.
 
-The theme is silence. In every case below, DockPanel already knew what was wrong — and said nothing
+The theme is silence. In every case below, ARSY already knew what was wrong — and said nothing
 where the user was looking.
 
 ### Added — the prerequisite layer
@@ -14643,7 +14643,7 @@ where the user was looking.
 - **The auto-generated WordPress admin password was generated, used, and discarded.** The field offers
   "Auto-generated if blank", so a user who took that at its word could not log into the site they had
   just created — while the vault auto-created for that site sat empty. Generated credentials are now
-  stored in that vault (encrypted with the key the Secrets Manager reads), and a password DockPanel
+  stored in that vault (encrypted with the key the Secrets Manager reads), and a password ARSY
   generated is shown once at creation with the rest of the provisioning output.
 - **The Let's Encrypt account contact was silently the operator's panel login address, unvalidated.**
   Registering the panel as, say, `admin@box.test` made the CA reject the contact, so every certificate
@@ -14825,7 +14825,7 @@ multi-agent audit of the file-manager surface.
   root** (e.g. into `/etc/cron.d`). The resolver now rejects any symlink in the to-be-created path;
   legitimate in-root symlink directories still work. Covered by new tests.
 - **Removed the unused `_server` magic-domain upload branch** in the agent — a latent root-write
-  primitive (able to target `/etc/nginx`, `/etc/dockpanel`, `/home`, `/opt`) that used a weaker,
+  primitive (able to target `/etc/nginx`, `/etc/arsy`, `/home`, `/opt`) that used a weaker,
   hand-rolled traversal check and had no caller anywhere in the panel.
 - **Hardened the download filename header** — the backend's `Content-Disposition` fallback now
   sanitizes the filename (quote/backslash/CRLF) to match the agent, preventing quoted-string breakout.
@@ -14906,7 +14906,7 @@ experience.
   when not a terminal).
 - **Failure box**: if the install dies anywhere it names the exact step, shows the last install-log
   lines, the full log path, and the safe re-run command — instead of stopping mid-paint.
-- **Full install log** at `/var/log/dockpanel-install.log` (0600) capturing every step's output.
+- **Full install log** at `/var/log/arsy-install.log` (0600) capturing every step's output.
 - **Release-asset integrity**: binaries + frontend downloads are sha256-verified against the
   release's `checksums.txt` (mismatch aborts); downloads retry on transient network errors.
 - **Honest progress bar**: sized to the steps that will actually run — no more 93% → 100% jump.
@@ -14923,7 +14923,7 @@ Operator-only surface (admin-gated), so no cross-tenant exposure; backend + agen
 
 ### Fixed
 - **Preview cleanup actually tears previews down.** `git_previews.container_name` is stored with the
-  `dockpanel-git-` prefix the agent re-adds; the three automatic cleanup callers (TTL, stuck-preview,
+  `arsy-git-` prefix the agent re-adds; the three automatic cleanup callers (TTL, stuck-preview,
   webhook branch-delete) passed it verbatim, so the doubled prefix made teardown a no-op that leaked
   the container, image, nginx vhost, SSL cert, and a still-bound port. All callers now strip the
   prefix first.
@@ -14962,10 +14962,10 @@ unchanged.
   `COPY..TO/FROM PROGRAM` and server-file reads are now denied. Existing databases keep their prior
   role (the change applies to newly-created databases).
 - **Cross-tenant lateral movement between database containers closed on existing installs.** All
-  per-tenant database containers share the `dockpanel-db` bridge; v2.19.0 disabled inter-container
+  per-tenant database containers share the `arsy-db` bridge; v2.19.0 disabled inter-container
   communication (`enable_icc=false`) but only when the network was first created, so installs whose
   network predated that kept ICC on (and even new databases there joined the ICC-on network). The
-  agent now reconciles an existing ICC-on `dockpanel-db` network to `enable_icc=false` (one-time,
+  agent now reconciles an existing ICC-on `arsy-db` network to `enable_icc=false` (one-time,
   idempotent), so a compromised or abusive database container can no longer address sibling tenants'
   database containers. Published `127.0.0.1` ports are preserved across the reconcile.
 - **Reserved database names.** Because a postgres tenant is now a real role that owns its database, a
@@ -14981,7 +14981,7 @@ user reaches these; a 10-lens REFUTE-verified audit found 19 confirmed issues.
 
 ### Security
 - **Cross-tenant database password reset (BOLA/TOCTOU) closed.** Every exec/reset path resolved
-  the target Docker container by the per-site (non-unique) name `dockpanel-db-{name}`. During
+  the target Docker container by the per-site (non-unique) name `arsy-db-{name}`. During
   `create()`'s agent round-trip a tenant's transient colliding-name row (empty `container_id`) was
   list-visible, letting a `reset-password` call reach another tenant's like-named container (the
   agent's MariaDB reset authenticates as root over the unix socket, needing no victim password).
@@ -15098,13 +15098,13 @@ enforced.
 
 ### Security
 
-- **Container action handlers now verify the target is a DockPanel-managed
+- **Container action handlers now verify the target is a ARSY-managed
   container.** `stop` / `start` / `restart` / `logs` / `exec` / `remove` /
   `change-image` / `update` / `env` / `snapshot` / `update-limits` and the Ollama
   model endpoints previously validated only the container-ID *format*, so a
   well-formed id for the panel's own infrastructure (its PostgreSQL / API / agent
   containers) would be acted on. Each handler now inspects the container and
-  refuses (403) unless it carries the `dockpanel.managed=true` label — the same
+  refuses (403) unless it carries the `arsy.managed=true` label — the same
   boundary the app *list* already enforced, closing a severed read/write scope.
 - **`activity-ping` is now admin-only.** The endpoint that resets a container's
   auto-sleep idle timer accepted any authenticated user, so a non-admin could keep
@@ -15156,7 +15156,7 @@ destructive or silent UI actions.
   that dropped every hardening flag — `cap_drop ALL` + the minimal cap allowlist,
   `no-new-privileges`, the `127.0.0.1:<port>` publish (so the nginx reverse proxy
   returned 502), the restart policy, the memory/CPU limits, the environment
-  variables, and the `dockpanel.managed` labels (so the container disappeared from
+  variables, and the `arsy.managed` labels (so the container disappeared from
   the panel and became unmanageable). It now inspects the existing container and
   recreates it preserving all of that, only swapping the image.
 - **Deploy-time CPU limits above one core now apply.** A deploy requesting
@@ -15254,14 +15254,14 @@ answers "is my fleet's operational posture consistent?" from one card.
 
 - **Report only.** Reconcile (push a source-of-truth server's config to the
   others) is intentionally not in this release — it is cross-server mutation with
-  no existing transport, and DockPanel keeps that surface explicit and confirmed.
+  no existing transport, and ARSY keeps that surface explicit and confirmed.
   Comparing a member's live on-box state against its declared config is a
   separate later leg.
 
 ## [2.12.1] - 2026-07-20
 
 Ship-path and CI hardening. No behavioural change to the panel or agent — this
-release makes the machinery that builds, publishes, and installs DockPanel fail
+release makes the machinery that builds, publishes, and installs ARSY fail
 loudly and verify what it downloads.
 
 ### Security
@@ -15289,7 +15289,7 @@ loudly and verify what it downloads.
   and it says so in the run summary) rather than being lost.
 
 - **`update.sh` no longer aborts before installing binaries on non-git
-  layouts.** On a hand-built `/opt/dockpanel` with no repo tree, copying the
+  layouts.** On a hand-built `/opt/arsy` with no repo tree, copying the
   canonical systemd unit failed under `set -euo pipefail` and stopped the whole
   update before the binary swap. It now keeps the existing on-disk unit and
   continues.
@@ -15417,7 +15417,7 @@ loudly and verify what it downloads.
   (fixed in 2.11.4), reintroduced one release later in the new agent updater.
 
   The restore's own status is now branched on, and the outcome written to
-  `/var/lib/dockpanel/last-agent-update.json` is what the agent reports about
+  `/var/lib/arsy/last-agent-update.json` is what the agent reports about
   **itself** afterwards — distinguishing "restored, agent reports X" from
   "could not restore" and from "restored the old binary but the agent is not
   answering". A test pins the shape, negative-controlled against the exact line
@@ -15436,8 +15436,8 @@ loudly and verify what it downloads.
   remote agent for the first time, on a two-machine lab.
 
   - `scripts/install-agent.sh` — the only documented way to add a remote server
-    — never creates `/opt/dockpanel`. The agent's update receiver required
-    `/opt/dockpanel/scripts/update.sh` and refused with
+    — never creates `/opt/arsy`. The agent's update receiver required
+    `/opt/arsy/scripts/update.sh` and refused with
     `500: update script not found` in 166 ms, so the feature's success rate on
     its entire target population was zero. It failed safely, at least: nothing
     on the remote box was touched.
@@ -15445,7 +15445,7 @@ loudly and verify what it downloads.
     shipped — and it turned the loud failure into a silent one. `update.sh` is
     the *panel* updater: it syncs a git repo, dumps a postgres container, and
     replaces the API, the frontend and the nginx config, none of which exist on
-    an agent-only box. It aborted at `No such container: dockpanel-postgres`
+    an agent-only box. It aborted at `No such container: arsy-postgres`
     **one second after the panel had already recorded the server as
     succeeded**, and the agent stayed on its old version.
   - The false success came from status being read off the wrong process.
@@ -15459,7 +15459,7 @@ loudly and verify what it downloads.
   the requested release tag, **verified against that release's `checksums.txt`
   before it is installed**, swapped in by rename (never a copy onto a running
   executable), then restarted, with the result written to
-  `/var/lib/dockpanel/last-agent-update.json` on every exit path. If the new
+  `/var/lib/arsy/last-agent-update.json` on every exit path. If the new
   binary does not come up reporting the target version, the previous one is
   restored. Full panel installs keep using `update.sh` as before. The procedure
   is compiled into the agent, so it does not depend on any file being present
@@ -15482,7 +15482,7 @@ loudly and verify what it downloads.
   second.** With the update stopped before the restart, the agent's in-memory
   state stayed `in_flight`, so the panel waited out its whole deadline and
   reported a generic timeout. Failures now resolve in ~10 s with the real
-  cause (e.g. `could not download …/v2.99.0/dockpanel-agent-linux-amd64`).
+  cause (e.g. `could not download …/v2.99.0/arsy-agent-linux-amd64`).
 
 - **The rolling update rolled the fleet in the wrong order.** `agent_version`
   is a text column, so ordering by it in SQL sorted `2.9.0` *after* `2.10.0` —
@@ -15593,7 +15593,7 @@ loudly and verify what it downloads.
   created after the snapshot, and the data in them.** Previously they survived,
   which is what made the panel unbootable afterwards. The pre-rollback dump is
   the way back, and it is taken before anything is touched.
-- Pre-rollback dumps (`/var/lib/dockpanel/pre-rollback-<id>.sql.gz`) are now
+- Pre-rollback dumps (`/var/lib/arsy/pre-rollback-<id>.sql.gz`) are now
   pruned to the three most recent. One is written on every rollback and nothing
   in the product had ever deleted them — the retention sweep only walks
   `panel_snapshots` rows and their tarballs — so they grew without bound, which
@@ -15669,13 +15669,13 @@ not by reading it.
 
 ### Added
 
-- Every restore writes a verdict to `/var/lib/dockpanel/last-restore.json` on
+- Every restore writes a verdict to `/var/lib/arsy/last-restore.json` on
   every exit path, including an abort, and it is surfaced as `last_restore` on
   `GET /api/update/status`. A restore stops and restarts the panel, so its
   outcome cannot be returned through the request that began it; without this a
   failed rollback and a rollback that never ran look identical.
 - A rollback now captures the pre-rollback database to
-  `/var/lib/dockpanel/pre-rollback-<id>.sql.gz` before applying the snapshot, so
+  `/var/lib/arsy/pre-rollback-<id>.sql.gz` before applying the snapshot, so
   a successful-but-regretted rollback is recoverable.
 
 ### Known issues
@@ -15699,13 +15699,13 @@ check rather than by reading the code.
 
 - **A failed update was never rolled back, and said it was.** `update.sh`'s
   `rollback()` restored the previous binaries with `cp`. At that point the new
-  `dockpanel-api` and `dockpanel-agent` are already running, and copying onto a
+  `arsy-api` and `arsy-agent` are already running, and copying onto a
   running executable fails `ETXTBSY` ("Text file busy") — each restore was
   suffixed `2>/dev/null || true`, so the failure was discarded and the script
   printed "Rolled back to previous binaries" while the box kept running the
-  binary that had just failed its health check. Only the `dockpanel` CLI (not
+  binary that had just failed its health check. Only the `arsy` CLI (not
   running) was actually restored, so the box then disagreed with itself:
-  `dockpanel --version` reported the old version while `/api/health` reported the
+  `arsy --version` reported the old version while `/api/health` reported the
   new one. Rollback now stops the services first and restores with `mv`, the same
   primitive the forward swap already used, and reports per-binary success or
   failure instead of discarding it. Verified on a lab box: both binaries return
@@ -15738,8 +15738,8 @@ check rather than by reading the code.
 
 ### Security
 
-- **Panel snapshots were world-readable.** `/var/backups/dockpanel/snapshots` was
-  `0755` and each tarball `0644`, and every snapshot bundles `/etc/dockpanel` —
+- **Panel snapshots were world-readable.** `/var/backups/arsy/snapshots` was
+  `0755` and each tarball `0644`, and every snapshot bundles `/etc/arsy` —
   `api.env` (the JWT signing secret and the Postgres password), `agent.token`,
   and the agent's TLS private key. Any local user could read them and mint an
   admin token. The directory is now `0700` and tarballs `0600`, applied to
@@ -15768,9 +15768,9 @@ deferred since the feature shipped — showed it failing at the first download.
   version with the `v` stripped (`2.11.2`), and `/api/update/apply` validates the
   operator's target against that stripped form — so `2.11.2` was the only
   accepted input. It was then handed to `update.sh` verbatim as
-  `DOCKPANEL_VERSION`, which documents `vX.Y.Z` and concatenates it straight into
+  `ARSY_VERSION`, which documents `vX.Y.Z` and concatenates it straight into
   the release download URL. The result was
-  `releases/download/2.11.2/dockpanel-agent-linux-amd64`, which 404s, so every
+  `releases/download/2.11.2/arsy-agent-linux-amd64`, which 404s, so every
   self-update died with curl exit 22 before swapping a single binary. The `v` is
   now re-added at that boundary. The failure was at least safe — nothing was
   replaced and the panel stayed on its previous version.
@@ -15810,8 +15810,8 @@ up on Ubuntu, and its PostgreSQL backend had never worked on any install.
 - **The PowerDNS PostgreSQL backend could never connect.** The installer looked
   for `PANEL_DB_PASSWORD`/`DATABASE_URL` in the agent's environment — which the
   agent unit does not set — and then silently *generated a random password*,
-  guaranteeing `password authentication failed for user "dockpanel"`. It now
-  reads the real credential from `/etc/dockpanel/api.env`, and reports an error
+  guaranteeing `password authentication failed for user "arsy"`. It now
+  reads the real credential from `/etc/arsy/api.env`, and reports an error
   instead of inventing one that cannot work.
 - **The PowerDNS installer reported success when pdns never started.** Both
   `systemctl` results were discarded, so a crash-looping service still returned
@@ -15900,14 +15900,14 @@ surfaced.
 
 ### Notes
 
-Four of the patched advisories were **never exploitable in DockPanel's
+Four of the patched advisories were **never exploitable in ARSY's
 configuration**. They are fixed anyway — depending on a vulnerable
 version is worth avoiding on its own — but the honest framing is that no
-DockPanel install was at risk from them:
+ARSY install was at risk from them:
 
 - **RUSTSEC-2026-0141 (`lettre`, CVSS 9.1)** — the inverted
   hostname-verification flag lives entirely inside the crate's
-  `boring-tls` feature arms. DockPanel builds `lettre` with
+  `boring-tls` feature arms. ARSY builds `lettre` with
   `default-features = false` and `tokio1-rustls-tls`; `boring` is absent
   from the dependency graph and the rustls arm is byte-identical between
   0.11.21 and 0.11.22. The vulnerable line was never compiled.
@@ -15943,13 +15943,13 @@ Two upstream behavior changes do ship and are worth knowing about:
 ## [2.11.0] - 2026-07-19
 
 Three community-requested enhancements
-([#67](https://github.com/ovexro/dockpanel/issues/67),
-[#63](https://github.com/ovexro/dockpanel/issues/63),
-[#50](https://github.com/ovexro/dockpanel/issues/50)/[#58](https://github.com/ovexro/dockpanel/issues/58)).
+([#67](https://github.com/A-L-L-A-H/mw-arsy/issues/67),
+[#63](https://github.com/A-L-L-A-H/mw-arsy/issues/63),
+[#50](https://github.com/A-L-L-A-H/mw-arsy/issues/50)/[#58](https://github.com/A-L-L-A-H/mw-arsy/issues/58)).
 
 ### Added
 - **The dashboard status widgets are now clickable**
-  ([#67](https://github.com/ovexro/dockpanel/issues/67)). The overview
+  ([#67](https://github.com/A-L-L-A-H/mw-arsy/issues/67)). The overview
   status cells (Health, Alerts, SSL, Incidents, Backups, Sites,
   Databases, Docker), the "Degraded Performance" status banner, and each
   Smart Recommendation row now link straight to the page that resolves
@@ -15961,29 +15961,29 @@ Three community-requested enhancements
   pages now accept a `?tab=` query parameter so these links land on the
   correct sub-tab.
 - **PowerDNS SQLite backend option**
-  ([#63](https://github.com/ovexro/dockpanel/issues/63)). The one-click
+  ([#63](https://github.com/A-L-L-A-H/mw-arsy/issues/63)). The one-click
   PowerDNS installer now offers a choice of **SQLite** (no database
   server required) or PostgreSQL. SQLite removes the dependency on the
   panel's containerized PostgreSQL — the coupling that could make the
   PostgreSQL install silently fail — and has a minimal footprint that
   suits most deployments. The installer's manual setup guide was also
   corrected: it previously instructed `sudo -u postgres createdb pdns`
-  on localhost, which cannot work because DockPanel's PostgreSQL runs in
+  on localhost, which cannot work because ARSY's PostgreSQL runs in
   a Docker container, not on the host.
 - **AzuraCast app template**
-  ([#50](https://github.com/ovexro/dockpanel/issues/50) /
-  [#58](https://github.com/ovexro/dockpanel/issues/58)). One-click deploy
+  ([#50](https://github.com/A-L-L-A-H/mw-arsy/issues/50) /
+  [#58](https://github.com/A-L-L-A-H/mw-arsy/issues/58)). One-click deploy
   for the AzuraCast self-hosted web-radio suite (Media category).
 
 ## [2.10.2] - 2026-06-07
 
 Fixes two fresh-install blockers reported in
-[#70](https://github.com/ovexro/dockpanel/issues/70) and
-[#71](https://github.com/ovexro/dockpanel/issues/71).
+[#70](https://github.com/A-L-L-A-H/mw-arsy/issues/70) and
+[#71](https://github.com/A-L-L-A-H/mw-arsy/issues/71).
 
 ### Fixed
 - **Install failed on Debian 12 with `GLIBC_2.38 / GLIBC_2.39 not
-  found`** ([#70](https://github.com/ovexro/dockpanel/issues/70)).
+  found`** ([#70](https://github.com/A-L-L-A-H/mw-arsy/issues/70)).
   Release binaries were built on `ubuntu-latest` (now Ubuntu 24.04,
   glibc 2.39), so the dynamically-linked agent/API/CLI demanded
   glibc ≥ 2.38 and the agent refused to start on Debian 12 (glibc 2.36).
@@ -15993,19 +15993,19 @@ Fixes two fresh-install blockers reported in
   musl binaries** (`x86_64-unknown-linux-musl` /
   `aarch64-unknown-linux-musl`) via `cargo-zigbuild`, so the binaries
   carry zero glibc dependency and run on any modern Linux regardless of
-  distro libc version (`ldd` reports "statically linked"). DockPanel's
+  distro libc version (`ldd` reports "statically linked"). ARSY's
   TLS stack is entirely rustls, so there is no OpenSSL system dependency
   to block static linking.
 - **First login bounced straight back to the login screen on a domain
   install served over HTTP**
-  ([#71](https://github.com/ovexro/dockpanel/issues/71)). When a domain
+  ([#71](https://github.com/A-L-L-A-H/mw-arsy/issues/71)). When a domain
   is supplied at setup, `setup.sh` writes `BASE_URL=https://<domain>`,
   but the panel vhost is served over plain HTTP until TLS is added. The
   cookie helper keyed the `Secure` flag off `BASE_URL`, so it stamped
   `Secure` on the session cookie even though the response left over HTTP
   — the browser silently dropped the cookie and the next
   `/api/auth/me` 401'd, bouncing the user back to the login screen in
-  every browser. This was the case the [#47](https://github.com/ovexro/dockpanel/issues/47)
+  every browser. This was the case the [#47](https://github.com/A-L-L-A-H/mw-arsy/issues/47)
   fix left open (it only removed the empty-`BASE_URL` path).
   `routes/auth.rs::cookie_secure_flag` and the OAuth callback now derive
   `Secure` solely from the actual request scheme (`X-Forwarded-Proto`,
@@ -16016,7 +16016,7 @@ Fixes two fresh-install blockers reported in
 ## [2.10.1] - 2026-05-20
 
 Hotfix for the v2.8.22 webmail reverse-proxy regression reported in
-[#57](https://github.com/ovexro/dockpanel/issues/57).
+[#57](https://github.com/A-L-L-A-H/mw-arsy/issues/57).
 
 ### Fixed
 - **Webmail "Open" landed on the panel dashboard instead of Roundcube
@@ -16049,7 +16049,7 @@ The reframing matters: `scripts/update.sh:430-499` already ships a
 production-tested binary-swap + .bak-restore rollback flow. v2.10.0 does
 NOT reimplement that — the new orchestrator (`services/panel_update.rs`)
 shells out to the same script under a controlled environment
-(`DOCKPANEL_NO_SELF_REFRESH=1` + `DOCKPANEL_VERSION=<target>`) so every
+(`ARSY_NO_SELF_REFRESH=1` + `ARSY_VERSION=<target>`) so every
 bug fix already in update.sh (self-refresh ordering from v2.8.15-16,
 lock-wait conf from v2.8.17, fragment-include awk migration from v2.8.22,
 ACME cooldown from v2.8.23) keeps working unchanged. The new code is a
@@ -16062,9 +16062,9 @@ presentation + persistence layer over a proven core.
   Replaces the static SSH copy-paste block.
 - **Pre-update snapshot service** (`services/panel_snapshot.rs`). Each
   Apply call first writes a tar.gz triplet to
-  `/var/backups/dockpanel/snapshots/` containing
+  `/var/backups/arsy/snapshots/` containing
   `binaries/{agent,api,cli}` + `db/dump.sql.gz`
-  (`pg_dump --clean --if-exists`) + `etc/dockpanel/` + `metadata.json`.
+  (`pg_dump --clean --if-exists`) + `etc/arsy/` + `metadata.json`.
   Written to `.tmp` then atomically renamed; DB row only inserted after
   rename succeeds. Refuses to create when the snapshot partition has
   less than 2 GiB free.
@@ -16112,11 +16112,11 @@ presentation + persistence layer over a proven core.
   `candidate` widens to `/releases?per_page=20` (first by `published_at`
   desc); `stable` keeps the existing `/releases/latest` URL bit-for-bit.
 - **`scripts/update.sh` accepts two new env vars.**
-  `DOCKPANEL_NO_SELF_REFRESH=1` bypasses the v2.7.13 self-refresh block
+  `ARSY_NO_SELF_REFRESH=1` bypasses the v2.7.13 self-refresh block
   so the orchestrator can stream a single subprocess invocation's stdout
   into its state machine without a mid-flight re-exec breaking the pipe
   (SSH-operator flow keeps self-refresh on by default).
-  `DOCKPANEL_VERSION=vX.Y.Z` pins the release tag instead of fetching
+  `ARSY_VERSION=vX.Y.Z` pins the release tag instead of fetching
   `/releases/latest`, so a candidate-channel pick can't race a GA
   publish between the panel's poll and the operator's click.
 
@@ -16129,7 +16129,7 @@ presentation + persistence layer over a proven core.
 
 ### Operator notes
 - Snapshots consume disk: ~150-300 MB each typical, retained 7 days
-  (last 3 always kept). Stored under `/var/backups/dockpanel/snapshots/`.
+  (last 3 always kept). Stored under `/var/backups/arsy/snapshots/`.
   A free-disk pre-check refuses to create a snapshot if the partition
   has less than 2 GiB free.
 - `update.sh`'s SSH-only flow continues working unchanged — no
@@ -16138,14 +16138,14 @@ presentation + persistence layer over a proven core.
   HTTPS-to-GitHub is the existing trust boundary; cosign verify is a
   separate hardening pass (non-trivial key management).
 - The api process will be killed mid-binary-swap by `update.sh`'s
-  `systemctl stop dockpanel-api`. The orchestrator state lives in the
+  `systemctl stop arsy-api`. The orchestrator state lives in the
   DB rows (`panel_snapshots.to_version`); the new process boots Idle
   and the finalize hook closes out the in-flight row.
 
 ## [2.9.0] - 2026-05-16
 
 Phase 4 W3 ships **on-call rotations** and **escalation policies**. A small
-team can now self-host their on-call schedule in DockPanel — when an alert
+team can now self-host their on-call schedule in ARSY — when an alert
 fires, the panel pages whoever is on-call right now (not every channel on
 the rule); if the alert isn't acknowledged within a policy-defined
 threshold, the panel routes the page to the next step in the chain.
@@ -16221,15 +16221,15 @@ default to NULL/0 on existing rows.
 
 ### Added
 
-- **New Prometheus counter: `dockpanel_cert_renewals_total{result}`** with
+- **New Prometheus counter: `arsy_cert_renewals_total{result}`** with
   `result="success"` and `result="failure"` labels. Tracks auto-healer
   renewal attempts so operators can graph trend and alert on
   `rate(...{result="failure"}[1h])`. The counter is process-local (resets
   across restart — Prometheus `increase()` handles that gracefully) and
   adds zero DB queries per scrape.
 
-  Exposed at `/metrics` alongside the existing `dockpanel_info`,
-  `dockpanel_site_count`, and `dockpanel_alerts_firing` gauges.
+  Exposed at `/metrics` alongside the existing `arsy_info`,
+  `arsy_site_count`, and `arsy_alerts_firing` gauges.
 
 ## [2.8.22] - 2026-05-16
 
@@ -16256,7 +16256,7 @@ default to NULL/0 on existing rows.
 ### Changed
 
 - `webmail_install` is now idempotent — clicking Install when an existing
-  `dockpanel-roundcube` container is present tears it down before
+  `arsy-roundcube` container is present tears it down before
   recreating, so env-var additions across releases (like the v2.8.22
   proxy/trusted-hosts envs) apply automatically on next Install click.
   Users who deployed Roundcube on v2.8.20/v2.8.21 just need to click
@@ -16265,7 +16265,7 @@ default to NULL/0 on existing rows.
   clean uninstall.
 
 - Panel nginx vhost gains an `include
-  /etc/nginx/conf.d/dockpanel-panel.locations/*.conf;` directive (baked
+  /etc/nginx/conf.d/arsy-panel.locations/*.conf;` directive (baked
   into `scripts/setup.sh`'s vhost template; injected into existing
   vhosts by `scripts/update.sh` via an awk-based one-time migration —
   same shape as the v2.8.3 IPv6-listen migration). Drop-in directory
@@ -16427,14 +16427,14 @@ default to NULL/0 on existing rows.
 ### Fixed
 
 - **Agent installers failed with `Could not get lock /var/lib/dpkg/lock-frontend`
-  when another apt was running** ([#57 follow-up](https://github.com/ovexro/dockpanel/issues/57)).
+  when another apt was running** ([#57 follow-up](https://github.com/A-L-L-A-H/mw-arsy/issues/57)).
   On fresh Debian 13 boots, `unattended-upgrades` runs in the
   background and holds the dpkg frontend lock for several minutes.
   The panel UI's `Install PHP 8.4` (and any other agent-driven apt
   install/purge — services, updates) failed immediately on contention
   instead of waiting. Both `setup.sh` (fresh installs) and `update.sh`
   (existing operators) now drop
-  `/etc/apt/apt.conf.d/99-dockpanel-lock-wait.conf` setting
+  `/etc/apt/apt.conf.d/99-arsy-lock-wait.conf` setting
   `DPkg::Lock::Timeout "300";` — every apt invocation on the system
   (agent and otherwise) now waits up to 5 minutes for the dpkg lock
   before giving up. No agent code change needed; the config file is
@@ -16442,7 +16442,7 @@ default to NULL/0 on existing rows.
   Trixie: `python3 fcntl.lockf` holding the dpkg lock for 15 s →
   `apt-get install` waits 15 s and succeeds (vs. 0 s fail-fast pre-fix).
 - **Settings → Services → `Install Redis` (and Node.js, Composer, WAF,
-  Cloudflare Tunnel) returned 404** ([#57 follow-up](https://github.com/ovexro/dockpanel/issues/57)).
+  Cloudflare Tunnel) returned 404** ([#57 follow-up](https://github.com/A-L-L-A-H/mw-arsy/issues/57)).
   Latent backend gap since these services were added: the agent has
   full install/uninstall implementations in
   `panel/agent/src/routes/service_installer.rs`, but the backend's
@@ -16459,7 +16459,7 @@ default to NULL/0 on existing rows.
 
 ### Fixed
 
-- **PHP install failed on Debian 13 (trixie)** ([#57](https://github.com/ovexro/dockpanel/issues/57)).
+- **PHP install failed on Debian 13 (trixie)** ([#57](https://github.com/A-L-L-A-H/mw-arsy/issues/57)).
   `setup.sh` hardcoded `PHP_VER=8.3` and reached for
   `add-apt-repository -y ppa:ondrej/php` whenever `apt-cache show
   php8.3` returned nothing — but trixie ships PHP 8.4 in its default
@@ -16476,19 +16476,19 @@ default to NULL/0 on existing rows.
 - **`update.sh` self-refresh never fired on the default code path.**
   Mode auto-detection (`INSTALL_FROM_RELEASE=1` when no Rust toolchain
   / no source) ran *after* the self-refresh check, so a user running
-  plain `bash /opt/dockpanel/scripts/update.sh` entered with
+  plain `bash /opt/arsy/scripts/update.sh` entered with
   `INSTALL_FROM_RELEASE=0`, failed the self-refresh gate, and then
   got bumped to `1` by auto-detect — but with the stale local script
   still executing. Effect: pre-v2.8.16 panels swapped binaries to the
   latest release just fine, but never picked up script-side fixes
   (unit-file deploys, nginx config tweaks, install-agent.sh drop into
-  FE_DIST). That's why issue [#56](https://github.com/ovexro/dockpanel/issues/56)
+  FE_DIST). That's why issue [#56](https://github.com/A-L-L-A-H/mw-arsy/issues/56)
   resurfaced after the v2.8.14 fix shipped — operators on v2.8.13
   ran update.sh and stayed on v2.8.13's update.sh logic. Fix: move
   mode detection ahead of the self-refresh block so
   `INSTALL_FROM_RELEASE` is correct by the time the gate evaluates.
   Operators on v2.8.13/v2.8.14/v2.8.15 should run
-  `INSTALL_FROM_RELEASE=1 bash /opt/dockpanel/scripts/update.sh` once
+  `INSTALL_FROM_RELEASE=1 bash /opt/arsy/scripts/update.sh` once
   to trigger self-refresh; from v2.8.16 onward, plain `bash update.sh`
   works.
 - **PHP 8.4 not detected as installed.**
@@ -16506,7 +16506,7 @@ default to NULL/0 on existing rows.
   so v2.8.14's canonical-unit changes never deployed on the standard
   upgrade path.** Found by the v2.8.13 → v2.8.14 VPS upgrade test:
   binaries upgraded to v2.8.14 successfully, but the systemd unit file
-  on disk was still v2.8.13's content (no `RuntimeDirectory=dockpanel`,
+  on disk was still v2.8.13's content (no `RuntimeDirectory=arsy`,
   no `/var/cache/nginx` in `ReadWritePaths=`). Root cause: line 106
   gated `git pull` behind `INSTALL_FROM_RELEASE != 1`, but the code at
   line 215 deploys the canonical unit from `$AGENT_SRC` regardless of
@@ -16527,7 +16527,7 @@ default to NULL/0 on existing rows.
 
 ### Fixed
 
-- **WordPress provisioning failures on every fresh install** ([#54](https://github.com/ovexro/dockpanel/issues/54)).
+- **WordPress provisioning failures on every fresh install** ([#54](https://github.com/A-L-L-A-H/mw-arsy/issues/54)).
   Three independent regressions surfaced when the v2.8.12 strict
   sandbox shipped, each only firing on specific paths so they slipped
   through the v2.8.13 verification:
@@ -16565,7 +16565,7 @@ default to NULL/0 on existing rows.
     fix is to drop the flag from all three sites.
 
 - **`curl … {panel_url}/install-agent.sh | bash` returned the SPA
-  HTML** ([#56](https://github.com/ovexro/dockpanel/issues/56)). The
+  HTML** ([#56](https://github.com/A-L-L-A-H/mw-arsy/issues/56)). The
   multi-server install command surfaced in `routes/servers.rs`
   pointed users at `{panel_url}/install-agent.sh`, but the panel's
   nginx config has `try_files $uri $uri/ /index.html;` with no
@@ -16577,7 +16577,7 @@ default to NULL/0 on existing rows.
   serves it directly with the right MIME.
 
 - **HTTP-on-IP installs were stuck in a login bounce**
-  ([#47](https://github.com/ovexro/dockpanel/issues/47)). The cookie
+  ([#47](https://github.com/A-L-L-A-H/mw-arsy/issues/47)). The cookie
   helper in `routes/auth.rs::issue_session` set `Secure` whenever
   `BASE_URL` was empty (the assumption being that production
   deployments use HTTPS and an empty default should not regress
@@ -16593,15 +16593,15 @@ default to NULL/0 on existing rows.
   passkey `auth_complete` so every login path uses the same scheme
   detection.
 
-- **`/run/dockpanel` disappeared mid-upgrade and pinned the agent at
+- **`/run/arsy` disappeared mid-upgrade and pinned the agent at
   StartLimitBurst** (v2.8.13 followup, surfaced during the demo
-  upgrade-path test). `update.sh` mkdir's `/var/run/dockpanel`
+  upgrade-path test). `update.sh` mkdir's `/var/run/arsy`
   before the `systemctl stop / start` cycle, but between stop and
   start the directory disappeared on Ubuntu — the agent's namespace
-  mount (which now resolves `/run/dockpanel` as a `ReadWritePaths=`
+  mount (which now resolves `/run/arsy` as a `ReadWritePaths=`
   symlink target) failed five times in 60s and the unit refused to
   start until manual `systemd-tmpfiles --create` plus
-  `systemctl reset-failed`. Added `RuntimeDirectory=dockpanel` and
+  `systemctl reset-failed`. Added `RuntimeDirectory=arsy` and
   `RuntimeDirectoryPreserve=yes` to the canonical unit so systemd
   creates and persists the directory itself, which fires before the
   namespace setup and survives every restart.
@@ -16628,10 +16628,10 @@ default to NULL/0 on existing rows.
 
 ### Changed
 
-- **`dockpanel-agent.service` is now deployed from a single source of
-  truth** ([#48](https://github.com/ovexro/dockpanel/issues/48)
+- **`arsy-agent.service` is now deployed from a single source of
+  truth** ([#48](https://github.com/A-L-L-A-H/mw-arsy/issues/48)
   followup). The in-repo unit file at
-  `panel/agent/dockpanel-agent.service` was historically a hardened
+  `panel/agent/arsy-agent.service` was historically a hardened
   reference (`ProtectSystem=strict` + a curated `ReadWritePaths=` list)
   that no installer ever deployed — `scripts/setup.sh` and
   `scripts/update.sh` both wrote a permissive
@@ -16650,11 +16650,11 @@ default to NULL/0 on existing rows.
 ### Security
 
 - **Hardened the deployed agent sandbox to `ProtectSystem=strict` plus
-  the full `Protect*` / `Restrict*` set** ([#48](https://github.com/ovexro/dockpanel/issues/48)
+  the full `Protect*` / `Restrict*` set** ([#48](https://github.com/A-L-L-A-H/mw-arsy/issues/48)
   followup). The new `ReadWritePaths=` covers everything the agent
   actually writes via `std::fs::write` / `tokio::fs::write` /
-  `create_dir_all`: the original eight (`/etc/nginx /etc/dockpanel
-  /var/run/dockpanel /var/backups/dockpanel /var/lib/dockpanel /var/www
+  `create_dir_all`: the original eight (`/etc/nginx /etc/arsy
+  /var/run/arsy /var/backups/arsy /var/lib/arsy /var/www
   /var/log /etc/letsencrypt`) plus ten new paths grepped from current
   agent code (`/etc/apt /etc/fail2ban /etc/systemd/system /etc/powerdns
   /etc/modsecurity /etc/cloudflared /etc/postfix /etc/dovecot
@@ -16689,8 +16689,8 @@ default to NULL/0 on existing rows.
 
 - **Service Installers + System → Updates fail silently with `Read-only
   file system` errors under the agent's `ProtectSystem=strict`
-  sandbox** ([#48](https://github.com/ovexro/dockpanel/issues/48)
-  followup). `dockpanel-agent.service` runs with `ProtectSystem=strict`
+  sandbox** ([#48](https://github.com/A-L-L-A-H/mw-arsy/issues/48)
+  followup). `arsy-agent.service` runs with `ProtectSystem=strict`
   and a `ReadWritePaths=` list that omits `/var/cache/apt`,
   `/var/lib/apt`, `/var/lib/dpkg`, and `/usr` — the paths apt and dpkg
   must write to. Every install / upgrade path that spawned `apt-get`,
@@ -16746,7 +16746,7 @@ default to NULL/0 on existing rows.
 
 - **Settings → Services tab missing from the tab bar — PowerDNS / Image
   Scan / SBOM / Prometheus config UIs unreachable from the panel for
-  over a month** ([#48](https://github.com/ovexro/dockpanel/issues/48)
+  over a month** ([#48](https://github.com/A-L-L-A-H/mw-arsy/issues/48)
   followup). Commit `fd44a31` (2026-03-24, "UX: fix overlaps, decompose
   Settings, create System page") removed the `{ id: "services", label:
   "Services" }` entry from `Settings.tsx`'s tab list intending to move
@@ -16765,7 +16765,7 @@ default to NULL/0 on existing rows.
 ### Fixed
 
 - **Dashboard "Restart nginx" / "Restart PHP-FPM" buttons did nothing
-  on click** ([#48](https://github.com/ovexro/dockpanel/issues/48)
+  on click** ([#48](https://github.com/A-L-L-A-H/mw-arsy/issues/48)
   followup). The frontend was POSTing the wrong request shape to the
   agent — `{ fix: "restart_nginx" }` and `{ fix: "restart_php" }`,
   while the agent's `/diagnostics/fix` endpoint deserializes
@@ -16812,7 +16812,7 @@ default to NULL/0 on existing rows.
   treat the argument as a path.
 
 - **Seven Settings toggles silently rejected by the backend whitelist**
-  ([#48](https://github.com/ovexro/dockpanel/issues/48) followup).
+  ([#48](https://github.com/A-L-L-A-H/mw-arsy/issues/48) followup).
   `PUT /api/settings` validates incoming keys against a hard-coded
   allow-list. Several security/registration toggles in the Settings UI
   wrote keys that were absent from that list — `self_registration_enabled`,
@@ -16838,7 +16838,7 @@ default to NULL/0 on existing rows.
 ### Fixed
 
 - **Password reset link bounced to `/login` instead of rendering the
-  reset form** ([#48](https://github.com/ovexro/exro/dockpanel/issues/48)
+  reset form** ([#48](https://github.com/A-L-L-A-H/exro/arsy/issues/48)
   followup). When an unauthenticated user clicked the reset link from
   their email, `ServerProvider` (mounted at the top of the SPA tree)
   fired `api.get("/servers")` on mount → 401 because no session →
@@ -16863,13 +16863,13 @@ default to NULL/0 on existing rows.
 
 ### Added
 
-- **Branding logo upload** ([#48](https://github.com/ovexro/exro/dockpanel/issues/48)
+- **Branding logo upload** ([#48](https://github.com/A-L-L-A-H/exro/arsy/issues/48)
   follow-up). Settings → Branding now exposes an "Upload image…" button
   next to the existing Logo URL field. The frontend POSTs the file's
   raw bytes to a new `POST /api/branding/logo` endpoint (admin-only,
   PNG / JPEG / WebP, 2 MB cap, content-type *and* magic-bytes
   validated to defend against MIME spoofing). Files are stored
-  content-addressed at `/var/lib/dockpanel/branding/logo-<hash>.<ext>`
+  content-addressed at `/var/lib/arsy/branding/logo-<hash>.<ext>`
   and served back over `GET /api/branding/logo/{filename}` (public —
   the login page is unauthenticated and needs to render the logo) with
   `Cache-Control: public, max-age=31536000, immutable`. The upload
@@ -16885,14 +16885,14 @@ default to NULL/0 on existing rows.
 
 - **`update.sh` defaulted to compile-from-source on production VPS
   installs that don't have Rust** — surfaced when an `insxa` follow-up
-  on [#48](https://github.com/ovexro/dockpanel/issues/48) hit
+  on [#48](https://github.com/A-L-L-A-H/mw-arsy/issues/48) hit
   `Rust toolchain not found` then OOM'd on `proc-macro2` after they
   installed rustup. The script already auto-switches to release
   binaries when the source tree is missing, but production installs
   *do* have the source tree (install.sh writes it) — the missing
   signal was whether `cargo` was on `$PATH`. update.sh now also
   auto-switches to the pre-built release binaries when the Rust
-  toolchain isn't available, so a fresh `bash /opt/dockpanel/scripts/update.sh`
+  toolchain isn't available, so a fresh `bash /opt/arsy/scripts/update.sh`
   on a stock VPS works without the operator having to know about
   `INSTALL_FROM_RELEASE=1` or install ~4 GB of rustup. Developers who
   *do* want to compile from source can set `BUILD_FROM_SOURCE=1` to
@@ -16906,7 +16906,7 @@ default to NULL/0 on existing rows.
 
 - **v2.8.4 upgrade path still hit `duplicate listen options for [::]:443`
   on multi-site installs that ran v2.8.3 first
-  ([#48](https://github.com/ovexro/dockpanel/issues/48)).** v2.8.4
+  ([#48](https://github.com/A-L-L-A-H/mw-arsy/issues/48)).** v2.8.4
   reverted the agent templates and panel vhost to plain
   `listen [::]:80;` / `listen [::]:443 ssl;`, and v2.8.4's update.sh
   stripped `ipv6only=on` from the panel vhost — but it dropped the
@@ -16925,7 +16925,7 @@ default to NULL/0 on existing rows.
   nginx reloads cleanly. No code changes — fix is pure upgrade-script.
   Manual one-liner for v2.8.4-stuck users:
   ```
-  for f in /etc/nginx/sites-enabled/*.conf; do [ "$(basename "$f")" = dockpanel-panel.conf ] && continue; sed -i -E 's|^([[:space:]]*)listen \[::\]:(80\|443 ssl) ipv6only=on;|\1listen [::]:\2;|' "$f"; done && nginx -t && nginx -s reload
+  for f in /etc/nginx/sites-enabled/*.conf; do [ "$(basename "$f")" = arsy-panel.conf ] && continue; sed -i -E 's|^([[:space:]]*)listen \[::\]:(80\|443 ssl) ipv6only=on;|\1listen [::]:\2;|' "$f"; done && nginx -t && nginx -s reload
   ```
 
 ## [2.8.4] - 2026-05-01
@@ -16956,7 +16956,7 @@ default to NULL/0 on existing rows.
 
 - **Manual "Let's Encrypt SSL" provisioning failed with `Template
   render error: Invalid PHP socket path` on PHP sites
-  ([#48](https://github.com/ovexro/dockpanel/issues/48)).** Four backend
+  ([#48](https://github.com/A-L-L-A-H/mw-arsy/issues/48)).** Four backend
   call sites built the agent's `php_socket` field as
   `/run/php/phpX-fpm.sock`, but the agent's strict validator
   (`is_safe_php_socket`, `panel/agent/src/services/nginx.rs:149`)
@@ -16970,7 +16970,7 @@ default to NULL/0 on existing rows.
 
 - **Visiting the panel URL redirected to a freshly-installed WordPress
   site after that site's Let's Encrypt SSL was provisioned
-  ([#48](https://github.com/ovexro/dockpanel/issues/48)).** Root cause
+  ([#48](https://github.com/A-L-L-A-H/mw-arsy/issues/48)).** Root cause
   was a dual-stack listen mismatch: agent-rendered site nginx vhosts
   declared `listen [::]:443 ssl;` (no `ipv6only=on`), but
   `scripts/setup.sh` bound the panel's vhost to IPv4 only. The first
@@ -17023,7 +17023,7 @@ default to NULL/0 on existing rows.
   pins the per-arch SHA-256 (`x86_64-unknown-linux-musl`:
   `cd1148da…feb6`, `aarch64-unknown-linux-musl`: `1a1b3841…46e6`),
   verified at install time before `tar` ever sees the bytes. Operators
-  can override per arch via `DOCKPANEL_TYPST_SHA256_X86_64` /
+  can override per arch via `ARSY_TYPST_SHA256_X86_64` /
   `_AARCH64` env vars (e.g. air-gapped mirror, custom typst version).
   Mismatch surfaces as a distinct error rather than a generic install
   failure. Install timeout bumped 90 → 120 s to absorb the second pass
@@ -17055,13 +17055,13 @@ default to NULL/0 on existing rows.
   excerpt, duration). Two formats from the same data:
   - `GET /api/backup-orchestrator/chain-report/site/{id}` — JSON.
   - `GET /api/backup-orchestrator/chain-report/site/{id}/pdf` — typst-rendered
-    PDF with DockPanel branding, status pills, and a full chain-integrity
+    PDF with ARSY branding, status pills, and a full chain-integrity
     summary. Designed to be handed to an auditor as proof a backup was
     actually verified and restorable.
 
   All Backups tab on the Backup Orchestrator page now shows a `Report
   | JSON | PDF` 3-segment control on every site row. The first PDF
-  request lazy-installs the `typst` CLI into `/var/lib/dockpanel/typst/`
+  request lazy-installs the `typst` CLI into `/var/lib/arsy/typst/`
   (~30 MB, one-time, ~30 s on a fresh box); subsequent renders are
   instant. Compile timeout 30 s; install timeout 90 s; concurrent
   installs serialised via a process-wide async mutex so a burst of first
@@ -17093,7 +17093,7 @@ default to NULL/0 on existing rows.
   blocked, bogus uuid → 404, JSON shape, PDF magic bytes / Content-Type
   / Content-Disposition, file-size sanity. Wired into `full-e2e.sh`
   alongside the tier2-pin sub-suite. Self-provisions auth (mints admin
-  JWT from `api.env` if `DOCKPANEL_TEST_PASSWORD` is unset). Skips PDF
+  JWT from `api.env` if `ARSY_TEST_PASSWORD` is unset). Skips PDF
   assertion when `CHAIN_REPORT_SKIP_PDF=1` (CI without outbound HTTPS)
   and reports 503 cleanly when typst install fails so the suite still
   green-lights on networks that block GitHub releases.
@@ -17213,9 +17213,9 @@ default to NULL/0 on existing rows.
 
 ### Security
 
-- **rustls-webpki 0.103.12 → 0.103.13** in both `dockpanel-api` and
-  `dockpanel-agent` Cargo locks — fixes `RUSTSEC-2026-0104` (reachable
-  panic in CRL parsing). DockPanel calls into rustls-webpki for ACME
+- **rustls-webpki 0.103.12 → 0.103.13** in both `arsy-api` and
+  `arsy-agent` Cargo locks — fixes `RUSTSEC-2026-0104` (reachable
+  panic in CRL parsing). ARSY calls into rustls-webpki for ACME
   cert verification and pinned-fingerprint TLS (Phase 3 #3 Tier 2), so
   a malformed CRL from a malicious or buggy CA could have crashed the
   process. Patch release, no API changes.
@@ -17236,7 +17236,7 @@ default to NULL/0 on existing rows.
   returns `{ buckets: bool[], window_hours, bucket_minutes }`. Owner-
   scoped (404 on a server that belongs to a different user); same auth
   shape as the rest of the `/api/servers/*` surface.
-- **Pre-built Grafana dashboard (`dashboards/dockpanel-grafana.json`).**
+- **Pre-built Grafana dashboard (`dashboards/arsy-grafana.json`).**
   Drop-in companion to the v2.7.16 Prometheus exporter. Covers fleet
   stats (version / servers reporting / sites / alerts firing by
   severity / GPUs reporting), per-server CPU / memory / disk timeseries
@@ -17244,7 +17244,7 @@ default to NULL/0 on existing rows.
   donut, a collapsible GPUs row (utilization, VRAM%, temperature, power
   draw), and an alerts-firing stacked-bars timeseries. Uses a
   `Datasource` template input so it imports cleanly onto any Prometheus
-  that's already scraping `/api/metrics`. UID `dockpanel-fleet` is
+  that's already scraping `/api/metrics`. UID `arsy-fleet` is
   stable so runbook deep-links survive re-imports. A `Server` template
   variable lets operators focus on a single host or any subset. See
   `docs/guides/prometheus.md` "Pre-built Grafana dashboard" for import
@@ -17262,7 +17262,7 @@ default to NULL/0 on existing rows.
   `POST /api/servers/{id}/test` and asserts status exactly 502
   (graceful connect failure) — a panic would surface as 500 and be
   caught. The suite is self-provisioning: it mints an admin JWT
-  locally from `/etc/dockpanel/api.env` when `DOCKPANEL_TEST_PASSWORD`
+  locally from `/etc/arsy/api.env` when `ARSY_TEST_PASSWORD`
   is unset, and cleans up all DB rows it creates via an `EXIT` trap.
   Wired into `tests/full-e2e.sh` as a sub-suite at the end of the run.
 
@@ -17279,7 +17279,7 @@ default to NULL/0 on existing rows.
   `CryptoProvider::get_default()`. Pure single-host installs were not
   affected; any multi-server deployment using the pinned verifier was.
   Fix: call `rustls::crypto::aws_lc_rs::default_provider().install_default()`
-  at `dockpanel-api` startup (the agent already did this at `main.rs:24`).
+  at `arsy-api` startup (the agent already did this at `main.rs:24`).
   Caught by the v2.7.18 fresh-VPS test before v2.7.18 was declared
   public-ready. No API changes; the Tier 2 part 2 verification flows
   (TOFU capture, MITM 403, rotate-pin, re-TOFU, PinnedFingerprintVerifier
@@ -17308,7 +17308,7 @@ default to NULL/0 on existing rows.
   The agent's multi-server listener now terminates TLS instead of shipping
   auth tokens in plaintext, and the central panel captures each agent's
   cert fingerprint on first checkin for later pinning.
-  - Agent loads `/etc/dockpanel/ssl/agent.{crt,key}` at startup (generated
+  - Agent loads `/etc/arsy/ssl/agent.{crt,key}` at startup (generated
     at install time by `install-agent.sh`, or generated on first boot via
     `rcgen` when missing). `AGENT_LISTEN_TCP=0.0.0.0:9443` now binds a
     TLS listener via `axum-server` + `rustls` — the old plaintext bind
@@ -17353,7 +17353,7 @@ default to NULL/0 on existing rows.
 
 ### Added
 
-- **2026-ready ACME (Phase 3 #2 — Tier 1).** DockPanel is now ready for
+- **2026-ready ACME (Phase 3 #2 — Tier 1).** ARSY is now ready for
   Let's Encrypt's May 13 2026 `tlsserver` → 45-day flip, the existing 6-day
   `shortlived` profile, and the Feb 2027 / Feb 2028 `classic` reductions.
   - **RFC 9773 ARI-driven renewal.** The auto-healer now queries the CA's
@@ -17391,7 +17391,7 @@ default to NULL/0 on existing rows.
   exposition text — no extra crate, respects the lightness axis. Gated by a
   SHA-256-hashed scrape token (constant-time compare via `subtle`); returns
   404 when disabled so an off panel doesn't advertise a scrape surface.
-  Exposes `dockpanel_info`, per-server cpu/memory/disk percents, per-GPU
+  Exposes `arsy_info`, per-server cpu/memory/disk percents, per-GPU
   utilization / VRAM / temperature / power, per-status site counts, and
   alerts firing by severity. New `PrometheusSettings` card in Settings
   with auto-generated token, reveal-once banner, rotate button, and a
@@ -17430,9 +17430,9 @@ default to NULL/0 on existing rows.
   **Operators currently stuck on v2.7.11 or v2.7.12** (where the broken
   health check rolls every upgrade back) need to bootstrap once:
   ```
-  sudo curl -fsSL https://raw.githubusercontent.com/ovexro/dockpanel/main/scripts/update.sh \
-       -o /opt/dockpanel/scripts/update.sh
-  sudo INSTALL_FROM_RELEASE=1 bash /opt/dockpanel/scripts/update.sh
+  sudo curl -fsSL https://raw.githubusercontent.com/A-L-L-A-H/mw-arsy/main/scripts/update.sh \
+       -o /opt/arsy/scripts/update.sh
+  sudo INSTALL_FROM_RELEASE=1 bash /opt/arsy/scripts/update.sh
   ```
   After the first successful upgrade, future runs self-refresh
   automatically.
@@ -17487,10 +17487,10 @@ default to NULL/0 on existing rows.
 
 ### Public
 
-- **dockpanel.dev/security launched.** Public security posture page —
+- **moonwitness.dev/security launched.** Public security posture page —
   audit count, signed-releases / SBOM story, response SLA, all 7 audit
   rounds with headline fixes, recent advisories, defense-in-depth grid,
-  vulnerability-report CTA. Counter-positions DockPanel against the
+  vulnerability-report CTA. Counter-positions ARSY against the
   Coolify/CyberPanel narratives. Linked from main nav (between Compare
   and Pricing) and footer Product column. SECURITY.md cross-references
   the page at the top.
@@ -17505,7 +17505,7 @@ default to NULL/0 on existing rows.
   vulnerability scanning. Defaults to **off**; admins opt in from
   Settings → Services → SBOM Generation.
   - **Install button** pulls Anchore's signed syft installer into
-    `/var/lib/dockpanel/scanners/syft` (same self-contained, sandbox-safe
+    `/var/lib/arsy/scanners/syft` (same self-contained, sandbox-safe
     pattern as grype — works under `ProtectSystem=strict`).
   - **Download SBOM button** in each app's scan drawer. Click runs syft against
     the app's image (10 – 60 s on first generation), persists the SPDX
@@ -17533,7 +17533,7 @@ and to feed external tooling like Dependency-Track or Grype-on-SBOM.
   in the public Rekor transparency log. Verification snippet in
   [SECURITY.md](SECURITY.md#verifying-release-signatures).
 - **Per-binary SPDX 2.3 SBOMs.** `cargo-sbom` runs in CI for the agent, API,
-  and CLI crates, emitting `dockpanel-{agent,api,cli}.spdx.json` alongside the
+  and CLI crates, emitting `arsy-{agent,api,cli}.spdx.json` alongside the
   binaries (also signed). Local builds via `scripts/release.sh` now generate
   SBOMs too; signing remains CI-only so the OIDC-bound certificate identity is
   always traceable to this repository's release workflow.
@@ -17553,7 +17553,7 @@ exposes per-deployed-container SBOMs in-panel.
   installs see no behaviour change on upgrade — admins opt in from
   Settings → Services → Image Vulnerability Scanning.
   - **Install button** pulls Anchore's signed grype installer into
-    `/var/lib/dockpanel/scanners/` (self-contained — doesn't pollute
+    `/var/lib/arsy/scanners/` (self-contained — doesn't pollute
     `/usr/local/bin` and works under the hardened agent sandbox). The
     vulnerability database primes during install.
   - **Scheduled scans** rescan every running app's image in the background at
@@ -17570,14 +17570,14 @@ exposes per-deployed-container SBOMs in-panel.
 
 ### Fixed
 
-- **`/var/lib/dockpanel` was missing from the hardened agent sandbox's
+- **`/var/lib/arsy` was missing from the hardened agent sandbox's
   `ReadWritePaths`.** Audit 7 introduced `ProtectSystem=strict` on the agent
-  unit file (`panel/agent/dockpanel-agent.service`) but only listed
-  `/etc/nginx`, `/etc/dockpanel`, `/var/run/dockpanel`, `/var/backups/dockpanel`,
+  unit file (`panel/agent/arsy-agent.service`) but only listed
+  `/etc/nginx`, `/etc/arsy`, `/var/run/arsy`, `/var/backups/arsy`,
   `/var/www`, `/var/log`, `/etc/letsencrypt` — which meant git builds, terminal
   recordings, mail backups, Docker app volumes, and the new image scanner would
   all have silently failed if anyone deployed the hardened unit verbatim. Added
-  `/var/lib/dockpanel` to the path list. (Installer scripts still emit
+  `/var/lib/arsy` to the path list. (Installer scripts still emit
   `ProtectSystem=no` units, so fresh installs from `install.sh` / `update.sh`
   were not affected.)
 
@@ -17631,7 +17631,7 @@ exposes per-deployed-container SBOMs in-panel.
   `read < /dev/tty` fail silently and cleared `PANEL_DOMAIN`. Now prints a
   clear "no tty — set PANEL_DOMAIN to configure" notice and points at the
   env var.
-- **`/var/lib/dockpanel/recordings` was never created on fresh install.** The
+- **`/var/lib/arsy/recordings` was never created on fresh install.** The
   terminal-recording API and auto-healer retention sweep both reference it.
   Added to the installer's `mkdir -p` list.
 
@@ -17761,7 +17761,7 @@ exposes per-deployed-container SBOMs in-panel.
 - WordPress plugin/theme: slug validation (alphanumeric + hyphens only)
 - Dashboard intelligence: scoped queries to authenticated user (cross-user leak)
 - Backup paths: traversal validation on agent URL construction
-- Migration: container name validation (DockPanel-managed only)
+- Migration: container name validation (ARSY-managed only)
 - Stack templates: random passwords generated at selection time
 - Unix socket: permissions tightened from 0o660 to 0o600
 - Raw `Command::new()`: replaced 3 instances with `safe_command` (env sanitization)
@@ -17793,7 +17793,7 @@ exposes per-deployed-container SBOMs in-panel.
 - Mail queue endpoint returns empty result when Postfix not installed (was causing 502 errors every 15s on dashboard)
 - Onboarding widget template count updated from 34 to 151
 - Real Vultr IP in test script examples replaced with RFC 5737 documentation IP
-- Monitoring screenshot scrubbed of test.dockpanel.dev URL
+- Monitoring screenshot scrubbed of test.moonwitness.dev URL
 
 ### Added
 - 17 fresh screenshots from live VPS for all major pages (dashboard, sites, Docker apps, terminal, security, etc.)
@@ -17877,7 +17877,7 @@ exposes per-deployed-container SBOMs in-panel.
 ## [2.6.5] - 2026-03-25
 
 ### Security
-- **Research-driven security audit**: Studied CVEs from CyberPanel, HestiaCP, CloudPanel, VestaCP, Webmin, cPanel — then audited DockPanel against those attack patterns. 55 findings (12 HIGH, 28 MEDIUM, 15 LOW).
+- **Research-driven security audit**: Studied CVEs from CyberPanel, HestiaCP, CloudPanel, VestaCP, Webmin, cPanel — then audited ARSY against those attack patterns. 55 findings (12 HIGH, 28 MEDIUM, 15 LOW).
 - **Command execution safety**: Added `safe_command()` module — `env_clear()` on all 341 `Command::new()` calls across 44 files. Prevents LD_PRELOAD/PATH hijacking.
 - **Credential encryption at rest**: All stored credentials (DB passwords, SMTP, S3/SFTP, OAuth, TOTP, DKIM) encrypted with AES-256-GCM using dedicated key derivation.
 - **Shell injection fix**: Rewrote database_backup.rs — piped `docker exec` + `gzip` instead of `bash -c` with interpolated strings.
@@ -17980,7 +17980,7 @@ exposes per-deployed-container SBOMs in-panel.
 - **GAP 12: Docker apps auto-get monitor + status component** — Docker apps deployed with a domain now auto-create an HTTP monitor and a status page component under "Docker Apps" group.
 - **GAP 13: Git deploy auto-creates gateway endpoint** — New git deploys auto-create a webhook gateway endpoint for webhook inspection/replay capabilities.
 - **GAP 16: Incident resolve cleans up alerts + components** — Resolving a managed incident auto-resolves linked alerts and clears status_override on affected status page components.
-- **GAP 17: Vault export/import** — New `GET /api/secrets/vaults/{id}/export` and `POST /api/secrets/vaults/{id}/import` endpoints for encrypted vault backup and transfer between DockPanel instances.
+- **GAP 17: Vault export/import** — New `GET /api/secrets/vaults/{id}/export` and `POST /api/secrets/vaults/{id}/import` endpoints for encrypted vault backup and transfer between ARSY instances.
 
 ### Automation Audit: Complete
 All 21 identified gaps now addressed. Zero manual steps required for: backup scheduling, uptime monitoring, secret injection, incident creation, status page updates, or webhook delivery.
@@ -18083,7 +18083,7 @@ All 21 identified gaps now addressed. Zero manual steps required for: backup sch
   - **Backup health dashboard**: Global overview with total counts, storage usage, 24h success/failure rates, active policies, verification stats, and stale backup warnings.
   - **Background verifier**: Supervised service running every 6 hours that automatically verifies unverified backups and fires alerts on failures.
   - **B2 and GCS destinations**: Backblaze B2 and Google Cloud Storage now supported as backup destinations (S3-compatible API).
-  - **CLI commands**: `dockpanel backup db-create`, `db-list`, `vol-create`, `vol-list`, `verify`, `health` — full backup management from the command line.
+  - **CLI commands**: `arsy backup db-create`, `db-list`, `vol-create`, `vol-list`, `verify`, `health` — full backup management from the command line.
   - **E2E test suite**: Dedicated backup orchestrator test script (`tests/backup-orchestrator-e2e.sh`) covering health, policies CRUD, database backup lifecycle with verification.
 - **Nav item**: "Backups" in Operations section links to the new Backup Orchestrator page.
 
@@ -18163,7 +18163,7 @@ All 21 identified gaps now addressed. Zero manual steps required for: backup sch
 - **API reference** (`docs/api-reference.md`): 648 lines documenting all 371 endpoints with request bodies and examples.
 - **Competitor comparison** (`COMPARISON.md`): Honest comparison vs HestiaCP, CloudPanel, RunCloud, CyberPanel, Ploi.
 - **README overhaul**: Dashboard screenshot, comparison table, collapsible screenshot gallery, cleaner structure.
-- **FUNDING.yml**: PayPal sponsor link (paypal.me/ovexro).
+- **FUNDING.yml**: PayPal sponsor link (paypal.me/A-L-L-A-H).
 
 ### Verified
 - **Reboot recovery**: All services start automatically after server reboot. 62/62 E2E tests pass post-reboot.
@@ -18172,7 +18172,7 @@ All 21 identified gaps now addressed. Zero manual steps required for: backup sch
 ## [2.0.3] - 2026-03-20
 
 ### Added
-- **Documentation site** at `docs.dockpanel.dev`: mdBook-generated, 8 pages (getting-started, troubleshooting, CLI reference, WordPress, Git deploy, email, multi-server, backups). 1855 lines.
+- **Documentation site** at `docs.moonwitness.dev`: mdBook-generated, 8 pages (getting-started, troubleshooting, CLI reference, WordPress, Git deploy, email, multi-server, backups). 1855 lines.
 
 ### Changed
 - **Docker app templates pinned**: 33 of 39 `:latest` tags replaced with specific major versions (e.g., `redis:7`, `ghost:5`, `grafana/grafana:11`). 6 kept at `:latest` due to non-standard versioning (minio, nocodb, etc.).
@@ -18193,7 +18193,7 @@ All 21 identified gaps now addressed. Zero manual steps required for: backup sch
 - **OAuth bypasses 2FA**: OAuth login issued full session without checking `totp_enabled`. Now redirects to 2FA challenge when enabled.
 - **Setup script missing build tools**: Fresh VPS source builds failed — added `build-essential cmake pkg-config` installation.
 - **No swap on x86_64 low-RAM VPS**: Swap creation only triggered on ARM. Now applies to all architectures when building from source.
-- **install-agent.sh wrong env vars**: Remote agents never entered phone-home mode (`AGENT_TOKEN` vs `DOCKPANEL_SERVER_TOKEN`). Fixed to write both sets.
+- **install-agent.sh wrong env vars**: Remote agents never entered phone-home mode (`AGENT_TOKEN` vs `ARSY_SERVER_TOKEN`). Fixed to write both sets.
 - **Systemd services never updated during upgrade**: `update.sh` now rewrites service files with current `ReadWritePaths` and hardening.
 - **Required directories not created during upgrade**: `update.sh` now creates `/etc/postfix`, `/var/vmail`, and other directories needed by new features.
 
@@ -18203,7 +18203,7 @@ All 21 identified gaps now addressed. Zero manual steps required for: backup sch
 - **`read` prompt broken in curl-pipe-bash**: Domain prompt now reads from `/dev/tty` when stdin is piped.
 - **Frontend path mismatch after upgrade**: `update.sh` now fixes nginx root path when switching between source and release modes.
 - **config.rs default LISTEN_ADDR was 0.0.0.0:3000**: Changed to `127.0.0.1:3080` to match all scripts and nginx config.
-- **uninstall.sh incomplete cleanup**: Now removes CLI binary, tmpfiles.d, crontab entries, `/var/www/acme`, `/var/lib/dockpanel`.
+- **uninstall.sh incomplete cleanup**: Now removes CLI binary, tmpfiles.d, crontab entries, `/var/www/acme`, `/var/lib/arsy`.
 - **Stacks INSERT missing server_id**: Docker Compose stacks now include `server_id` in INSERT.
 - **Staging site INSERT missing server_id**: Staging environments now inherit parent site's server_id.
 - **No domain uniqueness across sites + git_deploys**: Cross-table domain conflict check prevents silent hijacking.
@@ -18227,7 +18227,7 @@ All 21 identified gaps now addressed. Zero manual steps required for: backup sch
 - **Nginx version disclosure**: Added `server_tokens off` to nginx config.
 
 ### Fixed — Disaster Recovery
-- **Agent fails after every reboot**: Removed `ReadWritePaths` and `PrivateTmp=yes` from agent systemd service (redundant with `ProtectSystem=no`, and caused NAMESPACE errors for missing dirs). Added `ExecStartPre` to create `/run/dockpanel`.
+- **Agent fails after every reboot**: Removed `ReadWritePaths` and `PrivateTmp=yes` from agent systemd service (redundant with `ProtectSystem=no`, and caused NAMESPACE errors for missing dirs). Added `ExecStartPre` to create `/run/arsy`.
 - **Health endpoint false "ok"**: `/api/health` now checks DB connectivity, returns `"degraded"` when database is unreachable.
 - **StartLimitIntervalSec in wrong section**: Moved from `[Service]` to `[Unit]` in all 3 scripts.
 
@@ -18258,10 +18258,10 @@ All 21 identified gaps now addressed. Zero manual steps required for: backup sch
 - **OS support**: Hero section now includes Rocky Linux 9+ alongside other supported distros.
 
 ### Fixed
-- **install-agent.sh binary naming**: Was downloading `dockpanel-agent-x86_64` / `dockpanel-agent-aarch64` but GitHub Releases publishes `dockpanel-agent-linux-amd64` / `dockpanel-agent-linux-arm64`. Fixed to match release naming.
+- **install-agent.sh binary naming**: Was downloading `arsy-agent-x86_64` / `arsy-agent-aarch64` but GitHub Releases publishes `arsy-agent-linux-amd64` / `arsy-agent-linux-arm64`. Fixed to match release naming.
 - **install-agent.sh apt-get hardcoding**: Now detects package manager (apt/dnf/yum) instead of hardcoding apt-get. CentOS, Rocky, Fedora, and Amazon Linux now supported for remote agent installs.
-- **install-agent.sh server-id persistence**: `--server-id` was accepted but never written to config. Now persisted to `/etc/dockpanel/api.env` as `SERVER_ID`.
-- **install-agent.sh tmpfiles.d**: Added `/run/dockpanel` tmpfiles.d entry so socket directory survives reboots.
+- **install-agent.sh server-id persistence**: `--server-id` was accepted but never written to config. Now persisted to `/etc/arsy/api.env` as `SERVER_ID`.
+- **install-agent.sh tmpfiles.d**: Added `/run/arsy` tmpfiles.d entry so socket directory survives reboots.
 - **install-agent.sh systemd hardening**: Remote agent service now matches local agent hardening (MemoryMax, LimitNOFILE, PrivateTmp, ProtectKernelLogs/Modules).
 - **update.sh pre-built binary path**: Added `INSTALL_FROM_RELEASE=1` support so ARM users who installed via release binaries can update without Rust toolchain.
 - **update.sh redundant health check**: Removed duplicate wait-for-health loop after rollback-capable check.
@@ -18270,7 +18270,7 @@ All 21 identified gaps now addressed. Zero manual steps required for: backup sch
 
 ### Added — High-Impact Features
 - **Multi-Server Management**: Manage unlimited remote servers from one panel. AgentRegistry dispatches to local (Unix socket) or remote (HTTPS) agents. Server selector in sidebar, test connection, install script for remote agents. ServerScope extractor with user ownership verification on every request.
-- **Reseller / Multi-Tenant Accounts**: Admin → Reseller → User hierarchy. Reseller quotas (max users/sites/databases), server allocation, per-reseller branding (logo, colors, hide DockPanel name). Quota enforcement on site/database creation with counter sync.
+- **Reseller / Multi-Tenant Accounts**: Admin → Reseller → User hierarchy. Reseller quotas (max users/sites/databases), server allocation, per-reseller branding (logo, colors, hide ARSY name). Quota enforcement on site/database creation with counter sync.
 - **Nixpacks Auto-Detection**: Build any app without a Dockerfile using Nixpacks (30+ languages). Dynamic version resolution from GitHub releases. Deploy pipeline: try Nixpacks → fall back to auto-detect (6 langs) → docker build. Build method tracked per deploy.
 - **Preview Environments**: TTL-based auto-cleanup of preview deployments. Branch deletion webhook auto-removes previews. Configurable preview_ttl_hours per deploy. Background cleanup service (5-minute interval).
 - **Migration Wizard**: Import sites, databases, and email from cPanel, Plesk, or HestiaCP. 4-step wizard: select source → analyze backup (auto-detect domains, DBs, mail) → select items → SSE-streamed import. cPanel full parser, Plesk/HestiaCP beta stubs.

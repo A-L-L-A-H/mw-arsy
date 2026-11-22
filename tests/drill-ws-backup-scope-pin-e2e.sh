@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # drill-ws-backup-scope-pin-e2e.sh — s465
 #
-# dockpanel-fanout, batched small-file tail of panel/backend/src/{routes,services}
+# arsy-fanout, batched small-file tail of panel/backend/src/{routes,services}
 # (drill_scheduler.rs, deploy_scheduler.rs, alert_runbooks.rs,
 # alert_runbook_defaults.rs / prometheus.rs, prometheus_exporter.rs,
 # metrics_collector.rs, ws_metrics.rs, system_logs.rs / agent_checkin.rs,
 # agent_updates.rs, sboms.rs, chain_report.rs, branding_assets.rs — see
-# feedback_dockpanel_audit_scope). Found and fixed 5 real, independently
+# feedback_arsy_audit_scope). Found and fixed 5 real, independently
 # skeptic-verified issues (4 on-menu + 1 off-menu completeness-critic find):
 #
 #   §A drill_scheduler.rs + backup_orchestrator.rs: a scheduled OR on-demand
@@ -59,7 +59,7 @@
 #      `remove()`, and `test_connection()` all queried/mutated a destination by
 #      bare `id`, gated only by `AdminUser` — asymmetric with `create()` in the
 #      same file, which already scopes `server_id` by `is_local OR user_id`.
-#      A second admin (DockPanel genuinely supports multiple admin accounts)
+#      A second admin (ARSY genuinely supports multiple admin accounts)
 #      could overwrite another admin's S3/SFTP destination config with their
 #      own credentials — the next scheduled backup for any policy pointing at
 #      it would silently upload the target server's data into the SECOND

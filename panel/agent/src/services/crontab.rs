@@ -139,7 +139,7 @@ mod tests {
         // wrote that back as root's complete crontab.
         let out = tokio::time::timeout(
             Duration::from_secs(5),
-            safe_command("dockpanel-no-such-crontab-binary")
+            safe_command("arsy-no-such-crontab-binary")
                 .arg("-l")
                 .output(),
         )

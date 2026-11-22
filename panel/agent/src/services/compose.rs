@@ -15,7 +15,7 @@
 //!   network alias — the name its siblings actually write in their config.
 //! * **A namespace.** Container and volume names came straight off the service
 //!   key, so the `db` service of three different packages all wanted
-//!   `dockpanel-compose-db` and the second package to be deployed failed on a
+//!   `arsy-compose-db` and the second package to be deployed failed on a
 //!   name conflict. Both are now scoped by stack.
 //! * **`command`, `depends_on` and long-form `ports`.** All three were parsed
 //!   away silently by a struct that did not declare them, which turned a
@@ -59,7 +59,7 @@ pub struct ComposeService {
     pub command: Option<Vec<String>>,
     /// Service keys this one declares a dependency on — used for start order.
     pub depends_on: Vec<String>,
-    /// Author-supplied labels. `dockpanel.*` keys are stripped during parsing:
+    /// Author-supplied labels. `arsy.*` keys are stripped during parsing:
     /// the panel's own labels decide what is managed and which stack a
     /// container belongs to, and a compose file must not be able to claim
     /// either. Everything else is passed through, which is how a pasted Traefik
@@ -71,7 +71,7 @@ pub struct ComposeService {
     /// silently ignores them same as before. `compose_validate` is the
     /// reader: a stack that says "valid" while quietly dropping a directive
     /// the author wrote is the honesty gap these three exist to close.
-    /// [[project_dockpanel_tech_debt_p185]] carry I.
+    /// [[project_arsy_tech_debt_p185]] carry I.
     pub user_ignored: bool,
     pub healthcheck_ignored: bool,
     pub entrypoint_ignored: bool,
@@ -179,7 +179,7 @@ enum LabelsDef {
 
 /// The Docker network a stack's services share.
 pub fn stack_network_name(stack_id: Option<&str>) -> String {
-    format!("dockpanel-stack-{}", stack_scope(stack_id))
+    format!("arsy-stack-{}", stack_scope(stack_id))
 }
 
 /// Short, filesystem- and DNS-safe scope token derived from the stack id.
@@ -259,7 +259,7 @@ pub fn parse_compose(yaml: &str, stack_id: Option<&str>) -> Result<Vec<ComposeSe
         // same wording, as the backend's check — `unconfined` disables
         // seccomp/AppArmor confinement entirely; `no-new-privileges:true`
         // (what this deployer sets by default, below) is unaffected.
-        // [[project_dockpanel_tech_debt_p185]] carry I.
+        // [[project_arsy_tech_debt_p185]] carry I.
         if let Some(ref opts) = def.security_opt {
             for opt in opts {
                 if opt.to_lowercase().contains("unconfined") {
@@ -310,7 +310,7 @@ pub fn parse_compose(yaml: &str, stack_id: Option<&str>) -> Result<Vec<ComposeSe
         // service key and whatever `container_name` the author wrote. Honouring
         // an author-chosen container_name as the real Docker name is what let
         // one stack collide with another, so it becomes an alias instead.
-        let container_name = format!("dockpanel-compose-{scope}-{name}");
+        let container_name = format!("arsy-compose-{scope}-{name}");
         let mut aliases = vec![name.clone()];
         if let Some(ref explicit) = def.container_name {
             if explicit != name {
@@ -330,8 +330,8 @@ pub fn parse_compose(yaml: &str, stack_id: Option<&str>) -> Result<Vec<ComposeSe
             None => Vec::new(),
         };
 
-        // `dockpanel.*` is the panel's namespace. A compose file that could set
-        // `dockpanel.managed` or `dockpanel.stack_id` would be able to hide a
+        // `arsy.*` is the panel's namespace. A compose file that could set
+        // `arsy.managed` or `arsy.stack_id` would be able to hide a
         // container from the panel or attach it to somebody else's stack.
         let labels: HashMap<String, String> = match &def.labels {
             Some(LabelsDef::Map(map)) => map
@@ -357,7 +357,7 @@ pub fn parse_compose(yaml: &str, stack_id: Option<&str>) -> Result<Vec<ComposeSe
         };
         let labels: HashMap<String, String> = labels
             .into_iter()
-            .filter(|(k, _)| !k.starts_with("dockpanel."))
+            .filter(|(k, _)| !k.starts_with("arsy."))
             .collect();
 
         result.push(ComposeService {
@@ -553,9 +553,9 @@ pub(crate) async fn ensure_stack_network(docker: &Docker, network: &str, stack_i
         return Ok(());
     }
 
-    let mut labels = HashMap::from([("dockpanel.managed", "true")]);
+    let mut labels = HashMap::from([("arsy.managed", "true")]);
     if let Some(sid) = stack_id {
-        labels.insert("dockpanel.stack_id", sid);
+        labels.insert("arsy.stack_id", sid);
     }
 
     docker
@@ -590,11 +590,11 @@ pub async fn remove_stack_network(stack_id: Option<&str>) {
             let ours = info
                 .labels
                 .as_ref()
-                .and_then(|l| l.get("dockpanel.managed"))
+                .and_then(|l| l.get("arsy.managed"))
                 .map(|v| v == "true")
                 .unwrap_or(false);
             if !ours {
-                tracing::warn!("Not removing network {network}: no dockpanel.managed label");
+                tracing::warn!("Not removing network {network}: no arsy.managed label");
                 return;
             }
         }
@@ -609,7 +609,7 @@ pub async fn remove_stack_network(stack_id: Option<&str>) {
 }
 
 /// Deploy all services from a parsed compose file.
-/// If `stack_id` is provided, all containers get a `dockpanel.stack_id` label.
+/// If `stack_id` is provided, all containers get a `arsy.stack_id` label.
 pub async fn deploy_compose(
     services: &[ComposeService],
     stack_id: Option<&str>,
@@ -774,7 +774,7 @@ async fn deploy_service(
     // Volume binds — validate that host paths are under the allowed prefix
     // and block mounting the Docker socket.
     let mut binds: Vec<String> = Vec::new();
-    const ALLOWED_BIND_PREFIX: &str = "/var/lib/dockpanel/compose/";
+    const ALLOWED_BIND_PREFIX: &str = "/var/lib/arsy/compose/";
     const BLOCKED_PATHS: &[&str] = &["/var/run/docker.sock", "/run/docker.sock"];
     let scope = stack_scope(stack_id);
 
@@ -912,13 +912,13 @@ async fn deploy_service(
             // if the filter above were ever loosened.
             let mut labels = svc.labels.clone();
             labels.extend([
-                ("dockpanel.managed".to_string(), "true".to_string()),
-                ("dockpanel.app.template".to_string(), "compose".to_string()),
-                ("dockpanel.app.name".to_string(), svc.name.clone()),
-                ("dockpanel.compose.service".to_string(), svc.key.clone()),
+                ("arsy.managed".to_string(), "true".to_string()),
+                ("arsy.app.template".to_string(), "compose".to_string()),
+                ("arsy.app.name".to_string(), svc.name.clone()),
+                ("arsy.compose.service".to_string(), svc.key.clone()),
             ]);
             if let Some(sid) = stack_id {
-                labels.insert("dockpanel.stack_id".to_string(), sid.to_string());
+                labels.insert("arsy.stack_id".to_string(), sid.to_string());
             }
             labels
         }),
@@ -1096,7 +1096,7 @@ services:
         let name_b = &b.iter().find(|s| s.key == "database").unwrap().name;
         // Two stacks built from the same package must not want one name.
         assert_ne!(name_a, name_b);
-        assert!(name_a.starts_with("dockpanel-compose-"));
+        assert!(name_a.starts_with("arsy-compose-"));
     }
 
     #[test]
@@ -1208,15 +1208,15 @@ services:
     image: nginx:alpine
     labels:
       traefik.enable: "true"
-      dockpanel.managed: "false"
-      dockpanel.stack_id: somebody-elses-stack
+      arsy.managed: "false"
+      arsy.stack_id: somebody-elses-stack
 "#;
         let services = parse_compose(yaml, Some("abc123")).unwrap();
         let labels = &services[0].labels;
         assert_eq!(labels.get("traefik.enable"), Some(&"true".to_string()));
         // A compose file must not be able to hide a container from the panel or
         // attach it to another stack.
-        assert!(labels.keys().all(|k| !k.starts_with("dockpanel.")));
+        assert!(labels.keys().all(|k| !k.starts_with("arsy.")));
     }
 
     #[test]
@@ -1236,7 +1236,7 @@ services:
     /// alongside it: `no-new-privileges:true` (what this deployer sets by
     /// default for every service it creates) must stay allowed, or the fix
     /// would reject the panel's own hardening default.
-    /// [[project_dockpanel_tech_debt_p185]] carry I.
+    /// [[project_arsy_tech_debt_p185]] carry I.
     #[test]
     fn security_opt_unconfined_is_rejected_but_hardening_opts_are_not() {
         let unconfined = r#"
@@ -1279,7 +1279,7 @@ services:
     /// This deployer has no field for `user:`/`healthcheck:`/`entrypoint:` —
     /// `compose_validate` reads these three flags to warn the author instead
     /// of silently dropping their directive while saying "valid".
-    /// [[project_dockpanel_tech_debt_p185]] carry I.
+    /// [[project_arsy_tech_debt_p185]] carry I.
     #[test]
     fn user_healthcheck_and_entrypoint_are_flagged_as_ignored_when_declared() {
         let yaml = r#"

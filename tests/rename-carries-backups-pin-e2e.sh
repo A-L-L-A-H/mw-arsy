@@ -109,7 +109,7 @@ for pair in "F_TREES:200" "F_OCC:100" "F_UNDO:200" "F_RENAME:5000" \
 done
 
 echo "── §A  the two domain-keyed trees are named in ONE place"
-has "A1 the archive root"      "$F_TREES" 'letroot="/var/backups/dockpanel";'
+has "A1 the archive root"      "$F_TREES" 'letroot="/var/backups/arsy";'
 has "A2 the wordpress snapshots" "$F_TREES" 'wp-snapshots/{old_domain}'
 # Two per tree — an old path and a new one — so two trees is four. Counted
 # rather than merely present: adding a third tree without teaching the undo and

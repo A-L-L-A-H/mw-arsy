@@ -2,7 +2,7 @@
 //!
 //! # Why this module exists
 //!
-//! `panel/agent/dockpanel-agent.service` is the unit. `setup.sh` and `update.sh`
+//! `panel/agent/arsy-agent.service` is the unit. `setup.sh` and `update.sh`
 //! deploy it by copying that exact file, and both derive their pre-`mkdir` list
 //! from its `ReadWritePaths=` line rather than mirroring it (s269). A third
 //! installer did not: `install-agent.sh` hand-wrote its own unit into a
@@ -31,7 +31,7 @@
 //! itself, on a six-hourly self-update. So the unit rides the binary:
 //! [`AGENT_UNIT`] is `include_str!`'d from the same file the installers copy —
 //! the discipline `agent-self-update.sh` states in its own header, "compiled
-//! into dockpanel-agent so it cannot drift from the binary that invokes it" —
+//! into arsy-agent so it cannot drift from the binary that invokes it" —
 //! and [`heal_agent_unit`] reconciles the on-disk unit against it at startup.
 //!
 //! # Why this cannot brick the fleet
@@ -61,10 +61,10 @@ use std::path::Path;
 /// **The single source of this unit's contents.** Nothing else may spell it
 /// out — `install-agent.sh` doing so for eighteen releases is the whole reason
 /// this module exists.
-pub const AGENT_UNIT: &str = include_str!("../../dockpanel-agent.service");
+pub const AGENT_UNIT: &str = include_str!("../../arsy-agent.service");
 
 /// Where systemd reads the agent's unit from on every install path.
-const UNIT_PATH: &str = "/etc/systemd/system/dockpanel-agent.service";
+const UNIT_PATH: &str = "/etc/systemd/system/arsy-agent.service";
 
 /// Directories the unit's `ReadWritePaths=` names, with any `-` prefix stripped.
 ///
@@ -122,7 +122,7 @@ pub async fn heal_agent_unit() {
     // Guard 2 — ask PID1 what it made of the file, rather than assuming the
     // write succeeded means the unit is loadable.
     let load_error = safe_command("systemctl")
-        .args(["show", "dockpanel-agent", "-p", "LoadError", "--value"])
+        .args(["show", "arsy-agent", "-p", "LoadError", "--value"])
         .output()
         .await
         .ok()
@@ -183,8 +183,8 @@ mod tests {
     #[test]
     fn env_file_is_optional_not_required() {
         assert!(
-            AGENT_UNIT.contains("EnvironmentFile=-/etc/dockpanel/agent.env"),
-            "a fleet member reads AGENT_TOKEN/DOCKPANEL_CENTRAL_URL from agent.env, \
+            AGENT_UNIT.contains("EnvironmentFile=-/etc/arsy/agent.env"),
+            "a fleet member reads AGENT_TOKEN/ARSY_CENTRAL_URL from agent.env, \
              and the `-` prefix is what keeps the panel box (which has no such file) starting"
         );
     }

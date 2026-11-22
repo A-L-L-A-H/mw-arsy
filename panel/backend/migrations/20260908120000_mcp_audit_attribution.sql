@@ -1,4 +1,4 @@
--- MCP server prep (design: /home/ovidiu/dockpanel-mcp-design.md §5, §4).
+-- MCP server prep (design: /home/ovidiu/arsy-mcp-design.md §5, §4).
 --
 -- Today an action authenticated with a `dp_` API key is indistinguishable from
 -- a browser session in both audit tables — `authenticate_api_key()` (auth.rs)

@@ -58,8 +58,8 @@ const SITE_LOG_TYPES = [
 ];
 
 const SERVICES = [
-  "dockpanel-agent",
-  "dockpanel-api",
+  "arsy-agent",
+  "arsy-api",
   "nginx",
   "postfix",
   "dovecot",
@@ -110,7 +110,7 @@ function SiteLogsContent() {
   const [selectedContainer, setSelectedContainer] = useState("");
 
   // Feature #4: Service logs
-  const [selectedService, setSelectedService] = useState("dockpanel-api");
+  const [selectedService, setSelectedService] = useState("arsy-api");
 
   // Feature #6: Error alerting
   const [errorCheck, setErrorCheck] = useState<ErrorCheckResult | null>(null);

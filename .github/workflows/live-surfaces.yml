@@ -102,7 +102,7 @@ jobs:
             echo
             echo "The usual causes, in rough order of likelihood:"
             echo
-            echo "- **dockpanel.dev is serving a stale bundle.** The marketing site is"
+            echo "- **moonwitness.dev is serving a stale bundle.** The marketing site is"
             echo "  built by hand. Run \`npm run build\` in \`website/client\` on the"
             echo "  origin box, then purge the Cloudflare cache."
             echo "- **A measurement expired.** Retake it on a real box and update the"

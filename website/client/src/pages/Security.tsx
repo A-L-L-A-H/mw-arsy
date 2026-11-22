@@ -143,16 +143,16 @@ const SUPPLY_CHAIN = [
 ];
 
 const VERIFY_CMD = `cosign verify-blob \\
-  --certificate dockpanel-agent-linux-amd64.pem \\
-  --signature  dockpanel-agent-linux-amd64.sig \\
-  --certificate-identity-regexp '^https://github\\.com/ovexro/dockpanel/\\.github/workflows/release\\.yml@refs/tags/v.+$' \\
+  --certificate arsy-agent-linux-amd64.pem \\
+  --signature  arsy-agent-linux-amd64.sig \\
+  --certificate-identity-regexp '^https://github\\.com/A-L-L-A-H/mw-arsy/\\.github/workflows/release\\.yml@refs/tags/v.+$' \\
   --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \\
-  dockpanel-agent-linux-amd64`;
+  arsy-agent-linux-amd64`;
 
 const RECENT_ADVISORIES = [
   { ver: '2.7.11', date: '2026-04-15', text: 'Per-image SBOM generation (syft) shipped — supply-chain transparency for every deployed container.' },
   { ver: '2.7.10', date: '2026-04-15', text: 'Signed releases via cosign keyless + per-binary SPDX SBOMs in CI.' },
-  { ver: '2.7.9',  date: '2026-04-15', text: 'Per-image CVE scanning (grype) shipped; agent sandbox gap (/var/lib/dockpanel missing from ReadWritePaths) closed.' },
+  { ver: '2.7.9',  date: '2026-04-15', text: 'Per-image CVE scanning (grype) shipped; agent sandbox gap (/var/lib/arsy missing from ReadWritePaths) closed.' },
   { ver: '2.7.8',  date: '2026-04-15', text: 'Audit Round 7 fixes: tar --no-dereference, terminal denylist, agent unit hardening, URL guards, alert-pileup fix.' },
   { ver: '2.7.x',  date: '2026-03',    text: 'Audit Round 6: 30 findings closed including MySQL SQL injection, deploy RCE, CSRF, Compose YAML AST validation, HKDF.' },
   { ver: '2.7.x',  date: '2026-03',    text: 'Audit Round 3: research-driven sweep against real-world panel CVEs — 55 findings, env_clear() on 341 Command::new() calls, AES-256-GCM credentials at rest.' },
@@ -171,8 +171,8 @@ const DEFAULTS: [string, string][] = [
   ['No telemetry, ever', 'Self-hosted means self-hosted.'],
 ];
 
-const SECURITY_MD = 'https://github.com/ovexro/dockpanel/blob/main/SECURITY.md';
-const CHANGELOG_MD = 'https://github.com/ovexro/dockpanel/blob/main/CHANGELOG.md';
+const SECURITY_MD = 'https://github.com/A-L-L-A-H/mw-arsy/blob/main/SECURITY.md';
+const CHANGELOG_MD = 'https://github.com/A-L-L-A-H/mw-arsy/blob/main/CHANGELOG.md';
 
 /** Section headings. Sized as sections rather than clauses — these are units. */
 const h2 =
@@ -187,7 +187,7 @@ export default function Security() {
   const [latestRelease, setLatestRelease] = useState<string | null>(null);
   useEffect(() => {
     let live = true;
-    fetch('https://api.github.com/repos/ovexro/dockpanel/releases/latest')
+    fetch('https://api.github.com/repos/A-L-L-A-H/mw-arsy/releases/latest')
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => { if (live && d?.tag_name) setLatestRelease(d.tag_name); })
       .catch(() => {});
@@ -209,7 +209,7 @@ export default function Security() {
         standfirst={
           <>
             Every other panel that skipped this page eventually wrote a postmortem instead.
-            DockPanel takes the opposite approach: continuous internal audits, supply-chain
+            ARSY takes the opposite approach: continuous internal audits, supply-chain
             transparency, signed releases, and a public response SLA. Here&apos;s the receipts.
           </>
         }
@@ -243,7 +243,7 @@ export default function Security() {
         <h2 className={h2}>Supply chain</h2>
         <p className={standfirst}>
           What we ship, signed. What you run, scannable. EU CRA compliance lands September 2026 —
-          DockPanel is ready today.
+          ARSY is ready today.
         </p>
 
         <ul className="mt-8 border-t border-[#1e1e22]">
@@ -381,7 +381,7 @@ export default function Security() {
       {/* ── Defaults ──────────────────────────────────────────────────── */}
       <DocSection id="defaults" label="By default" contentClassName="max-w-3xl">
         <h2 className={h2}>Defense in depth</h2>
-        <p className={standfirst}>The properties every DockPanel install ships with by default.</p>
+        <p className={standfirst}>The properties every ARSY install ships with by default.</p>
 
         <dl className="mt-8 grid border-t border-[#1e1e22] md:grid-cols-2 md:gap-x-12">
           {DEFAULTS.map(([t, d]) => (
@@ -403,13 +403,13 @@ export default function Security() {
         </p>
         <div className="mt-7 flex flex-wrap items-center gap-x-6 gap-y-3">
           <a
-            href="mailto:security@dockpanel.dev"
+            href="mailto:security@moonwitness.dev"
             className="mono inline-flex items-center gap-2 text-[13px] text-[#f4f4f5] underline decoration-[#3f3f46] underline-offset-4 transition-colors hover:decoration-[#f4f4f5]"
           >
-            <Mail className="h-3.5 w-3.5" /> security@dockpanel.dev
+            <Mail className="h-3.5 w-3.5" /> security@moonwitness.dev
           </a>
           <a
-            href="https://github.com/ovexro/dockpanel/security/advisories/new"
+            href="https://github.com/A-L-L-A-H/mw-arsy/security/advisories/new"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 text-[13px] font-medium text-[#a3a3ad] transition-colors hover:text-[#f4f4f5]"

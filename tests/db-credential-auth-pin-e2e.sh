@@ -380,7 +380,7 @@ fi
 echo
 echo "§F  credentials reach docker via --env-file, never via -e KEY=value"
 
-# s445 (dockpanel-fanout completeness critic, agent-crate rotation): a
+# s445 (arsy-fanout completeness critic, agent-crate rotation): a
 # `-e MYSQL_PWD=...`/`-e PGPASSWORD=...` docker argument is literal argv,
 # world-readable via ps/`/proc/<pid>/cmdline` for the child's lifetime —
 # verified live against this box's own /proc mount (no hidepid=). Absence

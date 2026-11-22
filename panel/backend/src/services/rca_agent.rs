@@ -1,4 +1,4 @@
-// MCP-Grounded Root Cause Analysis Agent for DockPanel Fleet
+// MCP-Grounded Root Cause Analysis Agent for ARSY Fleet
 // Inspired by ARGUS (arXiv:2608.23084) - uses MCP tools to correlate
 // metrics, logs, container state, alerts, and incidents for diagnosis
 
@@ -515,7 +515,7 @@ impl RcaAgent {
     /// Build diagnosis prompt for LLM
     fn build_diagnosis_prompt(&self, trigger: &DiagnosisTrigger, evidence: &str) -> String {
         format!(
-            r#"You are a senior DevOps engineer helping diagnose a DockPanel server fleet issue.
+            r#"You are a senior DevOps engineer helping diagnose a ARSY server fleet issue.
 
 TRIGGER: {:?}
 
@@ -670,7 +670,7 @@ Be specific and actionable. Reference specific evidence items."#,
     }
 }
 
-/// MCP Client for calling DockPanel MCP tools
+/// MCP Client for calling ARSY MCP tools
 pub struct McpClient {
     base_url: String,
     api_key: String,

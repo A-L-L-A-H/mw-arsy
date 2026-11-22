@@ -547,7 +547,7 @@ async fn jwks(State(state): State<AppState>) -> Json<serde_json::Value> {
         "keys": [{
             "kty": "oct",
             "alg": "HS256",
-            "kid": "dockpanel-oauth-hs256",
+            "kid": "arsy-oauth-hs256",
             "use": "sig"
         }]
     }))
@@ -647,8 +647,8 @@ async fn client_metadata(
     let base_url = get_base_url(&state).await?;
 
     Ok(Json(serde_json::json!({
-        "client_id": "dockpanel-mcp-server",
-        "client_name": "DockPanel MCP Server",
+        "client_id": "arsy-mcp-server",
+        "client_name": "ARSY MCP Server",
         "redirect_uris": ["http://127.0.0.1:3081/callback", "http://localhost:3081/callback"],
         "grant_types": ["authorization_code", "refresh_token"],
         "response_types": ["code"],
@@ -676,7 +676,7 @@ async fn protected_resource_metadata(
         "jwks_uri": format!("{}/oauth/jwks", base_url),
         "scopes_supported": ["mcp:read:*", "mcp:write:*", "mcp:admin:*"],
         "bearer_methods_supported": ["header"],
-        "resource_documentation": "https://docs.dockpanel.dev/mcp"
+        "resource_documentation": "https://docs.moonwitness.dev/mcp"
     }))
 }
 
@@ -720,7 +720,7 @@ async fn validate_authorize_request(
 
     // Validate resource indicator (RFC 8707) - optional but recommended
     if let Some(resource) = &params.resource {
-        // For DockPanel, the resource is the panel's base URL
+        // For ARSY, the resource is the panel's base URL
         let base_url = get_base_url(state).await?;
         if resource != &base_url && resource != &format!("{}/", base_url) {
             return Err(err(StatusCode::BAD_REQUEST, "Invalid resource indicator"));
@@ -759,7 +759,7 @@ fn build_consent_page(params: &AuthorizeParams, client: &OAuthClient, user_email
 <body>
     <div class="card">
         <h1>Authorize Application</h1>
-        <p><strong>{}</strong> wants to access your DockPanel account.</p>
+        <p><strong>{}</strong> wants to access your ARSY account.</p>
         <div class="info">
             <p><strong>Email:</strong> {}</p>
             <p><strong>Application:</strong> {} ({})</p>

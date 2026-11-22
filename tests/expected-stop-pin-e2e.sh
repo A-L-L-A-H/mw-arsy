@@ -315,7 +315,7 @@ fi
 # it OPENS, not after — record before the call, clear unconditionally once it
 # returns (success or failure), or a refused/failed recreate leaves a
 # container that never actually stopped marked expected-stopped forever.
-# [[project_dockpanel_tech_debt_p185]] carry G.
+# [[project_arsy_tech_debt_p185]] carry G.
 if AP=$(subj "$APPS"); then
   declare -A RECREATE_CALL_ANCHOR=(
     [update_app]='post_long(&agent_path, None, 900)'
@@ -362,7 +362,7 @@ fi
 #
 # ⚠ HONEST SCOPE (measured on a box at s397, both versions): closing that fifth
 # door changes NO observable behaviour today. `/apps` keeps only containers with
-# `dockpanel.app.template` and a git container has none, so neither the healer
+# `arsy.app.template` and a git container has none, so neither the healer
 # nor the alert engine can see one. E7 pins a door that is correct and currently
 # inert — which is worth pinning, because the day `/apps` includes git
 # containers the pin is what stops the door regressing unnoticed. Every
@@ -411,16 +411,16 @@ if GD=$(subj "$GIT"); then
   #
   # ⛔ SCOPED TO THE HELPER'S OWN BODY, and this arm was FILE-scoped when first
   # written: dropping the prefix left it GREEN, because
-  # `format!("dockpanel-git-{name}-pr-{branch_slug}")` 2000 lines away CONTAINS
+  # `format!("arsy-git-{name}-pr-{branch_slug}")` 2000 lines away CONTAINS
   # the literal once whitespace is squeezed. Twelve occurrences of the prefix
   # live in this file. A whole-file `has` here is unfalsifiable.
   KB=$(fnbody "$GD" "expected_stop_key")
   if [ "$(wc -l <<< "$KB")" -lt 2 ]; then
     bad "E7d expected_stop_key body resolved ($(wc -l <<< "$KB") lines — subject lost)"
-  elif grep -qF 'format!("dockpanel-git-{name}")' <<< "$(flat "$KB")"; then
-    ok "E7d the recorded key carries the agent's dockpanel-git- prefix"
+  elif grep -qF 'format!("arsy-git-{name}")' <<< "$(flat "$KB")"; then
+    ok "E7d the recorded key carries the agent's arsy-git- prefix"
   else
-    bad "E7d the recorded key carries the agent's dockpanel-git- prefix"
+    bad "E7d the recorded key carries the agent's arsy-git- prefix"
   fi
 
   # ...and that `stop()` actually routes its key through that helper, rather
@@ -784,7 +784,7 @@ if AP=$(subj "$APPS"); then
       # that guards it while the if-let itself stays put.
       #
       # s447: update_image/update_env moved from depth 1 to depth 2 (call:
-      # 2 to 3) — [[project_dockpanel_tech_debt_p185]] §A wrapped both
+      # 2 to 3) — [[project_arsy_tech_debt_p185]] §A wrapped both
       # bodies in `tokio::spawn(async move { ... })` so a dropped browser
       # connection can no longer cancel the recreate mid-flight, adding one
       # brace level to everything inside, this if-let included. update_app

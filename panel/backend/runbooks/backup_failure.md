@@ -11,9 +11,9 @@ The backup-policy executor ran the schedule and either the agent reported a non-
 1. From the panel: **Backup Orchestrator → Failures tab → click the failed run** to see the error excerpt.
 2. From the host:
    ```
-   journalctl -u dockpanel-agent --since "1 hour ago" | grep -i backup
+   journalctl -u arsy-agent --since "1 hour ago" | grep -i backup
    df -h /var/backups
-   ls -lh /var/backups/dockpanel/
+   ls -lh /var/backups/arsy/
    ```
 3. If the destination is remote (S3 / B2 / SSH), test creds independently — the agent rotates short-lived tokens and a stale config is the most common silent failure.
 

@@ -23,11 +23,11 @@ use zeroize::Zeroize;
 /// credential path and the Secrets Manager vault.
 pub const ENCRYPTION_KEY_ENV: &str = "SECRETS_ENCRYPTION_KEY";
 
-const VAULT_SALT: &[u8] = b"dockpanel-secrets-v1:";
-const CREDENTIAL_JWT_SALT: &[u8] = b"dockpanel-credential-v1:";
-const CREDENTIAL_ENV_SALT: &[u8] = b"dockpanel-credential-encryption-v1:";
-const VAULT_SOURCE_SALT: &[u8] = b"dockpanel-secrets-encryption:";
-const BACKUP_ENCRYPTION_SALT: &[u8] = b"dockpanel-backup-encryption-v2:";
+const VAULT_SALT: &[u8] = b"arsy-secrets-v1:";
+const CREDENTIAL_JWT_SALT: &[u8] = b"arsy-credential-v1:";
+const CREDENTIAL_ENV_SALT: &[u8] = b"arsy-credential-encryption-v1:";
+const VAULT_SOURCE_SALT: &[u8] = b"arsy-secrets-encryption:";
+const BACKUP_ENCRYPTION_SALT: &[u8] = b"arsy-backup-encryption-v2:";
 
 /// Read `SECRETS_ENCRYPTION_KEY`, treating **set-but-empty as unset**.
 ///
@@ -67,7 +67,7 @@ fn derive_key_legacy(secret: &str, salt: &[u8]) -> [u8; 32] {
 fn derive_key_with_salt(secret: &str, salt: &[u8]) -> [u8; 32] {
     let hk = Hkdf::<Sha256>::new(Some(salt), secret.as_bytes());
     let mut key = [0u8; 32];
-    hk.expand(b"dockpanel-encryption", &mut key)
+    hk.expand(b"arsy-encryption", &mut key)
         .expect("HKDF expand failed: output length is valid");
     key
 }
@@ -216,7 +216,7 @@ pub fn decrypt(encrypted_b64: &str, jwt_secret: &str) -> Result<String, String> 
     }
 
     // Fall back to legacy SHA-256 key for data encrypted before HKDF migration
-    let mut legacy_key = derive_key_legacy(jwt_secret, b"dockpanel-secrets-v1:");
+    let mut legacy_key = derive_key_legacy(jwt_secret, b"arsy-secrets-v1:");
     let legacy_cipher = Aes256Gcm::new_from_slice(&legacy_key)
         .map_err(|e| { legacy_key.zeroize(); format!("Cipher init failed: {e}") })?;
     legacy_key.zeroize();

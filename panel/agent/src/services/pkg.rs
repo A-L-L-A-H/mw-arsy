@@ -1,6 +1,6 @@
 //! Package facts that hold on both package-manager families.
 //!
-//! DockPanel supports Debian/Ubuntu **and** the RHEL family (Rocky, AlmaLinux,
+//! ARSY supports Debian/Ubuntu **and** the RHEL family (Rocky, AlmaLinux,
 //! CentOS Stream, Fedora), but every package query in the agent used to be
 //! `dpkg`. On an RPM box there is no `dpkg` at all, so those queries did not
 //! merely return the wrong answer — they returned `false` for *everything*,
@@ -614,7 +614,7 @@ pub async fn privileged_ops_reason(what: &str) -> Option<String> {
 /// Kept for installers that genuinely remain Debian-only after s266, and for
 /// the case that has nothing to install with at all.
 ///
-/// s265 added this because the RHEL family could *run* DockPanel while every
+/// s265 added this because the RHEL family could *run* ARSY while every
 /// optional-service installer still shelled out to `apt-get`, failing with
 /// `Failed to find executable apt-get` — a true sentence that tells an operator
 /// nothing. s266 gave most of those installers a real `dnf` path, so the guard
@@ -727,7 +727,7 @@ pub async fn explain_package_failure(raw: &str) -> String {
             "{raw}\n\nThis usually means the CRB repository is not enabled. EPEL requires it, \
              and OpenDKIM's dependencies (sendmail-milter, libmemcached-awesome) live there. \
              Enable it with `dnf config-manager --set-enabled crb` (`powertools` on EL8) and \
-             retry — DockPanel's installer does this on new installs."
+             retry — ARSY's installer does this on new installs."
         );
     }
     raw.to_string()
@@ -736,7 +736,7 @@ pub async fn explain_package_failure(raw: &str) -> String {
 /// Add a third-party repository for `what`, when the running family needs one.
 ///
 /// The two callers differ in an instructive way. Nodesource publishes a
-/// per-family setup script and DockPanel's `setup.sh` already branches to the
+/// per-family setup script and ARSY's `setup.sh` already branches to the
 /// rpm one — it was only the agent that still fetched the deb script on every
 /// distro. Cloudflare publishes a **codename-keyed** apt repo and a single flat
 /// rpm repo, which is why `service_installer.rs` had a hard error for a missing

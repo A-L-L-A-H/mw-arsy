@@ -2,7 +2,7 @@
 # nginx-clone-env-backup-path-pin-e2e.sh — s438
 #
 # Pins the two remaining defense-in-depth findings from the s436
-# `dockpanel-fanout` round ([[project_dockpanel_tech_debt_p173]], Findings 1
+# `arsy-fanout` round ([[project_arsy_tech_debt_p173]], Findings 1
 # and 2). Both were confirmed NOT reachable via the panel API today — every
 # current caller sources its domain/filepath from a DB-validated column, not
 # straight from an admin-supplied field — but the handlers themselves had no
@@ -16,7 +16,7 @@
 #       domain segment (`../../etc/systemd/system`) is root code execution
 #       via cron/systemd-unit overwrite, not merely a stray file write.
 #   §B  remote_backup.rs's upload() gated the backup filepath with a lexical
-#       `starts_with()` check that "/var/backups/dockpanel/../../etc/shadow"
+#       `starts_with()` check that "/var/backups/arsy/../../etc/shadow"
 #       satisfies — the OS resolves the `..` on open. ProtectSystem=strict
 #       blocks writes outside the allowlist but not READS, so an unguarded
 #       path here is arbitrary root-readable-file exfiltration (shadow,
@@ -133,7 +133,7 @@ fi
 # call sites (clone_site x2, get_env, set_env). A future removal of any of
 # these checks drops the total below this floor; a future ADDITION does not
 # break it, so this is deliberately a floor, not an exact-equality census
-# (the heavier enumeration [[project_dockpanel_lessons_p60]] describes is not
+# (the heavier enumeration [[project_arsy_lessons_p60]] describes is not
 # proportionate to a DiD-only, not-currently-reachable finding).
 N_CALLS=$(grep -oF 'is_valid_domain(' "$NGINX" | wc -l)
 if [ "$N_CALLS" -ge 31 ]; then
@@ -149,16 +149,16 @@ if [ -z "$UPLOAD" ]; then
   bad "B0 could not extract remote_backup::upload"
 else
   ok "B0 remote_backup::upload extracted"
-  if has "$UPLOAD" 'starts_with\("/var/backups/dockpanel/"\)' && has "$UPLOAD" 'body\.filepath\.contains\("\.\."\)'; then
+  if has "$UPLOAD" 'starts_with\("/var/backups/arsy/"\)' && has "$UPLOAD" 'body\.filepath\.contains\("\.\."\)'; then
     ok "B1 upload rejects BOTH a non-prefixed path AND a lexical '..' traversal"
   else
-    bad "B1 upload is missing the prefix check, the '..' rejection, or both — a crafted filepath can read outside /var/backups/dockpanel/"
+    bad "B1 upload is missing the prefix check, the '..' rejection, or both — a crafted filepath can read outside /var/backups/arsy/"
   fi
   # B2 — the two conditions must be OR'd together in one guard, not two
   # separate ifs where an early return on the first could let a later
   # "and only if that passed" mutation quietly drop the second (both must
   # gate the SAME single rejection).
-  if has "$UPLOAD" 'starts_with\("/var/backups/dockpanel/"\) \|\| body\.filepath\.contains\("\.\."\)'; then
+  if has "$UPLOAD" 'starts_with\("/var/backups/arsy/"\) \|\| body\.filepath\.contains\("\.\."\)'; then
     ok "B2 both conditions are OR'd into a single rejection guard"
   else
     bad "B2 the prefix check and the '..' rejection are not combined into one guard — re-read upload(), a mutation may have split them"

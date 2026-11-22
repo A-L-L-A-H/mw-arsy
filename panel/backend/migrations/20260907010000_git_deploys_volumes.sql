@@ -4,7 +4,7 @@
 --
 -- `volumes` is a JSON array of CONTAINER paths only (e.g. ["/data"]), never
 -- host paths — the host side is always derived under
--- /var/lib/dockpanel/git-data/{name}{path} by the agent, mirroring
+-- /var/lib/arsy/git-data/{name}{path} by the agent, mirroring
 -- docker_apps.rs's own volume-bind pattern. See the six constraints recorded
 -- beside the code that reads this column (panel/agent/src/services/git_build.rs).
 --

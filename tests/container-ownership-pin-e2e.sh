@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # container-ownership-pin-e2e.sh — s475
 #
-# The `dockpanel.user.id` Docker label was never a missing primitive — deploy_app
+# The `arsy.user.id` Docker label was never a missing primitive — deploy_app
 # stamps it on every container, and list_deployed_apps reads it straight back
 # onto DeployedApp.user_id in every /apps response. Two counters just ignored it:
 #
@@ -24,7 +24,7 @@
 # Pure source analysis: no box, no network, no build.
 #
 # Arms are written against the CAPABILITY (a per-user filter is consulted) not
-# today's exact spelling, per lesson #122 in project_dockpanel_lessons.
+# today's exact spelling, per lesson #122 in project_arsy_lessons.
 #
 # NO PIPES INTO `grep -q`. Under `set -o pipefail` grep -q closes the pipe on
 # its first match, the upstream dies of SIGPIPE (141), and pipefail reports the
@@ -160,15 +160,15 @@ if ! AG=$(subj "$AGENT"); then
   skip "§E — $AGENT produced no code after stripping"
 else
   DEPLOY_APP=$(fnbody "$AG" "deploy_app")
-  if [ -n "$DEPLOY_APP" ] && has "$DEPLOY_APP" 'dockpanel\.user\.id' && live "$DEPLOY_APP"; then
-    ok "E1 deploy_app still stamps dockpanel.user.id on every container it creates"
+  if [ -n "$DEPLOY_APP" ] && has "$DEPLOY_APP" 'arsy\.user\.id' && live "$DEPLOY_APP"; then
+    ok "E1 deploy_app still stamps arsy.user.id on every container it creates"
   else
-    bad "E1 deploy_app must still stamp dockpanel.user.id — every counter above depends entirely on this label existing"
+    bad "E1 deploy_app must still stamp arsy.user.id — every counter above depends entirely on this label existing"
   fi
 
   LIST_APPS=$(fnbody "$AG" "list_deployed_apps")
-  if [ -n "$LIST_APPS" ] && has "$LIST_APPS" 'dockpanel\.user\.id' && has "$LIST_APPS" 'user_id' && live "$LIST_APPS"; then
-    ok "E2 list_deployed_apps still reads dockpanel.user.id back onto DeployedApp.user_id in every /apps response"
+  if [ -n "$LIST_APPS" ] && has "$LIST_APPS" 'arsy\.user\.id' && has "$LIST_APPS" 'user_id' && live "$LIST_APPS"; then
+    ok "E2 list_deployed_apps still reads arsy.user.id back onto DeployedApp.user_id in every /apps response"
   else
     bad "E2 list_deployed_apps must still surface user_id — the backend has no other way to learn who owns a container"
   fi

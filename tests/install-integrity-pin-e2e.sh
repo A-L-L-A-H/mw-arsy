@@ -179,12 +179,12 @@ live_bin_writes() { # -o targets directly under the live bin dir whose basename 
 }
 
 assets_declaration() { code_lines "$1" | grep -n '^ASSETS=(' || true; }
-assets_count()       { code_lines "$1" | sed -n 's/^ASSETS=(\(.*\))/\1/p' | tr ' ' '\n' | grep -c 'dockpanel-'; }
+assets_count()       { code_lines "$1" | sed -n 's/^ASSETS=(\(.*\))/\1/p' | tr ' ' '\n' | grep -c 'arsy-'; }
 first_asset()        { code_lines "$1" | sed -n 's/^ASSETS=(\([^ )]*\).*/\1/p' | head -1; }
 
 stray_single_asset_lines() { # an ACTION line that spells one asset instead of iterating
   code_lines "$1" | grep -nE '(readelf|^file |[^a-z]file |install -m|curl)' \
-                  | grep -E 'dockpanel-(agent|api|cli)-linux-' || true
+                  | grep -E 'arsy-(agent|api|cli)-linux-' || true
 }
 
 step_iterates() { [ "$(code_count "$1" -F "$2")" -gt 0 ]; }
@@ -436,7 +436,7 @@ else
   # hostname hit still signed off as clean, and the green line is the one an
   # operator reads. Derive the hostname from the hook's own bracket form; never
   # spell an internal address in this file.
-  BLOCKED_HOST=$(code_lines "$PRECOMMIT" | grep -oE '[a-z]+\[\.\]dockpanel\[\.\]dev' | head -1 | tr -d '[]')
+  BLOCKED_HOST=$(code_lines "$PRECOMMIT" | grep -oE '[a-z]+\[\.\]arsy\[\.\]dev' | head -1 | tr -d '[]')
   hook_summary() { ( cd "$H_TMP/r" && bash .h/pre-commit 2>&1 ) | sed 's/\x1b\[[0-9;]*m//g'; }
 
   if [ -z "$BLOCKED_HOST" ]; then
@@ -566,7 +566,7 @@ mutation_arm "mutation: §6b notices the gate's whole probe line being commented
 # away, which leaves a live line no stripper can help with and reads, in a diff,
 # like a simplification. A comment-out mutation cannot see that edit at all.
 PGREV=$(scratch scripts/setup.sh)
-sed -i 's/pg_isready -h [^ ]* -U dockpanel/pg_isready -U dockpanel/' "$PGREV"
+sed -i 's/pg_isready -h [^ ]* -U arsy/pg_isready -U arsy/' "$PGREV"
 if ! gate_polls_tcp "$REPO/scripts/setup.sh"; then
   bad "mutation: §6b was already unsatisfied on the untouched file, so the mutation proves nothing"
 elif ! mutation_landed "$REPO/scripts/setup.sh" "$PGREV"; then
@@ -593,7 +593,7 @@ fi
 # green over live broken code. Each one gets the REAL defect written as CODE and
 # must FIRE, plus the same text written as prose, which must NOT.
 BIN_DIR=/usr/local/bin
-DEFECT_WRITE="curl -fsSL -o $BIN_DIR/dockpanel-api \"\$URL\""
+DEFECT_WRITE="curl -fsSL -o $BIN_DIR/arsy-api \"\$URL\""
 NEG=$(scratch scripts/setup.sh); append_code "$NEG" "$DEFECT_WRITE"
 [ -n "$(live_bin_writes "$NEG")" ] \
   && ok "negative control: a real download onto the live executable path IS reported" \

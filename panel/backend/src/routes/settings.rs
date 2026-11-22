@@ -81,9 +81,9 @@ pub const ALLOWED_KEYS: &[&str] = &[
     // AI-assisted build/deploy failure diagnosis (BYO API key, default off).
     // Read by services/ai_diagnosis.rs.
     "ai_diagnosis_enabled", "ai_diagnosis_provider", "ai_diagnosis_model", "ai_diagnosis_api_key",
-    // MCP server (dockpanel-mcp, panel/mcp). Unlike ai_diagnosis_enabled, nothing
+    // MCP server (arsy-mcp, panel/mcp). Unlike ai_diagnosis_enabled, nothing
     // in the backend or the MCP crate reads these yet — the MCP server's actual
-    // on/off state is the systemd unit and its bind address is /etc/dockpanel/
+    // on/off state is the systemd unit and its bind address is /etc/arsy/
     // mcp.env's own LISTEN_ADDR, both set by hand on the host, outside this
     // table entirely. These two keys are a record an operator fills in so the
     // Settings page can show accurate status instead of nothing — not a live
@@ -301,7 +301,7 @@ pub async fn update(
                 "username": map.get("smtp_username").cloned().unwrap_or_default(),
                 "password": smtp_password,
                 "from": map.get("smtp_from").cloned().unwrap_or_default(),
-                "from_name": map.get("smtp_from_name").cloned().unwrap_or_else(|| "DockPanel".to_string()),
+                "from_name": map.get("smtp_from_name").cloned().unwrap_or_else(|| "ARSY".to_string()),
                 "encryption": map.get("smtp_encryption").cloned().unwrap_or_else(|| "starttls".to_string()),
             });
 
@@ -472,7 +472,7 @@ pub async fn test_email(
 
     let map: HashMap<String, String> = rows.into_iter().map(|r| (r.key, r.value)).collect();
     let from = map.get("smtp_from").cloned().unwrap_or_default();
-    let from_name = map.get("smtp_from_name").cloned().unwrap_or_else(|| "DockPanel".to_string());
+    let from_name = map.get("smtp_from_name").cloned().unwrap_or_else(|| "ARSY".to_string());
 
     if from.is_empty() {
         return Err(err(StatusCode::BAD_REQUEST, "SMTP not configured — save SMTP settings first"));
@@ -542,9 +542,9 @@ pub async fn test_webhook(
         .map_err(|e| err(StatusCode::BAD_REQUEST, &format!("Invalid webhook URL: {e}")))?;
 
     let payload = if service == "slack" {
-        serde_json::json!({ "text": "DockPanel test notification — your Slack webhook is working!" })
+        serde_json::json!({ "text": "ARSY test notification — your Slack webhook is working!" })
     } else {
-        serde_json::json!({ "content": "DockPanel test notification — your Discord webhook is working!" })
+        serde_json::json!({ "content": "ARSY test notification — your Discord webhook is working!" })
     };
 
     let client = crate::helpers::pinned_client(
@@ -584,7 +584,7 @@ pub async fn branding(
 
     let map: HashMap<String, String> = rows.into_iter().collect();
 
-    let global_name = map.get("panel_name").cloned().unwrap_or_else(|| "DockPanel".into());
+    let global_name = map.get("panel_name").cloned().unwrap_or_else(|| "ARSY".into());
     let global_logo = map.get("logo_url").cloned().unwrap_or_default();
     let global_accent = map.get("accent_color").cloned().unwrap_or_default();
     let global_hide = map.get("hide_branding").map(|v| v == "true").unwrap_or(false);

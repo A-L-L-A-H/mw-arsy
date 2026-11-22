@@ -2,7 +2,7 @@
 
 ## Security Scanner
 
-DockPanel runs a full security scan automatically every 7 days. You can also trigger a scan manually from **Security** > **Run Scan** or via the API.
+ARSY runs a full security scan automatically every 7 days. You can also trigger a scan manually from **Security** > **Run Scan** or via the API.
 
 The scanner checks the server through the agent and reports findings in three severity levels:
 
@@ -28,7 +28,7 @@ A score of 100 means no findings. The score is shown on the Security page and in
 
 ## Firewall (UFW)
 
-DockPanel manages the server firewall through UFW.
+ARSY manages the server firewall through UFW.
 
 ### View firewall status
 
@@ -45,7 +45,7 @@ Go to **Security** > **Firewall** to see all rules and whether UFW is active.
    - **From** (optional): Restrict to a specific IP or CIDR range
 4. Click **Add**
 
-When you create a site, DockPanel automatically configures firewall rules for ports 80 and 443. Docker container proxy ports are blocked from external access by default.
+When you create a site, ARSY automatically configures firewall rules for ports 80 and 443. Docker container proxy ports are blocked from external access by default.
 
 ### Delete a rule
 
@@ -59,9 +59,9 @@ curl -X DELETE https://panel.example.com/api/security/firewall/rules/RULE_NUMBER
 ### From the CLI
 
 ```bash
-dockpanel security firewall list
-dockpanel security firewall allow 8080/tcp
-dockpanel security firewall deny 3306/tcp from 0.0.0.0/0
+arsy security firewall list
+arsy security firewall allow 8080/tcp
+arsy security firewall deny 3306/tcp from 0.0.0.0/0
 ```
 
 ## Fail2Ban
@@ -74,7 +74,7 @@ Go to **Security** > **Fail2Ban** to see running jails, banned IPs, and ban coun
 
 ### Panel Login Jail
 
-DockPanel can create a dedicated Fail2Ban jail that monitors the panel's own login endpoint. Set it up from **Security** > **Panel Jail** > **Setup**.
+ARSY can create a dedicated Fail2Ban jail that monitors the panel's own login endpoint. Set it up from **Security** > **Panel Jail** > **Setup**.
 
 ### Manual Ban / Unban
 
@@ -103,7 +103,7 @@ curl -s https://panel.example.com/api/security/fail2ban/sshd/banned \
 
 ## Two-Factor Authentication (2FA)
 
-DockPanel supports TOTP-based 2FA using any authenticator app (Google Authenticator, Authy, 1Password, etc.).
+ARSY supports TOTP-based 2FA using any authenticator app (Google Authenticator, Authy, 1Password, etc.).
 
 ### Enable 2FA
 
@@ -250,7 +250,7 @@ button that cannot work.
 - **Renewing an expiring SSL certificate.** This one is applied by the panel
   rather than by the agent, because renewal needs the site's runtime, document
   root, PHP version and ACME contact — all of which live in the panel's database.
-  A certificate under `/etc/dockpanel/ssl` with no matching site (a DNS-01
+  A certificate under `/etc/arsy/ssl` with no matching site (a DNS-01
   wildcard, or one installed by hand) is not renewable here, and the panel says
   so rather than failing: whatever installed it is what renews it.
 
@@ -269,7 +269,7 @@ The report is styled for printing and can be shared with auditors.
 
 ## GDPR Data Export
 
-Users can export all their personal data stored in DockPanel:
+Users can export all their personal data stored in ARSY:
 
 ```bash
 curl -s https://panel.example.com/api/auth/export-my-data \
@@ -343,27 +343,27 @@ The panic button performs an emergency lockdown: kills all active terminal sessi
 
 Security events, and every destructive or privilege-sensitive action across the panel — deleting a site, server, or user; promoting or demoting a reseller; resetting another user's password or 2FA; rotating a secret, API key, or server token; disabling SSH password auth; transferring a site — are written to the `security_audit_log` table, and a PostgreSQL trigger rejects `UPDATE` and `DELETE` on it. That trigger is the guarantee — it is what makes the record in the database immutable, and it is what the panel reads. This is deliberately broader than the general activity log (**Sites** and other pages' own activity views, backed by the mutable `activity_logs` table): a compromised admin account or a malicious insider with panel access can edit or delete an `activity_logs` row, but not a `security_audit_log` one.
 
-Every event is **also** appended to a dated file on disk at `/var/lib/dockpanel/audit/`, as a convenience copy for host-level forensics and log shipping. **What this does not do, stated plainly:** those files are written in append mode, but nothing sets a kernel append-only attribute on them, so a process that can write the directory can still rewrite one in place. Treat the on-disk copies as a convenience, not as evidence — the database is the authoritative record. Nothing in DockPanel reads these files back; they are for you and your own tooling.
+Every event is **also** appended to a dated file on disk at `/var/lib/arsy/audit/`, as a convenience copy for host-level forensics and log shipping. **What this does not do, stated plainly:** those files are written in append mode, but nothing sets a kernel append-only attribute on them, so a process that can write the directory can still rewrite one in place. Treat the on-disk copies as a convenience, not as evidence — the database is the authoritative record. Nothing in ARSY reads these files back; they are for you and your own tooling.
 
 If you want kernel-enforced protection on the on-disk copies, apply it to the **files**, not the directory:
 
 ```bash
-chattr +a /var/lib/dockpanel/audit/*.log     # new files each day need it again
+chattr +a /var/lib/arsy/audit/*.log     # new files each day need it again
 ```
 
-Setting it on the directory instead is a common mistake and does not do what it looks like: it blocks deleting and renaming the logs while still allowing any of them to be truncated and rewritten. It also blocks DockPanel's own 365-day retention sweep, which cannot unlink under that attribute even as root — the panel logs a warning naming the directory when that happens. Either attribute can be cleared by root (`chattr -a`), so neither defends against an attacker who already has it.
+Setting it on the directory instead is a common mistake and does not do what it looks like: it blocks deleting and renaming the logs while still allowing any of them to be truncated and rewritten. It also blocks ARSY's own 365-day retention sweep, which cannot unlink under that attribute even as root — the panel logs a warning naming the directory when that happens. Either attribute can be cleared by root (`chattr -a`), so neither defends against an attacker who already has it.
 
 View the log in **Security** > **Lockdown** tab (Audit Log section).
 
 ### Terminal Session Recording
 
-Terminal sessions are recorded in asciicast v2 format while **Terminal Session Recording** is on in **Settings** > **Account** > **Security Hardening**. Recordings are stored at `/var/lib/dockpanel/recordings/` and listed in **Security** > **Recordings** tab. Retention: 30 days.
+Terminal sessions are recorded in asciicast v2 format while **Terminal Session Recording** is on in **Settings** > **Account** > **Security Hardening**. Recordings are stored at `/var/lib/arsy/recordings/` and listed in **Security** > **Recordings** tab. Retention: 30 days.
 
 The panel decides per session and tells the agent inside the signed connection ticket, so a user cannot opt their own session out. Turning the toggle off stops new recordings; it does not delete existing ones. Fleet members running an agent older than v2.46.0 ignore the setting and keep recording — update the agent for the toggle to take effect there.
 
 ### Geo-IP Login Alerts
 
-When enabled, DockPanel alerts admins when a login or registration occurs from a new IP address, especially from VPN, proxy, or datacenter IPs. Configure in **Settings** > **Account** > **Security Hardening** section.
+When enabled, ARSY alerts admins when a login or registration occurs from a new IP address, especially from VPN, proxy, or datacenter IPs. Configure in **Settings** > **Account** > **Security Hardening** section.
 
 ### Registration Approval Mode
 
@@ -397,24 +397,24 @@ One user may create at most **Site Creation Rate Limit** sites per hour (default
 
 ### Canary Files
 
-A canary file is a decoy nobody legitimate reads. While **Canary File Monitoring** is on, DockPanel checks each one every 2 minutes and raises a critical alert — audit-log entry, suspicious event, and a notification to every admin — if its access time has moved. Canary monitoring, suspicious-event ingestion and auto-lockdown expiry run independently of the auto-healer's own switch.
+A canary file is a decoy nobody legitimate reads. While **Canary File Monitoring** is on, ARSY checks each one every 2 minutes and raises a critical alert — audit-log entry, suspicious event, and a notification to every admin — if its access time has moved. Canary monitoring, suspicious-event ingestion and auto-lockdown expiry run independently of the auto-healer's own switch.
 
-**The tripwire has to be armed before it can trip.** Press **Arm canary files** in **Settings** > **Account** > **Security Hardening**; the row beside the switch tells you how many paths are actually being watched. DockPanel plants four:
+**The tripwire has to be armed before it can trip.** Press **Arm canary files** in **Settings** > **Account** > **Security Hardening**; the row beside the switch tells you how many paths are actually being watched. ARSY plants four:
 
 | Path | Why |
 |------|-----|
-| `/etc/dockpanel/.dockpanel-canary` | where the agent token and panel credentials live |
-| `/var/lib/dockpanel/.dockpanel-canary` | runtime state |
-| `/var/backups/dockpanel/.dockpanel-canary` | panel database dumps |
-| `/var/www/.dockpanel-canary` | web root |
+| `/etc/arsy/.arsy-canary` | where the agent token and panel credentials live |
+| `/var/lib/arsy/.arsy-canary` | runtime state |
+| `/var/backups/arsy/.arsy-canary` | panel database dumps |
+| `/var/www/.arsy-canary` | web root |
 
-Three older paths — `/etc/.dockpanel-canary`, `/root/.dockpanel-canary` and `/home/.dockpanel-canary` — are still watched if you armed a host by hand before v2.132.0, so upgrading does not stop monitoring a tripwire you were relying on.
+Three older paths — `/etc/.arsy-canary`, `/root/.arsy-canary` and `/home/.arsy-canary` — are still watched if you armed a host by hand before v2.132.0, so upgrading does not stop monitoring a tripwire you were relying on.
 
 **What this does not do, stated plainly:**
 
 - **Before v2.132.0 nothing planted these files at all.** The switch is seeded on, and the endpoint that creates the canaries had no caller anywhere in the panel, so on a stock install the feature watched **zero** files and its silence was indistinguishable from an all-clear. If you are upgrading, arm it — being switched on was never the same as being armed.
-- **`/root/` and `/home/` can never be watched**, whatever is on disk. Both daemons run under `ProtectHome=yes`, which replaces those trees with an empty mount, so the panel does not see a file you place there. Widening the sandbox to reach them would cost more hardening than the tripwire is worth, so DockPanel does not plant them and no longer implies it watches them.
-- **`/etc/.dockpanel-canary` is watched but not planted.** `ProtectSystem=strict` leaves bare `/etc` read-only for the agent, so the panel cannot create it; `/etc/dockpanel/` is used instead.
+- **`/root/` and `/home/` can never be watched**, whatever is on disk. Both daemons run under `ProtectHome=yes`, which replaces those trees with an empty mount, so the panel does not see a file you place there. Widening the sandbox to reach them would cost more hardening than the tripwire is worth, so ARSY does not plant them and no longer implies it watches them.
+- **`/etc/.arsy-canary` is watched but not planted.** `ProtectSystem=strict` leaves bare `/etc` read-only for the agent, so the panel cannot create it; `/etc/arsy/` is used instead.
 - **Repeat reads inside 24 hours may not register.** Linux mounts default to `relatime`, which updates an access time only when it is older than the file's modification time or more than a day stale. The first read after arming is caught — that is the intrusion you care about — but a second read soon after may not raise a separate alert.
 - **It cannot tell an intruder from a backup.** Anything that reads the whole filesystem — a backup agent, an antivirus scan, `updatedb` — moves the access time and trips the alert. Treat a canary alert as a prompt to check the audit log and forensic snapshot, not as proof on its own.
 
@@ -432,4 +432,4 @@ Terminal commands matching dangerous patterns (useradd, chpasswd, su, curl|bash,
 
 ### Panel Database Auto-Backup
 
-DockPanel's own PostgreSQL database is automatically backed up daily to `/var/backups/dockpanel/` with 7-day retention. Enable/disable in **Settings** > **Account** > **Security Hardening**.
+ARSY's own PostgreSQL database is automatically backed up daily to `/var/backups/arsy/` with 7-day retention. Enable/disable in **Settings** > **Account** > **Security Hardening**.

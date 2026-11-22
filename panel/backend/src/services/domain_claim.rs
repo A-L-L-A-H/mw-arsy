@@ -9,7 +9,7 @@
 //!
 //! What the drift cost, measured against v2.51.0:
 //!
-//! * A Docker app's domain lives only in the `dockpanel.app.domain` container
+//! * A Docker app's domain lives only in the `arsy.app.domain` container
 //!   label, so **no** SQL guard could ever see it — creating or renaming a site
 //!   onto a domain an app owned passed every check, and the agent then replaced
 //!   the app's vhost.
@@ -295,7 +295,7 @@ pub async fn find_occupant(
     }
 
     // The leg that could not exist before: Docker apps are not rows. The agent
-    // reads `dockpanel.app.domain` off each managed container and already returns
+    // reads `arsy.app.domain` off each managed container and already returns
     // it from `GET /apps` — a single `docker.list_containers`, on the 20-permit
     // quick lane, not the long one. The panel simply never asked.
     //

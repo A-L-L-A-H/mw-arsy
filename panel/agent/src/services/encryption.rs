@@ -8,8 +8,8 @@ type HmacSha256 = Hmac<Sha256>;
 
 /// Validate that a filepath is within the allowed backup directory and contains no traversal.
 fn validate_backup_path(filepath: &str) -> Result<(), String> {
-    if !filepath.starts_with("/var/backups/dockpanel/") {
-        return Err("Path must be within /var/backups/dockpanel/".to_string());
+    if !filepath.starts_with("/var/backups/arsy/") {
+        return Err("Path must be within /var/backups/arsy/".to_string());
     }
     if filepath.contains("..") {
         return Err("Path must not contain '..'".to_string());
@@ -41,7 +41,7 @@ const MAC_TRAILER_LEN: usize = MAC_TAG_LEN + 8;
 fn derive_mac_key(passphrase: &str) -> Vec<u8> {
     let mut mac = HmacSha256::new_from_slice(passphrase.as_bytes())
         .expect("HMAC accepts a key of any length");
-    mac.update(b"dockpanel-backup-hmac-v1");
+    mac.update(b"arsy-backup-hmac-v1");
     mac.finalize().into_bytes().to_vec()
 }
 

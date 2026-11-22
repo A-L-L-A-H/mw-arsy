@@ -1,5 +1,5 @@
 // Background sweeper for per-image vulnerability scans.
-// Iterates the deduped set of images currently used by DockPanel-managed
+// Iterates the deduped set of images currently used by ARSY-managed
 // containers and rescans any whose newest finding is older than the
 // configured interval. Distinct from services::security_scanner which
 // runs the full-server scan.
@@ -62,7 +62,7 @@ async fn sweep_once(pool: &PgPool, member: &FleetMember) -> Result<(), String> {
         return Ok(());
     }
 
-    // Gather distinct images from running DockPanel-managed apps.
+    // Gather distinct images from running ARSY-managed apps.
     let apps = agent
         .get("/apps")
         .await

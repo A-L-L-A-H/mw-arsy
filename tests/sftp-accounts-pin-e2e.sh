@@ -43,7 +43,7 @@ AGENT_OWNERSHIP=panel/agent/src/services/ownership.rs
 BACKEND=panel/backend/src/routes/sites.rs
 MODELS=panel/backend/src/models.rs
 FRONTEND=panel/frontend/src/pages/SiteDetail.tsx
-AGENT_UNIT=panel/agent/dockpanel-agent.service
+AGENT_UNIT=panel/agent/arsy-agent.service
 SAFE_CMD=panel/agent/src/safe_cmd.rs
 
 for f in "$MIGRATION" "$AGENT_SVC" "$AGENT_ROUTE" "$AGENT_OWNERSHIP" "$BACKEND" "$MODELS" "$FRONTEND" "$AGENT_UNIT" "$SAFE_CMD"; do
@@ -160,14 +160,14 @@ must_contain "$SVC_FLAT" 'systemd-escape' \
   "the mount unit name is computed via systemd-escape, not hand-rolled path escaping"
 
 echo
-echo "── E2: /var/dockpanel-sftp creation/removal goes through the unsandboxed escape ──"
+echo "── E2: /var/arsy-sftp creation/removal goes through the unsandboxed escape ──"
 # Live-verified bug (fresh-VPS drive, this session): the agent's own systemd
 # unit runs under ProtectSystem=strict, namespacing its writable set at unit
-# START — /var/dockpanel-sftp is a brand-new top-level directory this feature
+# START — /var/arsy-sftp is a brand-new top-level directory this feature
 # creates on first use, so a plain std::fs::create_dir_all/remove_dir_all on
 # it fails with a real "Read-only file system (os error 30)" the exact same
 # way routes/mail.rs's VMAIL_DIR creation already documents and works around.
-# ReadWritePaths listing the directory (added to dockpanel-agent.service)
+# ReadWritePaths listing the directory (added to arsy-agent.service)
 # only helps on a LATER restart after it already exists once — creation and
 # teardown must go through safe_command_unsandboxed regardless.
 case "$SVC_FLAT" in
@@ -182,8 +182,8 @@ case "$SVC_FLAT" in
 esac
 must_contain "$SVC_FLAT" 'safe_command_unsandboxed("rm",&[]).args(["-rf",&jail])' \
   "deprovision() removes the jail tree via the unsandboxed escape"
-must_contain "$(flat panel/agent/dockpanel-agent.service)" '-/var/dockpanel-sftp' \
-  "the agent's systemd unit lists /var/dockpanel-sftp in ReadWritePaths (defense-in-depth for restarts after first use)"
+must_contain "$(flat panel/agent/arsy-agent.service)" '-/var/arsy-sftp' \
+  "the agent's systemd unit lists /var/arsy-sftp in ReadWritePaths (defense-in-depth for restarts after first use)"
 
 echo
 echo "── F: PHP-FPM pool ownership — the actual isolation, both directions ──"

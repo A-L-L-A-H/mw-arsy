@@ -12,7 +12,7 @@
 #
 # THE DEFECTS. Four, all realized, all measured on the demo box at v2.87.0:
 #
-#  1. `/var/backups/dockpanel` was 0755 and every writer's redirect left the dumps
+#  1. `/var/backups/arsy` was 0755 and every writer's redirect left the dumps
 #     0644. 17 of 17 files were readable as www-data — the uid EVERY hosted site's
 #     PHP runs as — and the newest was a full pg_dump carrying `servers.agent_token`
 #     in cleartext. That token is the Bearer credential for every agent endpoint
@@ -155,7 +155,7 @@ fi
 #
 # In update.sh a BARE umask is the REGRESSION, not the fix: v2.88.0 set it at
 # top-level scope in an 1100-line installer, so it governed every later `mkdir`
-# and redirect and would have created /opt/dockpanel/frontend and the ACME
+# and redirect and would have created /opt/arsy/frontend and the ACME
 # challenge directory 0700. s331 scoped it into the subshell that performs the
 # dump redirect, which moved this arm's subject (lesson #150 — let the arm
 # follow the code). Both forms are accepted here because both protect the dump;
@@ -174,8 +174,8 @@ umask_near_backup_block() {
   # the umask is the line immediately BEFORE the assignment, and that adjacency
   # is structural. Only the FORWARD span is operation-bounded, because that is
   # the direction commentary grows in.
-  win=$( { grep -B 8 -- 'BACKUP_DIR="/var/backups/dockpanel/db"' "$f" 2>/dev/null || true
-           awk '/BACKUP_DIR="\/var\/backups\/dockpanel\/db"/{inside=1}
+  win=$( { grep -B 8 -- 'BACKUP_DIR="/var/backups/arsy/db"' "$f" 2>/dev/null || true
+           awk '/BACKUP_DIR="\/var\/backups\/arsy\/db"/{inside=1}
                 inside{print}
                 inside && /pg_dump/{exit}' "$f"; } )
   [ -n "$win" ] || return 2
@@ -184,7 +184,7 @@ umask_near_backup_block() {
 }
 A4=0
 has "$(subj "$SEC_RS")" 'mode\(0o600\)' || { bad "A4a the agent's own /security/db-backup still creates the dump with the default mode"; A4=1; }
-has "$(flat "$HEALER_S")" 'umask 077; docker exec dockpanel-postgres pg_dump' || { bad "A4b the panel's auto-healer dump still lands 0644 (the > redirect creates 0666 \& ~umask)"; A4=1; }
+has "$(flat "$HEALER_S")" 'umask 077; docker exec arsy-postgres pg_dump' || { bad "A4b the panel's auto-healer dump still lands 0644 (the > redirect creates 0666 \& ~umask)"; A4=1; }
 umask_near_backup_block "$SETUP"; case $? in
   0) ;;
   2) bad "A4c could not find the backup block in $SETUP — the reader is broken, not the tree"; A4=1 ;;

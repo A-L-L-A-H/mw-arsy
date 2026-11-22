@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Regression pins for the s454 dockpanel-fanout run over
+# Regression pins for the s454 arsy-fanout run over
 # panel/agent/src/services/security.rs + panel/agent/src/routes/security.rs
-# (workflow wf_ec0595a4-efd; project_dockpanel_tech_debt ledger p193).
+# (workflow wf_ec0595a4-efd; project_arsy_tech_debt ledger p193).
 #
 #   S1  parse_ssh_config()/modify_sshd_config() only ever read/wrote
 #       /etc/ssh/sshd_config, never following an `Include` directive into

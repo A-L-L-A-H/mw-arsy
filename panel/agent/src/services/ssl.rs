@@ -9,8 +9,8 @@ use tera::Tera;
 use crate::routes::nginx::SiteConfig;
 use crate::services::nginx;
 
-const ACME_ACCOUNT_PATH: &str = "/etc/dockpanel/ssl/acme-account.json";
-const SSL_DIR: &str = "/etc/dockpanel/ssl";
+const ACME_ACCOUNT_PATH: &str = "/etc/arsy/ssl/acme-account.json";
+const SSL_DIR: &str = "/etc/arsy/ssl";
 const ACME_WEBROOT: &str = "/var/www/acme";
 
 /// Write a secret file (a TLS private key) with 0600 applied AT CREATION,
@@ -126,8 +126,8 @@ fn presented_dns_names(cert: &x509_parser::certificate::X509Certificate<'_>) -> 
 ///    satisfies. That paste lands in `fullchain.pem`, written with a plain
 ///    `fs::write` at **0644** while the key beside it is deliberately 0600 —
 ///    driven on a fresh box and confirmed. ⚠ Do NOT overstate this: the key is
-///    not actually reachable by other local accounts, because `/etc/dockpanel`
-///    and `/etc/dockpanel/ssl` are both **0700**, so traversal stops above the
+///    not actually reachable by other local accounts, because `/etc/arsy`
+///    and `/etc/arsy/ssl` are both **0700**, so traversal stops above the
 ///    file. The protection comes from the directory, not from the write, and it
 ///    survives only as long as that stays true. The sharper half of the same
 ///    paste is that it blinds the expiry ladder: the status reader decodes the
@@ -202,7 +202,7 @@ pub struct ProvisionOpts<'a> {
     /// the doors that did not need it.
     ///
     /// Set it only where a human has been told what will be destroyed and said
-    /// yes anyway (`dockpanel ssl provision --force`).
+    /// yes anyway (`arsy ssl provision --force`).
     pub replace_foreign: bool,
 }
 
@@ -822,7 +822,7 @@ async fn get_cert_expiry(cert_path: &str) -> Option<String> {
 
 /// Get SSL certificate status for a domain.
 /// The issuer of the certificate installed for `domain`, but ONLY when that
-/// issuer proves DockPanel did not put it there.
+/// issuer proves ARSY did not put it there.
 ///
 /// ⛔ THIS IS THE LAST GATE BEFORE AN ACME ORDER OVERWRITES A FILE. It is placed
 /// at the two write primitives rather than at their callers because the callers
@@ -880,7 +880,7 @@ pub(crate) fn foreign_issuer_of(status: &CertStatus) -> Option<String> {
 fn foreign_cert_refusal(domain: &str, issuer: &str) -> String {
     format!(
         "{FOREIGN_CERT_REFUSED}Refusing to issue a Let's Encrypt certificate for {domain}: the certificate already \
-         installed there was issued by {issuer}, not by DockPanel, and ordering would overwrite \
+         installed there was issued by {issuer}, not by ARSY, and ordering would overwrite \
          it. Renew it wherever it was issued, or pass --force if you intend to replace it."
     )
 }
@@ -1170,9 +1170,9 @@ fn offset_to_chrono(dt: time::OffsetDateTime) -> Option<chrono::DateTime<chrono:
 ///   half is the panel declining any stack whose effective mode is not `acme`,
 ///   and neither half may be removed on the assumption the other holds.
 ///
-/// `/etc/dockpanel` is already in the unit's writable set, so the new root
+/// `/etc/arsy` is already in the unit's writable set, so the new root
 /// needs no sandbox change.
-pub const SSL_REGISTRY_DIR: &str = "/etc/dockpanel/ssl-registry";
+pub const SSL_REGISTRY_DIR: &str = "/etc/arsy/ssl-registry";
 
 /// What a registered certificate says about itself — the metadata the panel
 /// records so a screen can show it without ever holding the PEM.
@@ -1582,7 +1582,7 @@ mod registered_certificate_tests {
         let (c, k) = registry_paths("wildcard-2026");
         assert!(c.starts_with(SSL_REGISTRY_DIR) && c.ends_with("/fullchain.pem"));
         assert!(k.starts_with(SSL_REGISTRY_DIR) && k.ends_with("/privkey.pem"));
-        assert!(!SSL_REGISTRY_DIR.starts_with("/etc/dockpanel/ssl/"));
+        assert!(!SSL_REGISTRY_DIR.starts_with("/etc/arsy/ssl/"));
     }
 
     #[test]

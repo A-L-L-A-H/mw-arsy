@@ -28,7 +28,7 @@ pub const REASON_STACK_STOP: &str = "stack_stop";
 /// here: those record only after a stop has already succeeded, but a
 /// recreate's whole point is to interrupt a running container on purpose, so
 /// the healer must be blind to the gap from the moment it opens, not after.
-/// [[project_dockpanel_tech_debt_p185]] carry G.
+/// [[project_arsy_tech_debt_p185]] carry G.
 pub const REASON_RECREATE: &str = "recreate_in_progress";
 
 /// Record that this container was stopped on purpose.

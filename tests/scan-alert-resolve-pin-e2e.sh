@@ -9,7 +9,7 @@
 #       the dashboard's firing-alert badge and its -15 health-score penalty
 #       stuck until the next weekly scheduled scan, up to 7 days later, even
 #       though the scan-history tiles (read from security_scans directly)
-#       updated instantly. Found by dockpanel-fanout's completeness critic
+#       updated instantly. Found by arsy-fanout's completeness critic
 #       (s422), not by any of its four assigned topics.
 #   §B  image_scans::scan_and_store fires an alert on a critical/high finding
 #       and resolves it once the image scans clean again. Before this, NEITHER
@@ -17,7 +17,7 @@
 #       (which calls this same function against every fleet member) ever
 #       raised an alert for a discovered vulnerability — a critical CVE in a
 #       running container produced a row in image_scan_findings and nothing
-#       else: no page, no firing count, no bell. Found by dockpanel-fanout's
+#       else: no page, no firing count, no bell. Found by arsy-fanout's
 #       convention-drift topic (s422).
 #   §C  wordpress::scan_and_store (s472) is image_scan's own direct peer for
 #       WordPress plugin CVEs — same resolve-then-fire shape, but PER-SITE-

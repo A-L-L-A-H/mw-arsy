@@ -291,7 +291,7 @@ async fn run_scan(pool: &PgPool, member: &FleetMember, jwt_secret: &str) {
 /// Raise an alert when a certificate this scanner found to be expiring cannot be
 /// renewed. Deduped per site so the six-hourly scan cannot stack up duplicates
 /// alongside the auto-healer's own alert for the same certificate.
-/// A renewal DockPanel deliberately did not perform, because the certificate is
+/// A renewal ARSY deliberately did not perform, because the certificate is
 /// not one it issued.
 ///
 /// Deliberately NOT `ssl_renewal_alert`. That helper's words are
@@ -322,7 +322,7 @@ async fn ssl_renewal_declined_alert(
         "warning",
         &format!("SSL certificate for {domain} needs renewing by you"),
         &format!(
-            "The certificate for {domain} is expiring, and DockPanel did not renew it \
+            "The certificate for {domain} is expiring, and ARSY did not renew it \
              because it did not issue it: it was issued by {issuer}. Renewing here would \
              have replaced your certificate with a Let's Encrypt one. Renew it wherever it \
              was issued and upload the replacement under the site's SSL tab."
@@ -349,7 +349,7 @@ async fn ssl_renewal_alert(
         "critical",
         &format!("SSL renewal failed: {domain}"),
         &format!(
-            "The certificate for {domain} is expiring and DockPanel could not renew \
+            "The certificate for {domain} is expiring and ARSY could not renew \
              it automatically: {reason}. The site will stop loading when the \
              certificate expires."
         ),
@@ -409,7 +409,7 @@ async fn ssl_dns01_downgraded_alert(
         &format!("SSL certificate downgraded: {domain}"),
         &format!(
             "The certificate for {domain} covered {losing} and could not be re-ordered over \
-             DNS-01 before it expired, so DockPanel issued a single-name certificate for \
+             DNS-01 before it expired, so ARSY issued a single-name certificate for \
              {domain} instead. Any other name it covered is no longer covered."
         ),
         12,
@@ -477,7 +477,7 @@ async fn reconcile_docker_app_domains(pool: &PgPool, member: &FleetMember) {
             .and_then(|v| v.as_str())
             .and_then(|s| uuid::Uuid::parse_str(s).ok())
         else {
-            // No `dockpanel.user.id` label — a deployment old enough to
+            // No `arsy.user.id` label — a deployment old enough to
             // predate that label too. Nothing safe to attribute the row to;
             // the app stays exactly as invisible as before this pass, not
             // worse than it already was.
@@ -566,7 +566,7 @@ pub(crate) async fn auto_fix_safe_findings(
                     site
                 else {
                     // The subject came from the agent's FILESYSTEM walk of
-                    // /etc/dockpanel/ssl, which is where a Compose stack's ACME
+                    // /etc/arsy/ssl, which is where a Compose stack's ACME
                     // certificate — and a Docker app's — also lands. Neither a
                     // stack's domain nor an app's can ever own a `sites` row
                     // (`domain_claim::find_occupant` returns `Occupant::Stack`/
@@ -635,7 +635,7 @@ pub(crate) async fn auto_fix_safe_findings(
                 // the product does by default. What it did was a full ACME order
                 // writing the same `fullchain.pem` an uploaded certificate occupies:
                 // the finding it acts on comes from the AGENT walking
-                // `/etc/dockpanel/ssl` with `openssl -checkend`, which never looks at
+                // `/etc/arsy/ssl` with `openssl -checkend`, which never looks at
                 // the issuer and never consults the database — so a commercial
                 // wildcard, a Cloudflare Origin CA certificate or a corporate PKI
                 // certificate uploaded through the panel's own "upload certificate"
@@ -653,7 +653,7 @@ pub(crate) async fn auto_fix_safe_findings(
                 {
                     tracing::info!(
                         "Auto-fix: NOT renewing {domain} — the installed certificate was \
-                         issued by {issuer}, not by DockPanel. Renewing would replace it."
+                         issued by {issuer}, not by ARSY. Renewing would replace it."
                     );
                     ssl_renewal_declined_alert(pool, user_id, site_id, domain, &issuer).await;
                     continue;
@@ -693,7 +693,7 @@ pub(crate) async fn auto_fix_safe_findings(
                 // is the ONLY automatic renewal on a stock install and it is
                 // reached with no opt-in at all. `/ssl/provision/{domain}` is
                 // the HTTP-01 provisioner, single identifier, writing over
-                // `/etc/dockpanel/ssl/{domain}/fullchain.pem`. For a zone-apex
+                // `/etc/arsy/ssl/{domain}/fullchain.pem`. For a zone-apex
                 // wildcard that file is the shared certificate every sibling
                 // vhost in the zone is serving.
                 let full: Option<crate::models::Site> =
@@ -847,7 +847,7 @@ pub(crate) async fn auto_fix_safe_findings(
                             // change what the vhost contains, since the
                             // certificate paths it names are stable symlinks."
                             // Both halves are false. Nothing in this tree writes
-                            // a symlink under /etc/dockpanel/ssl — both
+                            // a symlink under /etc/arsy/ssl — both
                             // provisioners `create_dir_all` then `fs::write`
                             // plain files — and a renewal CAN change which path
                             // is correct, because the DNS-01 door writes under
@@ -917,7 +917,7 @@ pub(crate) async fn auto_fix_safe_findings(
 /// schedule. `docker_stacks` carries no `ssl_expiry` and no renewal columns, so
 /// every sites-keyed renewer is structurally blind to it; the only thing that
 /// re-orders one is an operator-triggered stack create/update/restore. The
-/// agent's weekly walk of `/etc/dockpanel/ssl` DID raise the finding, so the
+/// agent's weekly walk of `/etc/arsy/ssl` DID raise the finding, so the
 /// operator was warned and then met two dead ends.
 ///
 /// ⚠ No `ssl_expiry` write here, because there is no column to write it to
@@ -1077,7 +1077,7 @@ async fn renew_stack_certificate(pool: &PgPool, member: &FleetMember, domain: &s
     // 2. THE MODE GUARD, and the whole safety of this change.
     //
     //    A `provided` stack serves an operator-supplied certificate from
-    //    /etc/dockpanel/ssl-registry/<alias>/. `provision_cert` writes to
+    //    /etc/arsy/ssl-registry/<alias>/. `provision_cert` writes to
     //    {SSL_DIR}/{domain} unconditionally, so ordering for that domain would
     //    at best leave a second unused certificate on disk — and any future
     //    change that let the registry path become the renew target would
@@ -1092,12 +1092,12 @@ async fn renew_stack_certificate(pool: &PgPool, member: &FleetMember, domain: &s
         // `info!` for the same reason as the arm above, and it matters more
         // here: this is the branch that DECLINES to act on a critical finding
         // the operator sees every week. A stack switched to `provided` leaves
-        // its old ACME certificate under /etc/dockpanel/ssl, the agent keeps
+        // its old ACME certificate under /etc/arsy/ssl, the agent keeps
         // raising `ssl_expiry` for it for ever, and at debug the operator's
         // logs say nothing at all about the domain on their screen.
         tracing::info!(
             "Auto-fix: not renewing {domain} — the stack's TLS mode is '{mode}', not ACME. \
-             The expiring file under /etc/dockpanel/ssl is a leftover; the stack serves its \
+             The expiring file under /etc/arsy/ssl is a leftover; the stack serves its \
              registered certificate from the registry."
         );
         return true;
@@ -1147,7 +1147,7 @@ async fn renew_stack_certificate(pool: &PgPool, member: &FleetMember, domain: &s
     //
     //     The mode guard above reads a DATABASE COLUMN. The thing at risk is a
     //     FILE, and the column knows nothing about it. The finding that brought
-    //     us here came from the agent walking /etc/dockpanel/ssl with
+    //     us here came from the agent walking /etc/arsy/ssl with
     //     `openssl -checkend`, which never looks at the issuer and never
     //     consults the database — so a stack row saying `acme` proves only what
     //     the panel intended, never what is installed.
@@ -1173,7 +1173,7 @@ async fn renew_stack_certificate(pool: &PgPool, member: &FleetMember, domain: &s
     if let Some(issuer) = crate::helpers::foreign_cert_issuer(&member.agent, domain).await {
         tracing::info!(
             "Auto-fix: NOT renewing the Compose stack certificate for {domain} — the installed \
-             certificate was issued by {issuer}, not by DockPanel. Renewing would replace it."
+             certificate was issued by {issuer}, not by ARSY. Renewing would replace it."
         );
         return true;
     }
@@ -1342,7 +1342,7 @@ async fn renew_stack_certificate(pool: &PgPool, member: &FleetMember, domain: &s
                 &stack_renewal_state_key(domain),
                 &format!("SSL renewal recovered: {domain}"),
                 &format!(
-                    "DockPanel renewed the certificate for the Compose stack on {domain}. \
+                    "ARSY renewed the certificate for the Compose stack on {domain}. \
                      The earlier renewal failure is resolved."
                 ),
             )
@@ -1372,7 +1372,7 @@ async fn renew_stack_certificate(pool: &PgPool, member: &FleetMember, domain: &s
                 "critical",
                 &format!("SSL renewal failed: {domain}"),
                 &format!(
-                    "The certificate for the Compose stack on {domain} is expiring and DockPanel \
+                    "The certificate for the Compose stack on {domain} is expiring and ARSY \
                      could not renew it automatically: {e}. The stack will stop loading over \
                      HTTPS when the certificate expires. Redeploying the stack reissues it."
                 ),
@@ -1393,7 +1393,7 @@ type DockerAppDomainRow = (uuid::Uuid, uuid::Uuid, String, Option<String>, Optio
 /// the renewal succeeded), same reason for existing: `docker_app_domains` also
 /// carries no `ssl_expiry`/renewal-schedule column, so nothing else ever
 /// re-orders a Docker app's certificate on a schedule, and the agent's own
-/// weekly filesystem walk of `/etc/dockpanel/ssl` cannot tell it apart from a
+/// weekly filesystem walk of `/etc/arsy/ssl` cannot tell it apart from a
 /// site's or a stack's certificate — it raises the same `ssl_expiry` finding
 /// either way. See migration `20260905180000_docker_app_ssl_domains.sql` for
 /// why the table exists and what it deliberately does not carry.
@@ -1444,7 +1444,7 @@ async fn renew_docker_app_certificate(pool: &PgPool, member: &FleetMember, domai
     if mode != "acme" {
         tracing::info!(
             "Auto-fix: not renewing {domain} — Docker app {app_name}'s TLS mode is '{mode}', not \
-             ACME. The expiring file under /etc/dockpanel/ssl is a leftover; the app serves its \
+             ACME. The expiring file under /etc/arsy/ssl is a leftover; the app serves its \
              registered certificate from the registry."
         );
         return true;
@@ -1491,7 +1491,7 @@ async fn renew_docker_app_certificate(pool: &PgPool, member: &FleetMember, domai
     if let Some(issuer) = crate::helpers::foreign_cert_issuer(&member.agent, domain).await {
         tracing::info!(
             "Auto-fix: NOT renewing the Docker app certificate for {domain} — the installed \
-             certificate was issued by {issuer}, not by DockPanel. Renewing would replace it."
+             certificate was issued by {issuer}, not by ARSY. Renewing would replace it."
         );
         return true;
     }
@@ -1583,7 +1583,7 @@ async fn renew_docker_app_certificate(pool: &PgPool, member: &FleetMember, domai
                 &docker_app_renewal_state_key(domain),
                 &format!("SSL renewal recovered: {domain}"),
                 &format!(
-                    "DockPanel renewed the certificate for the Docker app on {domain}. The \
+                    "ARSY renewed the certificate for the Docker app on {domain}. The \
                      earlier renewal failure is resolved."
                 ),
             )
@@ -1601,7 +1601,7 @@ async fn renew_docker_app_certificate(pool: &PgPool, member: &FleetMember, domai
                 "critical",
                 &format!("SSL renewal failed: {domain}"),
                 &format!(
-                    "The certificate for the Docker app on {domain} is expiring and DockPanel \
+                    "The certificate for the Docker app on {domain} is expiring and ARSY \
                      could not renew it automatically: {e}. The app will stop loading over HTTPS \
                      when the certificate expires. Redeploying the app reissues it."
                 ),

@@ -23,14 +23,14 @@ pub async fn health(State(state): State<AppState>) -> Json<serde_json::Value> {
     if db_ok {
         Json(serde_json::json!({
             "status": "ok",
-            "service": "dockpanel-api",
+            "service": "arsy-api",
             "version": env!("CARGO_PKG_VERSION"),
         }))
     } else {
         Json(serde_json::json!({
             "status": "degraded",
             "db": "unreachable",
-            "service": "dockpanel-api",
+            "service": "arsy-api",
             "version": env!("CARGO_PKG_VERSION"),
         }))
     }
@@ -84,7 +84,7 @@ pub async fn diagnostics(
 /// updated when somebody updates it… declining here is what makes the fix arrive
 /// with the PANEL".
 ///
-/// A certificate under `/etc/dockpanel/ssl` with no `sites` row — a DNS-01
+/// A certificate under `/etc/arsy/ssl` with no `sites` row — a DNS-01
 /// wildcard apex, or one placed by hand — now gets a sentence saying so instead
 /// of an incident id. That is still a refusal, but it is an ANSWER.
 pub async fn diagnostics_fix(
@@ -119,12 +119,12 @@ pub async fn diagnostics_fix(
         .map_err(|e| crate::error::internal_error("diagnostics ssl fix lookup", e))?;
 
         let Some((site_id,)) = site_id else {
-            // A certificate under /etc/dockpanel/ssl with no `sites` row. Still a
+            // A certificate under /etc/arsy/ssl with no `sites` row. Still a
             // refusal, but a 4xx with a sentence, so `agent_error`'s sibling rule
             // cannot later collapse it into an incident id the way the agent's 500
             // did.
             //
-            // ⚠ It must NOT claim the certificate came from outside DockPanel,
+            // ⚠ It must NOT claim the certificate came from outside ARSY,
             // because very often it did not: the agent issues certificates for
             // Docker apps, Compose stacks, Git deploys and mail domains, and NONE
             // of those becomes a `sites` row — a Docker app has no table at all, it
@@ -152,7 +152,7 @@ pub async fn diagnostics_fix(
             .unwrap_or(None);
 
             // A stack is the one claimant whose answer depends on its TLS MODE.
-            // "DockPanel issued this and a redeploy reissues it" is true of an
+            // "ARSY issued this and a redeploy reissues it" is true of an
             // `acme` stack and FALSE of a `provided` one, whose live certificate
             // is the operator's own, served from the registry — the expiring
             // file this button was clicked about is then a leftover under the
@@ -189,12 +189,12 @@ pub async fn diagnostics_fix(
                         .to_string()
                 }
                 Some((kind,)) => format!(
-                    "A {kind} in this panel uses that name, and DockPanel issued this \
+                    "A {kind} in this panel uses that name, and ARSY issued this \
                      certificate for it — but only certificates attached to a SITE can be \
                      renewed from here. Redeploy that {kind} to reissue it."
                 ),
                 None => "No site, mail domain, Git deploy, Docker app or Compose stack in \
-                         this panel claims that name — so this is a certificate DockPanel \
+                         this panel claims that name — so this is a certificate ARSY \
                          does not manage, such as a DNS-01 wildcard or one installed by \
                          hand, and it is renewed wherever it was issued."
                     .to_string(),

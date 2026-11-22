@@ -313,7 +313,7 @@ pub fn agent_error(context: &str, e: AgentError) -> ApiError {
 /// A call to a THIRD-PARTY service (Stripe, Cloudflare, …) failed.
 ///
 /// Deliberately separate from [`agent_error`]: these calls never touch the
-/// DockPanel agent, and routing them through the agent path is what made a
+/// ARSY agent, and routing them through the agent path is what made a
 /// Cloudflare outage tell an operator their agent was offline. Names the
 /// service so the log says which upstream broke, and carries no
 /// `agent_unreachable` marker.
@@ -459,13 +459,13 @@ mod tests {
             "SSL provisioning",
             AgentError::Status(
                 422,
-                r#"{"error":"The certificate on example.com was not issued by DockPanel (issuer: DigiCert Inc).","code":"foreign_certificate"}"#.into(),
+                r#"{"error":"The certificate on example.com was not issued by ARSY (issuer: DigiCert Inc).","code":"foreign_certificate"}"#.into(),
             ),
         );
         assert_eq!(e.0, StatusCode::UNPROCESSABLE_ENTITY);
         assert_eq!(
             body_of(&e)["error"],
-            "The certificate on example.com was not issued by DockPanel (issuer: DigiCert Inc)."
+            "The certificate on example.com was not issued by ARSY (issuer: DigiCert Inc)."
         );
         assert_eq!(body_of(&e)["code"], CODE_FOREIGN_CERTIFICATE);
     }
@@ -506,7 +506,7 @@ mod tests {
     fn agent_5xx_stays_generic_with_an_incident_id() {
         let e = agent_error(
             "Restore",
-            AgentError::Status(500, r#"{"error":"/etc/dockpanel/secret.key missing"}"#.into()),
+            AgentError::Status(500, r#"{"error":"/etc/arsy/secret.key missing"}"#.into()),
         );
         assert_eq!(e.0, StatusCode::BAD_GATEWAY);
         let msg = body_of(&e)["error"].as_str().unwrap().to_string();

@@ -1,6 +1,6 @@
 # Notifications Guide
 
-DockPanel keeps an in-app notification feed — the bell in the panel chrome and
+ARSY keeps an in-app notification feed — the bell in the panel chrome and
 the **Notifications** screen behind it. Notifications arrive in real time over
 Server-Sent Events (SSE), carry a link to whatever they are about, and can be
 filtered, marked read and deleted.

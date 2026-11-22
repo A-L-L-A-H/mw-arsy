@@ -3,7 +3,7 @@
 #
 # Pins two findings from the s418 identity/access-control audit fan-out (finder
 # + adversarial skeptic, both UPHELD independently against source and, for §A,
-# a live production reachability check — see project_dockpanel_lessons_p154):
+# a live production reachability check — see project_arsy_lessons_p154):
 #
 #   §A  /authorize's `state` token is bound to the ISSUING BROWSER, not just
 #       proven a member of the server-side map. Before this fix, `state`'s only
@@ -211,7 +211,7 @@ echo "== §C  a matching provider NAME does not bypass a mismatched provider acc
 # only ever written alongside oauth_provider (never separately), so this gap
 # meant an email changing hands AT THE PROVIDER (a departed employee's mailbox
 # reassigned to a new hire's fresh account there) would silently hand the new
-# person the departed employee's dockpanel account and role, because the two
+# person the departed employee's arsy account and role, because the two
 # accounts share nothing the callback checked except the email string and the
 # provider's short name.
 

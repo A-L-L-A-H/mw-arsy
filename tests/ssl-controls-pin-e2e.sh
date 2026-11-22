@@ -28,7 +28,7 @@
 #     row, and pushed that host's vhost through this host's agent.
 #   * A RENEWAL IS A REPLACEMENT, AND NOTHING CHECKED WHOSE CERTIFICATE IT WAS.
 #     The agent's ACME client is pinned to `LetsEncrypt::Production`, so an issuer
-#     that is not Let's Encrypt PROVES DockPanel did not issue the certificate.
+#     that is not Let's Encrypt PROVES ARSY did not issue the certificate.
 #     Nothing asked. The scanner's auto-fix needs no opt-in, walks the SSL
 #     directory with `openssl -checkend`, never reads the issuer and never
 #     consults the database — so a commercial wildcard or a Cloudflare Origin CA
@@ -61,7 +61,7 @@ bad() { printf '\033[31m✗\033[0m %s — %s\n' "$1" "$2"; FAIL=$((FAIL+1)); }
 eq()  { [ "$2" = "$3" ] && ok "$1" || bad "$1" "expected '$3', got '$2'"; }
 
 # ugrep's --ignore-files shim honours .gitignore, so every count below uses the
-# real binary explicitly (dockpanel-ops-p2, s357).
+# real binary explicitly (arsy-ops-p2, s357).
 G=/usr/bin/grep
 
 # THE SUBJECT: source with comments removed, then whitespace and the `\` that
@@ -250,10 +250,10 @@ eq "B8 the shared predicate still carries its admin arm" \
 # sibling rule cannot later collapse it into an incident id.
 eq "B9 an unmatched certificate answers 4xx, not 5xx" \
    "$(occ "$F_SYS" 'StatusCode::UNPROCESSABLE_ENTITY')" "1"
-# ⚠ and it must NOT claim the certificate came from outside DockPanel: the agent
+# ⚠ and it must NOT claim the certificate came from outside ARSY: the agent
 # issues certificates for Docker apps, Git deploys and mail domains, none of
 # which becomes a `sites` row. The refusal names what the panel actually found.
-eq "B10 the refusal asks which DockPanel record claims the name" \
+eq "B10 the refusal asks which ARSY record claims the name" \
    "$(occ "$F_SYS" "FROMmail_domainsWHEREdomain=\$1")" "1"
 eq "B11 including the two other domain-bearing tables" \
    "$([ "$(occ "$F_SYS" 'FROMgit_deploysWHEREdomain=$1')" = 1 ] && \
@@ -562,7 +562,7 @@ eq "F16 and the marker becomes a 4xx, not an internal fault" \
 # answers 422 rather than silently re-ordering the certificate over HTTP-01.
 # ⚠ `carry-sweep` B5b pins this SAME literal in this SAME file. Both move together.
 eq "F10 the manual door refuses with a 4xx naming the issuer" \
-   "$(occ "$F_SSL" 'StatusCode::UNPROCESSABLE_ENTITY,&format!("Thecertificateon{}wasnotissuedbyDockPanel(issuer:{})')" "1"
+   "$(occ "$F_SSL" 'StatusCode::UNPROCESSABLE_ENTITY,&format!("Thecertificateon{}wasnotissuedbyARSY(issuer:{})')" "1"
 eq "F10b and this file holds exactly the five refusals that earn one" \
    "$(occ "$F_SSL" 'StatusCode::UNPROCESSABLE_ENTITY,')" "5"
 # The operator has to LEARN about a declined renewal, or a protected certificate
@@ -580,7 +580,7 @@ eq "F11 the declined renewal raises an alert" \
 eq "F12 the declined case has its own helper" \
    "$(occ "$F_SCAN" 'asyncfnssl_renewal_declined_alert(')" "1"
 # TWO declines now, and both are warnings worded as the operator's job: a
-# certificate DockPanel did not issue, and a DNS-01 certificate whose Cloudflare
+# certificate ARSY did not issue, and a DNS-01 certificate whose Cloudflare
 # zone it cannot reach. The count is what stops a THIRD outcome being wired into
 # the warning wording without a decision — and `ssl-correctness` guards the other
 # direction, that neither decline borrows the failure helper.
@@ -737,7 +737,7 @@ eq "H9 the Common Name is used only when no SAN name was found" \
 # replacement certificate "under the site's SSL tab" — the hand-driven renew
 # refusal, the scanner's declined-renewal alert, and the DNS-01 renewal plan's
 # refusal. §F (above) pins all three, and they are RIGHT to refuse: renewing a
-# certificate DockPanel did not issue replaces it.
+# certificate ARSY did not issue replaces it.
 #
 # Nothing rendered the tab they name. `SiteDetail.tsx` put EVERY SSL control,
 # the upload form included, inside the `else` branch of `{site.ssl_enabled ? …}`,
@@ -808,8 +808,8 @@ eq "I5 control: the page really does call the upload endpoint, exactly once" \
 # certificate's owner the panel will not renew it.
 eq "I6 the badge is derived from the backend's decision, not asserted" \
    "$(occ "$B_TRUE" 'sslProvenance?.provenance===')" "3"
-eq "I7 one CA is named ONLY on a positive dockpanel identification" \
-   "$(occ "$B_TRUE" '==="dockpanel"?"Enabled(Let'"'"'sEncrypt)"')" "1"
+eq "I7 one CA is named ONLY on a positive arsy identification" \
+   "$(occ "$B_TRUE" '==="arsy"?"Enabled(Let'"'"'sEncrypt)"')" "1"
 eq "I8 a foreign certificate is labelled with ITS OWN issuer" \
    "$(occ "$B_TRUE" '==="foreign"&&sslProvenance.issuer?`Enabled(${sslProvenance.issuer})`')" "1"
 # THE UNKNOWN-COLLAPSE ARM. `foreign_cert_issuer` folds "ours" and "we could not
@@ -846,7 +846,7 @@ eq "I14 the issuer test exists once in the backend, inside cert_provenance" \
 # Deleting either is the regression — the first changes renewal behaviour, the
 # second removes the only check that would have noticed.
 eq "I15 renewal still treats BOTH non-foreign states as permission to proceed" \
-   "$(occ "$(subj "$HELP")" 'CertProvenance::DockPanelIssued|CertProvenance::Unknown=>None,')" "2"
+   "$(occ "$(subj "$HELP")" 'CertProvenance::ArsyIssued|CertProvenance::Unknown=>None,')" "2"
 eq "I16 foreign_cert_issuer delegates rather than keeping a second copy" \
    "$(occ "$(subj "$HELP")" 'matchcert_provenance(&status){')" "1"
 

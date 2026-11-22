@@ -2,7 +2,7 @@
 //!
 //! The cheapest check in the layer and the one with the worst failure mode. A
 //! backup policy with no destination writes its archives to
-//! `/var/backups/dockpanel` on the same disk it is insuring: it protects against
+//! `/var/backups/arsy` on the same disk it is insuring: it protects against
 //! a bad deploy or a dropped table, and against nothing else. Disk failure, a
 //! deleted VPS, ransomware, or the provider closing the account take the backups
 //! with the data.

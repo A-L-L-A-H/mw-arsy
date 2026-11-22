@@ -275,7 +275,7 @@ fi
 # O_NOFOLLOW/AT_SYMLINK_NOFOLLOW) to close a TOCTOU — a path-based
 # `symlink_metadata` then `read_dir` re-resolves the path twice, and an app
 # with write access to its own bind mount can swap a directory for a symlink
-# in between (project_dockpanel_tech_debt_p185 carry F). Keys on the new
+# in between (project_arsy_tech_debt_p185 carry F). Keys on the new
 # spelling; the capability (root-only filter) is unchanged.
 case "$FLAT" in
   *'st.st_uid==0'*)

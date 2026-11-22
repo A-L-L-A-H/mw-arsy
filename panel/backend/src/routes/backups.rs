@@ -94,7 +94,7 @@ pub async fn site_database_specs(
     for (name, engine, db_user, password_enc, container_id) in rows {
         // Mirror the get_db_info guard (v2.19.0 H1): a row with an EMPTY
         // container_id has no confirmed container of its own, and resolving it
-        // by the non-unique name `dockpanel-db-{name}` could reach a container
+        // by the non-unique name `arsy-db-{name}` could reach a container
         // that is not this tenant's. Never dump one — but never drop it
         // silently either; it is counted as expected and reported.
         if container_id.as_deref().unwrap_or("").is_empty() {
@@ -111,7 +111,7 @@ pub async fn site_database_specs(
         );
 
         specs.push(serde_json::json!({
-            "container_name": format!("dockpanel-db-{name}"),
+            "container_name": format!("arsy-db-{name}"),
             "db_name": name,
             "db_type": engine,
             "user": db_user,
@@ -389,7 +389,7 @@ pub async fn restore(
         // to remove.
         if site_has_dbs && !archive_has_dbs {
             emit("databases", "This backup contains files only", "error", Some(
-                "It was made before DockPanel included databases in site backups, or its database dump failed. \
+                "It was made before ARSY included databases in site backups, or its database dump failed. \
                  Your site's database will NOT be restored and its content will stay as it is now. \
                  Restore the database separately from the Databases page if that is what you need."
                     .to_string(),

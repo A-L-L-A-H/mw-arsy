@@ -1,6 +1,6 @@
 # Sessions Guide
 
-DockPanel tracks active login sessions and provides per-session revocation and a
+ARSY tracks active login sessions and provides per-session revocation and a
 GDPR data export.
 
 ## View Active Sessions
@@ -14,7 +14,7 @@ GDPR data export.
    - **Last seen**: when the session was last used
    - **This device**: a badge on the session you are currently using
 
-There is no location column. DockPanel does not geolocate sessions and stores no
+There is no location column. ARSY does not geolocate sessions and stores no
 country, city or coordinates.
 
 ## Revoke a Session
@@ -64,7 +64,7 @@ retained separately under their own retention settings.
   in memory
 - **Suspension**: suspending an account revokes its sessions at the same time
 
-DockPanel does **not** bind a session to its originating IP, and does not limit
+ARSY does **not** bind a session to its originating IP, and does not limit
 the number of concurrent sessions per user. Earlier versions of this guide said
 it did; no such setting has ever existed.
 

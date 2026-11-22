@@ -617,10 +617,10 @@ async fn parse_ssh_config_at(main_path: &std::path::Path) -> (u16, bool, bool) {
     (port, password_auth, root_login)
 }
 
-/// Count SSL certificate directories in /etc/dockpanel/ssl/.
+/// Count SSL certificate directories in /etc/arsy/ssl/.
 async fn count_ssl_certs() -> usize {
     let mut count = 0;
-    let mut entries = match tokio::fs::read_dir("/etc/dockpanel/ssl").await {
+    let mut entries = match tokio::fs::read_dir("/etc/arsy/ssl").await {
         Ok(e) => e,
         Err(_) => return 0,
     };
@@ -973,7 +973,7 @@ pub async fn get_login_audit() -> Result<Vec<LoginEntry>, String> {
     Ok(entries)
 }
 
-/// Create a Fail2Ban jail for the DockPanel panel login endpoint.
+/// Create a Fail2Ban jail for the ARSY panel login endpoint.
 /// Monitors nginx access log for repeated 401 responses to /api/auth/login.
 pub async fn setup_panel_jail() -> Result<(), String> {
     // 1. Create filter file
@@ -981,21 +981,21 @@ pub async fn setup_panel_jail() -> Result<(), String> {
 failregex = ^<HOST> .* "POST /api/auth/login HTTP/.*" 401
 ignoreregex =
 "#;
-    tokio::fs::write("/etc/fail2ban/filter.d/dockpanel.conf", filter).await
+    tokio::fs::write("/etc/fail2ban/filter.d/arsy.conf", filter).await
         .map_err(|e| format!("Failed to write filter: {e}"))?;
 
     // 2. Create jail config
     // Find the nginx access log for the panel
-    let jail = r#"[dockpanel]
+    let jail = r#"[arsy]
 enabled = true
-filter = dockpanel
+filter = arsy
 port = http,https
 logpath = /var/log/nginx/*.access.log
 maxretry = 5
 findtime = 600
 bantime = 3600
 "#;
-    tokio::fs::write("/etc/fail2ban/jail.d/dockpanel.conf", jail).await
+    tokio::fs::write("/etc/fail2ban/jail.d/arsy.conf", jail).await
         .map_err(|e| format!("Failed to write jail config: {e}"))?;
 
     // 3. Restart fail2ban
@@ -1011,13 +1011,13 @@ bantime = 3600
         return Err(format!("fail2ban restart failed: {stderr}"));
     }
 
-    tracing::info!("DockPanel Fail2Ban jail created and activated");
+    tracing::info!("ARSY Fail2Ban jail created and activated");
     Ok(())
 }
 
-/// Check if the DockPanel Fail2Ban jail is configured.
+/// Check if the ARSY Fail2Ban jail is configured.
 pub async fn panel_jail_status() -> bool {
-    std::path::Path::new("/etc/fail2ban/jail.d/dockpanel.conf").exists()
+    std::path::Path::new("/etc/fail2ban/jail.d/arsy.conf").exists()
 }
 
 /// Apply a recommended fix for a security finding.
@@ -1057,7 +1057,7 @@ pub async fn apply_fix(fix_type: &str, target: &str) -> Result<String, String> {
                 return Err("Can only quarantine files under /var/www".into());
             }
             let target = canonical_str.as_ref();
-            let quarantine_dir = "/var/lib/dockpanel/quarantine";
+            let quarantine_dir = "/var/lib/arsy/quarantine";
             std::fs::create_dir_all(quarantine_dir).ok();
             let filename = std::path::Path::new(target)
                 .file_name()

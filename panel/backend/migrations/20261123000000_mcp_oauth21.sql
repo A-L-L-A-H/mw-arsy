@@ -72,8 +72,8 @@ CREATE INDEX idx_oauth_tokens_api_key ON oauth_tokens(api_key_id);
 -- The actual MCP clients (Claude Desktop, etc.) register via DCR or CIMD
 INSERT INTO oauth_clients (client_id, client_name, redirect_uris, scope, token_endpoint_auth_method, require_pkce, allowed_origins)
 VALUES (
-    'dockpanel-mcp-server',
-    'DockPanel MCP Server (built-in)',
+    'arsy-mcp-server',
+    'ARSY MCP Server (built-in)',
     ARRAY['http://127.0.0.1:3081/callback', 'http://localhost:3081/callback'],
     'mcp:read:*',
     'none',

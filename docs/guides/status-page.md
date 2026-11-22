@@ -1,6 +1,6 @@
 # Public Status Page Guide
 
-DockPanel includes a public status page that shows the real-time health of your services. It requires no authentication -- anyone with the link can see it. Ideal for keeping users, clients, and team members informed during outages and maintenance.
+ARSY includes a public status page that shows the real-time health of your services. It requires no authentication -- anyone with the link can see it. Ideal for keeping users, clients, and team members informed during outages and maintenance.
 
 ## Enabling the Status Page
 
@@ -17,7 +17,7 @@ master switch for the whole public surface — the `/status` page, the monitor J
 > **Upgrade note (v2.70.0).** Before v2.70.0 the sentence above was not true. `/status` was served
 > by a second endpoint governed by a *different* flag that defaulted to on, so a panel published its
 > status page from first boot whether or not this toggle had ever been touched. If you have been
-> running DockPanel without deliberately enabling the status page, assume it was reachable, and
+> running ARSY without deliberately enabling the status page, assume it was reachable, and
 > check what was on it — see **What gets published** below. After upgrading, `/status` is closed
 > until you switch it on here.
 
@@ -30,7 +30,7 @@ Anyone with the URL and no login sees:
 - every incident marked visible on the status page, with its updates — each update's status,
   message and timestamp, but **not** the address of whoever posted it
 
-That last item includes incidents **DockPanel files for you**. The alert engine, the auto-healer,
+That last item includes incidents **ARSY files for you**. The alert engine, the auto-healer,
 the uptime checker and the backup executor all open status-page-visible incidents automatically,
 and their titles name your infrastructure — *"Service mariadb is stopped on This Server"*,
 *"Disk at 53% on This Server"*. Review **Incidents** before switching the page on, and set an
@@ -43,7 +43,7 @@ were running an earlier version.
 
 > **Upgrade note (v2.149.0) — rotate any credential that was in a monitor URL.** The bullet
 > above saying URLs are not published was true of the monitor list and **false of incident
-> causes**. When an HTTP check failed, DockPanel stored the HTTP client's own error message,
+> causes**. When an HTTP check failed, ARSY stored the HTTP client's own error message,
 > which ends with `for url (…)` and therefore contained the monitor's full address — scheme,
 > host, path and query string. That string was published in two places on this page: an
 > auto-detected incident's cause, and the *"Auto-detected: …"* entry in an incident's timeline.

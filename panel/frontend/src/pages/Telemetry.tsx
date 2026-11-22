@@ -228,7 +228,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 export default function Telemetry() {
   // Deep-linkable tab (see Monitoring.tsx for the pattern). The Dashboard's
-  // "DockPanel vX is available → View Update" banner links here, and everything
+  // "ARSY vX is available → View Update" banner links here, and everything
   // it promises — version status, release notes, apply/rollback — lives on the
   // Updates tab, while this page opened on Events.
   const TELEMETRY_TABS = ["events", "updates", "config"] as const;
@@ -616,7 +616,7 @@ export default function Telemetry() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `dockpanel-telemetry-${new Date().toISOString().slice(0, 10)}.json`;
+      a.download = `arsy-telemetry-${new Date().toISOString().slice(0, 10)}.json`;
       a.click();
       URL.revokeObjectURL(url);
       flash("Report exported", "success");
@@ -782,7 +782,7 @@ export default function Telemetry() {
             <svg className="w-5 h-5 text-rust-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
             <div>
               <span className="text-sm font-medium text-rust-300">
-                DockPanel v{config.update_available_version} available
+                ARSY v{config.update_available_version} available
               </span>
               <span className="text-xs text-dark-400 ml-2">
                 (current: v{config.current_version})
@@ -1097,7 +1097,7 @@ export default function Telemetry() {
                 <div className="text-sm font-mono text-rust-300">v{config.update_available_version}</div>
                 <div className="text-xs text-dark-400 mt-3 mb-1">What will happen</div>
                 <ol className="text-xs text-dark-300 list-decimal list-inside space-y-0.5">
-                  <li>Pre-update snapshot (binaries + DB dump + /etc/dockpanel)</li>
+                  <li>Pre-update snapshot (binaries + DB dump + /etc/arsy)</li>
                   <li>Download new binaries from GitHub, verify checksums</li>
                   <li>Swap binaries + restart services (~5s admin UI unavailability)</li>
                   <li>Health check; auto-rollback on failure within 5min</li>
@@ -1206,7 +1206,7 @@ export default function Telemetry() {
               </div>
             )}
             <div className="text-xs text-dark-400 mt-3">
-              Retained 7 days (min 3 always kept). Stored under /var/backups/dockpanel/snapshots/.
+              Retained 7 days (min 3 always kept). Stored under /var/backups/arsy/snapshots/.
             </div>
           </div>
 
@@ -1548,7 +1548,7 @@ export default function Telemetry() {
                 <li>Error messages and stack context (no file paths or user data)</li>
                 <li>Service health status (running/stopped)</li>
                 <li>System specs (OS, RAM, CPU count — no IP addresses or hostnames)</li>
-                <li>DockPanel version</li>
+                <li>ARSY version</li>
               </ul>
               <p>All personal information (IPs, emails, domains, usernames, tokens) is <strong className="text-dark-100">automatically stripped</strong> before sending.</p>
               <p>Use the <strong className="text-dark-100">Preview Report</strong> button to see exactly what would be sent.</p>

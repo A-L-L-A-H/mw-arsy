@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Regression pins for the s457 dockpanel-fanout run over
+# Regression pins for the s457 arsy-fanout run over
 # panel/agent/src/services/image_scanner.rs + routes/image_scan.rs (workflow
 # wf_6a5a4e25-9ee; 2 topics finder/skeptic + completeness/setup critics).
 #
@@ -44,7 +44,7 @@
 #       user=www-data/group=www-data for every pool, and no open_basedir
 #       anywhere restricts a pool's own filesystem view). That is the
 #       separate, already-tracked per-site-OS-user isolation gap (#64/#85 in
-#       project_dockpanel_tech_debt.md), unchanged by this fix — do not cite
+#       project_arsy_tech_debt.md), unchanged by this fix — do not cite
 #       this pin as evidence it closed cross-tenant isolation.
 #
 # Deliberately NOT fixed this session (filed as carries, not pinned here):
@@ -67,7 +67,7 @@ ok()  { PASS=$((PASS+1)); printf '  \033[0;32m✓\033[0m %s\n' "$1"; }
 bad() { FAIL=$((FAIL+1)); printf '  \033[0;31m✗\033[0m %s\n' "$1"; }
 
 # Strip comments and the test module. NOT the naive "sed-quit-at-first-
-# #[cfg(test)]" shape — see project_dockpanel_lessons_p182 (s456): only exit
+# #[cfg(test)]" shape — see project_arsy_lessons_p182 (s456): only exit
 # at a #[cfg(test)] line immediately followed by `mod `, a real test module,
 # not a cfg-gated function/const variant elsewhere in the file.
 code() {
@@ -86,7 +86,7 @@ hasre() { [ -n "$(code "$1" | grep -E -- "$2")" ]; }
 
 # One named function's body, comment-stripped. Function-name patterns MUST be
 # anchored (^ ... \() — GNU awk's \b silently matches nothing in default ERE
-# mode (project_dockpanel_lessons_p182, s456), and several names here
+# mode (project_arsy_lessons_p182, s456), and several names here
 # (install, install_grype, install_syft) are prefixes of no sibling in these
 # files, but anchoring is the standing discipline regardless.
 fnbody()    { code "$1" | awk "/$2/,/^}/"; }

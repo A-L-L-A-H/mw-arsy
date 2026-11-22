@@ -3,7 +3,7 @@ use crate::safe_cmd::safe_command;
 
 use super::backups::{BackupInfo, compute_file_sha256};
 
-const BACKUP_DIR: &str = "/var/backups/dockpanel/volumes";
+const BACKUP_DIR: &str = "/var/backups/arsy/volumes";
 
 /// Validate backup filename.
 fn is_safe_filename(name: &str) -> bool {

@@ -2,7 +2,7 @@
 # cli-io-crate-audit-pin-e2e.sh — s462
 #
 # panel/cli/src/commands/{db.rs, backup.rs, iac.rs} — the 3 files the s461
-# dockpanel-fanout explicitly excluded ("already partially checked" — true
+# arsy-fanout explicitly excluded ("already partially checked" — true
 # only for the s440/441 CWE-214 pass). A full finder/skeptic/critics run
 # this session found 7 real, independently-verified defects across those
 # 3 files plus one off-menu completeness-critic find:
@@ -15,7 +15,7 @@
 #      successfully verified through the CLI; it always attempted (and
 #      failed) a Postgres restore against it.
 #   §C backup.rs `cmd_backup_health` folded every top-level entry under
-#      /var/backups/dockpanel into "site backups", including the agent's
+#      /var/backups/arsy into "site backups", including the agent's
 #      own databases/volumes/wp-snapshots/snapshots roots and an unrelated
 #      ops db/ dump directory — live-reproduced ~9x/~50000x off on this box.
 #   §D iac.rs `cmd_apply` silently dropped every firewall rule in an
@@ -162,7 +162,7 @@ else
   bad "C3 cmd_backup_health no longer filters through is_site_backup_dir — regressed"
 fi
 
-if has "$HEALTH_BODY" 'count_files\("/var/backups/dockpanel", true\)'; then
+if has "$HEALTH_BODY" 'count_files\("/var/backups/arsy", true\)'; then
   ok "C4 the site-backup file count passes only_site_dirs=true"
 else
   bad "C4 the site-backup file count does not scope to only_site_dirs"
@@ -170,8 +170,8 @@ fi
 
 # Positive controls: databases/ and volumes/ counts were never polluted by
 # this bug (they scan their own already-scoped root) and must stay unscoped.
-if has "$HEALTH_BODY" 'count_files\("/var/backups/dockpanel/databases", false\)' \
-  && has "$HEALTH_BODY" 'count_files\("/var/backups/dockpanel/volumes", false\)'; then
+if has "$HEALTH_BODY" 'count_files\("/var/backups/arsy/databases", false\)' \
+  && has "$HEALTH_BODY" 'count_files\("/var/backups/arsy/volumes", false\)'; then
   ok "C5 (control) databases/volumes counts remain unscoped — they were never the bug"
 else
   bad "C5 (control) databases/volumes count scoping regressed"

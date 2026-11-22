@@ -11,7 +11,7 @@
 //! facts were also written by hand into `docs/`, and the two drifted, silently,
 //! in the direction that matters least to whoever is editing at the time. The
 //! audit that opened v2.30.0 found the manual telling operators to publish
-//! `default._domainkey` while the product has deployed the selector `dockpanel`
+//! `default._domainkey` while the product has deployed the selector `arsy`
 //! for its entire life — a user who followed the documentation got a DKIM record
 //! that could never verify, and a panel that then correctly reported it missing.
 //!
@@ -34,7 +34,7 @@
 //! Change a sentence here and `cargo test` fails until the manual is regenerated:
 //!
 //! ```text
-//! UPDATE_GUIDANCE_DOCS=1 cargo test -p dockpanel-api guidance
+//! UPDATE_GUIDANCE_DOCS=1 cargo test -p arsy-api guidance
 //! ```
 //!
 //! That failure is the mechanism. It is not a reminder to keep docs updated — it
@@ -237,7 +237,7 @@ pub static DNS_ENTER_A_DOMAIN: Outcome = Outcome {
     severity: PrereqSeverity::Info,
     title: "Enter a domain",
     title_plural: "",
-    detail: "Once you enter a domain, DockPanel checks whether it already points here.",
+    detail: "Once you enter a domain, ARSY checks whether it already points here.",
     fix: "",
     vars: &[],
 };
@@ -248,7 +248,7 @@ pub static DNS_NO_PUBLIC_IP: Outcome = Outcome {
     severity: PrereqSeverity::Info,
     title: "Couldn't determine this server's public address",
     title_plural: "",
-    detail: "DockPanel could not detect its own public IP, so it can't check whether the domain \
+    detail: "ARSY could not detect its own public IP, so it can't check whether the domain \
              points here. SSL issuance will still be attempted.",
     fix: "Nothing, usually — the check is unavailable, not failing. If issuance then fails, \
           confirm the server can reach the internet.",
@@ -264,7 +264,7 @@ pub static DNS_NOT_RESOLVING: Outcome = Outcome {
     detail: "No DNS record was found for {domain}. Create the record below at whoever manages \
              this domain's DNS, then check again. New records usually appear within a few \
              minutes.",
-    fix: "Create the A (or AAAA) record DockPanel shows, at whoever manages the domain's DNS. \
+    fix: "Create the A (or AAAA) record ARSY shows, at whoever manages the domain's DNS. \
           The gate opens by itself once the record goes live.",
     vars: &[Var { name: "domain", example: "example.com" }],
 };
@@ -377,8 +377,8 @@ pub static APPS_ENV_MISSING_SECRETS: Outcome = Outcome {
     detail: "{template_id} needs a value for {names}. These are passwords or keys with no safe \
              default — the container is started without them entirely, which usually means it \
              refuses to start or comes up with no protection at all.\n\n\
-             Use Generate to have DockPanel pick a strong value.",
-    fix: "Press Generate beside the field. DockPanel picks a strong value so there is nothing to \
+             Use Generate to have ARSY pick a strong value.",
+    fix: "Press Generate beside the field. ARSY picks a strong value so there is nothing to \
           invent and nothing to remember.",
     vars: &[
         Var { name: "first_label", example: "POSTGRES_PASSWORD" },
@@ -444,7 +444,7 @@ pub static APPS_PORT_HELD_BY_KNOWN: Outcome = Outcome {
     title_plural: "",
     detail: "Port {port} is taken by {holder}. Two things cannot publish on the same host port, \
              so this deploy would fail once the image finished downloading.",
-    fix: "Use the free port DockPanel suggests, or stop whatever holds this one.",
+    fix: "Use the free port ARSY suggests, or stop whatever holds this one.",
     vars: &[
         Var { name: "port", example: "5432" },
         Var { name: "holder", example: "the app `pg-old`" },
@@ -458,7 +458,7 @@ pub static APPS_PORT_HELD_BY_UNKNOWN: Outcome = Outcome {
     title: "Port {port} is already in use",
     title_plural: "",
     detail: "Something on this server is already listening on port {port}. It isn't managed by \
-             DockPanel, so it may be another service you installed yourself. Pick a different \
+             ARSY, so it may be another service you installed yourself. Pick a different \
              port, or stop whatever is using this one.",
     fix: "Pick a different port. `ss -lntp | grep :{port}` on the server names the process.",
     vars: &[Var { name: "port", example: "5432" }],
@@ -481,7 +481,7 @@ pub static APPS_PORT_UNPROBEABLE: Outcome = Outcome {
     severity: PrereqSeverity::Info,
     title: "Couldn't check the port",
     title_plural: "",
-    detail: "DockPanel couldn't ask this server whether port {port} is free, so it will be \
+    detail: "ARSY couldn't ask this server whether port {port} is free, so it will be \
              attempted as-is.",
     fix: "Nothing. This happens on a fleet member running an agent older than the port-check \
           route; a check that cannot run must never turn into a refusal.",
@@ -530,7 +530,7 @@ pub static APPS_NAME_TAKEN: Outcome = Outcome {
     title_plural: "",
     detail: "This server already runs an app named {name}. Container names have to be unique, so \
              this deploy would be refused. Pick a different name.",
-    fix: "Use the name DockPanel suggests, or choose your own.",
+    fix: "Use the name ARSY suggests, or choose your own.",
     vars: &[Var { name: "name", example: "postgres" }],
 };
 
@@ -680,7 +680,7 @@ pub static MAIL_DNS_NO_PUBLIC_IP: Outcome = Outcome {
     severity: PrereqSeverity::Info,
     title: "Couldn't determine this server's public address",
     title_plural: "",
-    detail: "DockPanel could not determine the public address of the server this domain is on, \
+    detail: "ARSY could not determine the public address of the server this domain is on, \
              so it can't tell you which records the domain needs.",
     fix: "Nothing to do at the registrar. If the domain is on this server, confirm it can reach \
           the internet; if it is on another server in the fleet, confirm that server's agent is \
@@ -694,7 +694,7 @@ pub static MAIL_DNS_UNREADABLE: Outcome = Outcome {
     severity: PrereqSeverity::Info,
     title: "Couldn't check DNS",
     title_plural: "",
-    detail: "DockPanel couldn't run DNS lookups on this server, so it can't verify these \
+    detail: "ARSY couldn't run DNS lookups on this server, so it can't verify these \
              records. Create them if you haven't already.",
     fix: "Create the records shown. They are correct whether or not the lookup ran.",
     vars: &[],
@@ -722,7 +722,7 @@ pub static MAIL_DNS_MISSING_ALL: Outcome = Outcome {
              {missing}.\n\n\
              Until they are correct, receiving servers can't verify that this server may send \
              mail for {domain} — messages are likely to be filed as spam or rejected. Create the \
-             records below at whoever manages this domain's DNS; DockPanel re-checks \
+             records below at whoever manages this domain's DNS; ARSY re-checks \
              automatically.",
     fix: "Create every record shown. Each card says whether that record is published or missing, \
           so you never have to re-do the ones already correct.",
@@ -744,14 +744,14 @@ pub static MAIL_DNS_MISSING_SOME: Outcome = Outcome {
              {missing}.\n\n\
              Until they are correct, receiving servers can't verify that this server may send \
              mail for {domain} — messages are likely to be filed as spam or rejected. Create the \
-             records below at whoever manages this domain's DNS; DockPanel re-checks \
+             records below at whoever manages this domain's DNS; ARSY re-checks \
              automatically.",
     fix: "Create the records marked missing. The published ones need no attention.",
     vars: &[
         Var { name: "domain", example: "example.com" },
         Var { name: "count", example: "2" },
         Var { name: "total", example: "5" },
-        Var { name: "missing", example: "TXT dockpanel._domainkey.example.com, TXT _dmarc.example.com" },
+        Var { name: "missing", example: "TXT arsy._domainkey.example.com, TXT _dmarc.example.com" },
     ],
 };
 
@@ -876,7 +876,7 @@ pub static BACKUPS_POLICY_NOTHING: Outcome = Outcome {
     severity: PrereqSeverity::Info,
     title: "Nothing to back up yet",
     title_plural: "",
-    detail: "Once you add a site or a database, DockPanel can back it up on a schedule.",
+    detail: "Once you add a site or a database, ARSY can back it up on a schedule.",
     fix: "",
     vars: &[],
 };
@@ -963,7 +963,7 @@ pub static FIELDS: &[Field] = &[
         surface: "Create a site",
         label: "Domain",
         help: "Your site's public domain name (e.g. example.com). It needs to point at this \
-               server before HTTPS can be issued — DockPanel checks that for you below.",
+               server before HTTPS can be issued — ARSY checks that for you below.",
         more: "You can create the site before the domain resolves; only the certificate needs \
                DNS. If you are moving a live site, create it here first, confirm it serves \
                correctly, and change the DNS record last — that way the switchover has no gap.",
@@ -979,14 +979,14 @@ pub static FIELDS: &[Field] = &[
         more: "Static serves files as they are. PHP runs them through PHP-FPM. Node and Python \
                get a managed systemd process with nginx in front. Reverse Proxy is the one to \
                pick when something else already listens on a port — a Docker app, or a service \
-               you run yourself — and DockPanel then owns only the front end and the certificate.",
+               you run yourself — and ARSY then owns only the front end and the certificate.",
         escalates_to: "",
     },
     Field {
         id: "sites.create.admin_password",
         surface: "Create a site",
         label: "Admin Password",
-        help: "Leave blank and DockPanel generates one, then stores it in this site's Secrets \
+        help: "Leave blank and ARSY generates one, then stores it in this site's Secrets \
                vault — it is not shown again anywhere else.",
         more: "Open the site, then Secrets, to read it back. Earlier versions generated this \
                password, used it and discarded it, which left you unable to log in to the site \
@@ -1006,9 +1006,9 @@ pub static FIELDS: &[Field] = &[
         id: "apps.deploy.name",
         surface: "Deploy a Docker app",
         label: "Container Name",
-        help: "Names the container on this server. Must be unique — DockPanel suggests a free \
+        help: "Names the container on this server. Must be unique — ARSY suggests a free \
                one if it isn't.",
-        more: "The container is created as `dockpanel-app-<name>`, so this name is what you will \
+        more: "The container is created as `arsy-app-<name>`, so this name is what you will \
                see in `docker ps` minus that prefix.",
         escalates_to: "apps.name_available",
     },
@@ -1016,7 +1016,7 @@ pub static FIELDS: &[Field] = &[
         id: "apps.deploy.port",
         surface: "Deploy a Docker app",
         label: "Host Port",
-        help: "The port on this server the app will answer on. DockPanel checks it is free \
+        help: "The port on this server the app will answer on. ARSY checks it is free \
                before the image is pulled.",
         more: "Published on 127.0.0.1 by default. To expose the app publicly, put a Reverse \
                Proxy site in front of it — that gets you a certificate and a domain instead of a \
@@ -1029,7 +1029,7 @@ pub static FIELDS: &[Field] = &[
         label: "Memory (MB)",
         help: "Hard ceiling for this container. Leave blank for no limit.",
         more: "A limit above what the server has is accepted but unreachable — the box swaps \
-               first. DockPanel warns rather than refuses, because over-committing is ordinary \
+               first. ARSY warns rather than refuses, because over-committing is ordinary \
                and you may know what is about to be freed.",
         escalates_to: "apps.resource_headroom",
     },
@@ -1056,7 +1056,7 @@ pub static FIELDS: &[Field] = &[
         label: "Required DNS Records",
         // Tooltip-only: the standing line names the domain being viewed.
         help: "",
-        more: "These are the records DockPanel publishes for you when it manages the zone, and \
+        more: "These are the records ARSY publishes for you when it manages the zone, and \
                the ones to create by hand when it doesn't. Verify DNS checks that each points at \
                this server rather than merely that something exists — a domain whose MX belongs \
                to another provider is reported as such, not as a pass.",
@@ -1081,10 +1081,10 @@ pub fn manual() -> String {
     let mut out = String::new();
 
     out.push_str(&format!("<!-- {GENERATED_BANNER} -->\n\n"));
-    out.push_str("# What DockPanel checks before you commit\n\n");
+    out.push_str("# What ARSY checks before you commit\n\n");
     out.push_str(
         "Some things have to be true before a feature can work — a domain has to resolve, a port \
-         has to be free, a backup has to have somewhere to go. DockPanel checks these for you and \
+         has to be free, a backup has to have somewhere to go. ARSY checks these for you and \
          says so on the screen where it matters, rather than letting the action fail and leaving \
          you to work out why.\n\n\
          This page is generated from the same source the product renders its messages from, so \
@@ -1100,7 +1100,7 @@ pub fn manual() -> String {
          the choice is yours and the control stays usable. |\n\
          | Blocking | A red callout, and the button is disabled | It *will* fail. The gate opens \
          by itself once the condition is met. |\n\n\
-         A check DockPanel could not run never blocks anything and never accuses you of \
+         A check ARSY could not run never blocks anything and never accuses you of \
          anything — it says so and gets out of the way.\n\n",
     );
 
@@ -1122,7 +1122,7 @@ pub fn manual() -> String {
         }
         out.push('\n');
 
-        out.push_str("| | What DockPanel says | What to do |\n|---|---|---|\n");
+        out.push_str("| | What ARSY says | What to do |\n|---|---|---|\n");
         for outcome in prereq.outcomes {
             let vars: Vec<(&str, &str)> =
                 outcome.vars.iter().map(|v| (v.name, v.example)).collect();
@@ -1508,7 +1508,7 @@ mod tests {
         let found = std::fs::read_to_string(&path).unwrap_or_else(|e| {
             panic!(
                 "{relative} is missing ({e}). Regenerate it:\n    \
-                 UPDATE_GUIDANCE_DOCS=1 cargo test -p dockpanel-api guidance"
+                 UPDATE_GUIDANCE_DOCS=1 cargo test -p arsy-api guidance"
             )
         });
 
@@ -1529,7 +1529,7 @@ mod tests {
             panic!(
                 "{relative} is out of date — the copy registry changed and this file did not.\n\
                  First difference at line {line}:\n  committed: {f}\n  registry:  {e}\n\n\
-                 Regenerate it:\n    UPDATE_GUIDANCE_DOCS=1 cargo test -p dockpanel-api guidance"
+                 Regenerate it:\n    UPDATE_GUIDANCE_DOCS=1 cargo test -p arsy-api guidance"
             );
         }
     }

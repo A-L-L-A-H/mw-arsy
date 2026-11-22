@@ -1,5 +1,5 @@
 {
-  "_generated": "Do not edit. Source of truth is TEMPLATES in panel/agent/src/services/docker_apps.rs. Regenerate with UPDATE_TEMPLATE_CATALOGUE=1 cargo test -p dockpanel-agent catalogue",
+  "_generated": "Do not edit. Source of truth is TEMPLATES in panel/agent/src/services/docker_apps.rs. Regenerate with UPDATE_TEMPLATE_CATALOGUE=1 cargo test -p arsy-agent catalogue",
   "count": 147,
   "templates": [
     {
@@ -2638,7 +2638,7 @@
       "default_port": 9042,
       "env_vars": [
         {
-          "default": "DockPanelCluster",
+          "default": "ARSYCluster",
           "label": "Cluster Name",
           "name": "CASSANDRA_CLUSTER_NAME",
           "required": false,
@@ -3286,7 +3286,7 @@
           "secret": true
         },
         {
-          "default": "dockpanel",
+          "default": "arsy",
           "label": "Hostname",
           "name": "TS_HOSTNAME",
           "required": false,

@@ -15,7 +15,7 @@ pub struct SystemInfo {
     pub total_disk_mb: u64,
     pub cpu_count: u32,
     pub uptime_seconds: u64,
-    pub dockpanel_agent_version: String,
+    pub arsy_agent_version: String,
     pub services: Vec<ServiceStatus>,
 }
 
@@ -134,10 +134,10 @@ async fn system_info() -> Json<SystemInfo> {
         .map(|f| f as u64)
         .unwrap_or(0);
 
-    // Service status for key DockPanel services
+    // Service status for key ARSY services
     let service_names = [
-        "dockpanel-agent",
-        "dockpanel-api",
+        "arsy-agent",
+        "arsy-api",
         "nginx",
         "postgresql",
         "docker",
@@ -177,7 +177,7 @@ async fn system_info() -> Json<SystemInfo> {
         total_disk_mb,
         cpu_count,
         uptime_seconds,
-        dockpanel_agent_version: env!("CARGO_PKG_VERSION").to_string(),
+        arsy_agent_version: env!("CARGO_PKG_VERSION").to_string(),
         services,
     })
 }

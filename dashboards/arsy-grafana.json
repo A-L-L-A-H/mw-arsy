@@ -71,7 +71,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "expr": "dockpanel_info",
+          "expr": "arsy_info",
           "legendFormat": "{{version}}",
           "refId": "A",
           "instant": true,
@@ -121,7 +121,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "expr": "count(count by (server) (dockpanel_cpu_percent))",
+          "expr": "count(count by (server) (arsy_cpu_percent))",
           "legendFormat": "Servers",
           "refId": "A"
         }
@@ -153,7 +153,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "expr": "sum(dockpanel_site_count)",
+          "expr": "sum(arsy_site_count)",
           "legendFormat": "Sites",
           "refId": "A"
         }
@@ -210,7 +210,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "expr": "sum by (severity) (dockpanel_alerts_firing{severity!=\"none\"})",
+          "expr": "sum by (severity) (arsy_alerts_firing{severity!=\"none\"})",
           "legendFormat": "{{severity}}",
           "refId": "A"
         }
@@ -242,7 +242,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "expr": "count(count by (server, gpu_index) (dockpanel_gpu_utilization_percent))",
+          "expr": "count(count by (server, gpu_index) (arsy_gpu_utilization_percent))",
           "legendFormat": "GPUs",
           "refId": "A"
         }
@@ -288,7 +288,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "expr": "dockpanel_cpu_percent{server=~\"$server\"}",
+          "expr": "arsy_cpu_percent{server=~\"$server\"}",
           "legendFormat": "{{server}}",
           "refId": "A"
         }
@@ -334,7 +334,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "expr": "dockpanel_memory_percent{server=~\"$server\"}",
+          "expr": "arsy_memory_percent{server=~\"$server\"}",
           "legendFormat": "{{server}}",
           "refId": "A"
         }
@@ -380,7 +380,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "expr": "dockpanel_disk_percent{server=~\"$server\"}",
+          "expr": "arsy_disk_percent{server=~\"$server\"}",
           "legendFormat": "{{server}}",
           "refId": "A"
         }
@@ -420,7 +420,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "expr": "topk(10, dockpanel_cpu_percent{server=~\"$server\"})",
+          "expr": "topk(10, arsy_cpu_percent{server=~\"$server\"})",
           "legendFormat": "{{server}}",
           "refId": "A",
           "instant": true
@@ -461,7 +461,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "expr": "topk(10, dockpanel_memory_percent{server=~\"$server\"})",
+          "expr": "topk(10, arsy_memory_percent{server=~\"$server\"})",
           "legendFormat": "{{server}}",
           "refId": "A",
           "instant": true
@@ -492,7 +492,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "expr": "dockpanel_site_count",
+          "expr": "arsy_site_count",
           "legendFormat": "{{status}}",
           "refId": "A",
           "instant": true
@@ -544,7 +544,7 @@
           "targets": [
             {
               "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-              "expr": "dockpanel_gpu_utilization_percent{server=~\"$server\"}",
+              "expr": "arsy_gpu_utilization_percent{server=~\"$server\"}",
               "legendFormat": "{{server}} GPU{{gpu_index}}",
               "refId": "A"
             }
@@ -589,7 +589,7 @@
           "targets": [
             {
               "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-              "expr": "100 * dockpanel_gpu_vram_used_mb{server=~\"$server\"} / dockpanel_gpu_vram_total_mb{server=~\"$server\"}",
+              "expr": "100 * arsy_gpu_vram_used_mb{server=~\"$server\"} / arsy_gpu_vram_total_mb{server=~\"$server\"}",
               "legendFormat": "{{server}} GPU{{gpu_index}}",
               "refId": "A"
             }
@@ -631,7 +631,7 @@
           "targets": [
             {
               "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-              "expr": "dockpanel_gpu_temperature_celsius{server=~\"$server\"}",
+              "expr": "arsy_gpu_temperature_celsius{server=~\"$server\"}",
               "legendFormat": "{{server}} GPU{{gpu_index}}",
               "refId": "A"
             }
@@ -669,7 +669,7 @@
           "targets": [
             {
               "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-              "expr": "dockpanel_gpu_power_draw_watts{server=~\"$server\"}",
+              "expr": "arsy_gpu_power_draw_watts{server=~\"$server\"}",
               "legendFormat": "{{server}} GPU{{gpu_index}}",
               "refId": "A"
             }
@@ -724,7 +724,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "expr": "sum by (severity) (dockpanel_alerts_firing{severity!=\"none\"})",
+          "expr": "sum by (severity) (arsy_alerts_firing{severity!=\"none\"})",
           "legendFormat": "{{severity}}",
           "refId": "A"
         }
@@ -752,8 +752,8 @@
         "label": "Server",
         "type": "query",
         "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-        "definition": "label_values(dockpanel_cpu_percent, server)",
-        "query": { "query": "label_values(dockpanel_cpu_percent, server)", "refId": "ServerVar" },
+        "definition": "label_values(arsy_cpu_percent, server)",
+        "query": { "query": "label_values(arsy_cpu_percent, server)", "refId": "ServerVar" },
         "refresh": 2,
         "regex": "",
         "sort": 1,

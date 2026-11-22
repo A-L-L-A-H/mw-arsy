@@ -1,5 +1,5 @@
 #!/bin/bash
-# DockPanel Release Script
+# ARSY Release Script
 # Builds x86_64 + ARM64 binaries, packages, creates GitHub Release
 set -euo pipefail
 
@@ -21,7 +21,7 @@ if [ "$TAG" = "$LATEST_TAG" ]; then
   exit 1
 fi
 
-echo -e "${GREEN}Building DockPanel $TAG${NC}"
+echo -e "${GREEN}Building ARSY $TAG${NC}"
 echo "  Previous tag: $LATEST_TAG"
 echo ""
 
@@ -51,10 +51,10 @@ cd panel/backend && cargo build --release 2>&1 | tail -1 && cd ../..
 cd panel/cli && cargo build --release 2>&1 | tail -1 && cd ../..
 cd panel/mcp && cargo build --release 2>&1 | tail -1 && cd ../..
 
-cp panel/agent/target/release/dockpanel-agent "$DIST/dockpanel-agent-linux-amd64"
-cp panel/backend/target/release/dockpanel-api "$DIST/dockpanel-api-linux-amd64"
-cp panel/cli/target/release/dockpanel "$DIST/dockpanel-cli-linux-amd64"
-cp panel/mcp/target/release/dockpanel-mcp "$DIST/dockpanel-mcp-linux-amd64"
+cp panel/agent/target/release/arsy-agent "$DIST/arsy-agent-linux-amd64"
+cp panel/backend/target/release/arsy-api "$DIST/arsy-api-linux-amd64"
+cp panel/cli/target/release/arsy "$DIST/arsy-cli-linux-amd64"
+cp panel/mcp/target/release/arsy-mcp "$DIST/arsy-mcp-linux-amd64"
 
 # ─── Build ARM64 (cross-compile) ───
 echo -e "${YELLOW}Building aarch64...${NC}"
@@ -65,15 +65,15 @@ cd panel/backend && cargo build --release --target aarch64-unknown-linux-gnu 2>&
 cd panel/cli && cargo build --release --target aarch64-unknown-linux-gnu 2>&1 | tail -1 && cd ../..
 cd panel/mcp && cargo build --release --target aarch64-unknown-linux-gnu 2>&1 | tail -1 && cd ../..
 
-cp panel/agent/target/aarch64-unknown-linux-gnu/release/dockpanel-agent "$DIST/dockpanel-agent-linux-arm64"
-cp panel/backend/target/aarch64-unknown-linux-gnu/release/dockpanel-api "$DIST/dockpanel-api-linux-arm64"
-cp panel/cli/target/aarch64-unknown-linux-gnu/release/dockpanel "$DIST/dockpanel-cli-linux-arm64"
-cp panel/mcp/target/aarch64-unknown-linux-gnu/release/dockpanel-mcp "$DIST/dockpanel-mcp-linux-arm64"
+cp panel/agent/target/aarch64-unknown-linux-gnu/release/arsy-agent "$DIST/arsy-agent-linux-arm64"
+cp panel/backend/target/aarch64-unknown-linux-gnu/release/arsy-api "$DIST/arsy-api-linux-arm64"
+cp panel/cli/target/aarch64-unknown-linux-gnu/release/arsy "$DIST/arsy-cli-linux-arm64"
+cp panel/mcp/target/aarch64-unknown-linux-gnu/release/arsy-mcp "$DIST/arsy-mcp-linux-arm64"
 
 # ─── Build frontend ───
 echo -e "${YELLOW}Building frontend...${NC}"
 cd panel/frontend && npm run build 2>&1 | tail -1 && cd ../..
-tar czf "$DIST/dockpanel-frontend.tar.gz" -C panel/frontend dist/
+tar czf "$DIST/arsy-frontend.tar.gz" -C panel/frontend dist/
 
 # ─── Generate SBOMs (SPDX JSON) ───
 echo -e "${YELLOW}Generating SBOMs...${NC}"
@@ -81,10 +81,10 @@ if ! command -v cargo-sbom >/dev/null 2>&1; then
   echo "  Installing cargo-sbom..."
   cargo install cargo-sbom --locked --version ^0.10 >/dev/null
 fi
-cargo sbom --project-directory panel/agent   --output-format spdx_json_2_3 > "$DIST/dockpanel-agent.spdx.json"
-cargo sbom --project-directory panel/backend --output-format spdx_json_2_3 > "$DIST/dockpanel-api.spdx.json"
-cargo sbom --project-directory panel/cli     --output-format spdx_json_2_3 > "$DIST/dockpanel-cli.spdx.json"
-cargo sbom --project-directory panel/mcp     --output-format spdx_json_2_3 > "$DIST/dockpanel-mcp.spdx.json"
+cargo sbom --project-directory panel/agent   --output-format spdx_json_2_3 > "$DIST/arsy-agent.spdx.json"
+cargo sbom --project-directory panel/backend --output-format spdx_json_2_3 > "$DIST/arsy-api.spdx.json"
+cargo sbom --project-directory panel/cli     --output-format spdx_json_2_3 > "$DIST/arsy-cli.spdx.json"
+cargo sbom --project-directory panel/mcp     --output-format spdx_json_2_3 > "$DIST/arsy-mcp.spdx.json"
 
 # ─── Generate checksums ───
 echo -e "${YELLOW}Generating checksums...${NC}"
@@ -118,7 +118,7 @@ echo ""
 # Until s288 the instructions printed here said to do exactly that.
 echo -e "${YELLOW}Local build complete — these artifacts are for smoke-testing only.${NC}"
 echo "  $DIST"
-echo "  ($(file "$DIST/dockpanel-agent-linux-amd64" | grep -oE 'statically linked|dynamically linked') — the published assets are static musl)"
+echo "  ($(file "$DIST/arsy-agent-linux-amd64" | grep -oE 'statically linked|dynamically linked') — the published assets are static musl)"
 echo ""
 echo -e "${GREEN}To publish $TAG, push the tag and let CI build it:${NC}"
 echo ""

@@ -10,7 +10,7 @@
 //! Two ways the key lies.
 //!
 //! **It is derived from an identity nobody re-verified.** A Docker app's domain
-//! lives in the `dockpanel.app.domain` label. Removing the app deletes
+//! lives in the `arsy.app.domain` label. Removing the app deletes
 //! `/etc/nginx/sites-enabled/{domain}.conf` — but by then that vhost may belong
 //! to a site, because on any box installed before v2.52.0 nothing stopped a site
 //! from claiming a domain an app already held.
@@ -41,8 +41,8 @@
 //! destroys — a running container — with no primitive at all, and the same two
 //! ways for a key to lie apply to it word for word.
 //!
-//! A git deploy named `X` is the container `dockpanel-git-X`. A *preview* of
-//! config `C` on branch `B` was the container `dockpanel-git-{C}-pr-{slug(B)}`,
+//! A git deploy named `X` is the container `arsy-git-X`. A *preview* of
+//! config `C` on branch `B` was the container `arsy-git-{C}-pr-{slug(B)}`,
 //! which is the same string a deploy named `{C}-pr-{slug(B)}` produces — and
 //! `is_valid_name` permits that name. The branch half is chosen by whoever can
 //! push to `C`'s repo, and the webhook that acts on it has no auth extractor.
@@ -80,12 +80,12 @@ impl Owner {
 
 /// The label key a git container carries to say which of the two disjoint name
 /// spaces it was created in.
-pub const GIT_KIND_LABEL: &str = "dockpanel.git.kind";
+pub const GIT_KIND_LABEL: &str = "arsy.git.kind";
 
 /// The suffix a blue-green swap parks its stand-in container under.
 ///
 /// It was `-blue`, which is not a space anybody owns: `is_valid_name` accepts
-/// `api-blue`, so `dockpanel-app-api-blue` is *simultaneously* the stand-in for
+/// `api-blue`, so `arsy-app-api-blue` is *simultaneously* the stand-in for
 /// the app `api` and the production container of the app `api-blue` — and the
 /// leftover-cleanup that runs before every swap force-removed whatever it
 /// found there. The separator is now `.`, which `is_valid_name` rejects, so no
@@ -157,14 +157,14 @@ impl GitScope {
 /// [`GIT_KIND_LABEL`] at all, and the answer to that has to differ by space,
 /// because the three spaces have entirely different legacy populations:
 ///
-/// * [`GitScope::Deploy`] — an unlabelled container at `dockpanel-git-{name}`
+/// * [`GitScope::Deploy`] — an unlabelled container at `arsy-git-{name}`
 ///   is this deployment's own, created by an older agent: deploy names are
 ///   unique per server, and the one thing that could previously stand there
 ///   under someone else's ownership — a preview — no longer writes into this
 ///   space at all. Refusing would break the update path of every app on every
 ///   existing install. `Ours`, and the next deploy relabels it.
 /// * [`GitScope::Preview`] — nothing legacy can be here; the space did not
-///   exist. An unlabelled container at `dockpanel-git-pr.{name}` was not put
+///   exist. An unlabelled container at `arsy-git-pr.{name}` was not put
 ///   there by this agent. `Unknown`, which may not delete.
 /// * [`GitScope::PreviewLegacy`] — the old SHARED space, reached only to clean
 ///   up, and the one place where "unlabelled" is genuinely ambiguous: an old
@@ -203,7 +203,7 @@ pub fn git_container(
 /// destroy. `Unknown` for anything that does not say it is managed.
 pub fn blue_leftover(labels: Option<&std::collections::HashMap<String, String>>) -> Owner {
     match labels
-        .and_then(|l| l.get("dockpanel.managed"))
+        .and_then(|l| l.get("arsy.managed"))
         .map(String::as_str)
     {
         Some("true") => Owner::Ours,
@@ -235,7 +235,7 @@ fn owner_by_lines(path: &str, markers: &[String]) -> Owner {
 /// Does the systemd unit at `path` run `domain`'s app process?
 ///
 /// `create_app_service` writes a `WorkingDirectory` under `/var/www/{domain}` and
-/// `Description=DockPanel App: {domain}`; either identifies the owner, and a
+/// `Description=ARSY App: {domain}`; either identifies the owner, and a
 /// hand-edited description should not be able to make the unit undeletable, so
 /// both are accepted.
 ///
@@ -254,7 +254,7 @@ pub fn systemd_unit(path: &str, domain: &str) -> Owner {
         &[
             format!("WorkingDirectory=/var/www/{domain}"),
             format!("WorkingDirectory=/var/www/{domain}/public"),
-            format!("Description=DockPanel App: {domain}"),
+            format!("Description=ARSY App: {domain}"),
         ],
     )
 }
@@ -322,7 +322,7 @@ pub fn app_vhost(path: &str, host_port: Option<u16>) -> Owner {
     }
 }
 
-/// Is the certificate directory `/etc/dockpanel/ssl/{domain}` still referenced
+/// Is the certificate directory `/etc/arsy/ssl/{domain}` still referenced
 /// by a vhost other than `domain`'s own?
 ///
 /// A DNS-01 wildcard is provisioned once under the zone apex and every site in
@@ -335,7 +335,7 @@ pub fn app_vhost(path: &str, host_port: Option<u16>) -> Owner {
 /// Answered by reading the vhosts rather than the database because the agent has
 /// no database, and because the vhosts are what nginx will actually parse.
 pub fn cert_dir_in_use_elsewhere(domain: &str) -> bool {
-    let needle = format!("/etc/dockpanel/ssl/{domain}/");
+    let needle = format!("/etc/arsy/ssl/{domain}/");
     let own = format!("{domain}.conf");
     let Ok(entries) = std::fs::read_dir(super::nginx::sites_dir()) else {
         // Cannot tell — assume shared. Refusing to delete a cert directory is
@@ -486,10 +486,10 @@ mod tests {
 
     #[test]
     fn the_systemd_collision_that_motivated_this_is_refused() {
-        // `a.b.com` and `a-b.com` both mangle to `dockpanel-app-a-b-com`, so the
+        // `a.b.com` and `a-b.com` both mangle to `arsy-app-a-b-com`, so the
         // owner of one used to be able to delete the unit of the other.
         let (_d, p) = tmpfile(
-            "[Unit]\nDescription=DockPanel App: a.b.com\n\n[Service]\n\
+            "[Unit]\nDescription=ARSY App: a.b.com\n\n[Service]\n\
              WorkingDirectory=/var/www/a.b.com/public\nExecStart=node server.js\n",
         );
         assert_eq!(systemd_unit(&p, "a.b.com"), Owner::Ours);
@@ -574,7 +574,7 @@ mod tests {
         // The unanchored-substring class: `example.com` must not match
         // `example.community`, which is a separately registerable domain.
         let (_d, p) = tmpfile(
-            "[Unit]\nDescription=DockPanel App: example.community\n\n[Service]\n\
+            "[Unit]\nDescription=ARSY App: example.community\n\n[Service]\n\
              WorkingDirectory=/var/www/example.community/public\n",
         );
         assert_eq!(systemd_unit(&p, "example.community"), Owner::Ours);
@@ -679,10 +679,10 @@ mod tests {
     #[test]
     fn the_blue_stand_in_space_cannot_hold_a_real_deployment() {
         // The defect: `is_valid_name` accepts `api-blue`, so the app whose
-        // container is `dockpanel-app-api-blue` WAS the stand-in name for the
+        // container is `arsy-app-api-blue` WAS the stand-in name for the
         // app `api`, and was force-removed every time `api` was updated.
-        assert_eq!(blue_name("dockpanel-app-api"), "dockpanel-app-api.blue");
-        assert_ne!(blue_name("dockpanel-app-api"), "dockpanel-app-api-blue");
+        assert_eq!(blue_name("arsy-app-api"), "arsy-app-api.blue");
+        assert_ne!(blue_name("arsy-app-api"), "arsy-app-api-blue");
         // Nothing the panel will name can land in that space.
         assert!(!crate::routes::is_valid_name("api.blue"));
         assert!(crate::routes::is_valid_name("api-blue"));
@@ -695,7 +695,7 @@ mod tests {
         assert!(!blue_leftover(None).may_delete());
         let handmade = labelled(&[("com.example.stack", "mine")]);
         assert!(!blue_leftover(Some(&handmade)).may_delete());
-        let ours = labelled(&[("dockpanel.managed", "true")]);
+        let ours = labelled(&[("arsy.managed", "true")]);
         assert!(blue_leftover(Some(&ours)).may_delete());
     }
 

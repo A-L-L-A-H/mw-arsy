@@ -52,7 +52,7 @@ bad() { FAIL=$((FAIL+1)); printf '  \033[0;31m✗\033[0m %s\n' "$1"; }
 
 # Strip comments and the test module. Only exits at a #[cfg(test)] line
 # immediately followed by `mod ` — a real test module, not a cfg-gated
-# function/const variant elsewhere in the file (project_dockpanel_lessons_p182).
+# function/const variant elsewhere in the file (project_arsy_lessons_p182).
 code() {
   awk '
     held == 1 {

@@ -712,7 +712,7 @@ pub async fn remove(
     // leaves the network silently orphaned — live-caught: the network survived past a
     // stack delete on this exact box until this ordering fix. The container also is NOT
     // among the containers `/apps/stack/action` removes on its own: it carries
-    // `dockpanel.db.*` labels rather than `dockpanel.app.*`, so it is not in
+    // `arsy.db.*` labels rather than `arsy.app.*`, so it is not in
     // `list_deployed_apps()` at all — the same "operator manages exactly one thing"
     // exclusion `app_sidecar.rs`'s sidecar containers use. The `databases` row is left to
     // `stack_id`'s ON DELETE CASCADE below (a cascaded row delete never touches the live
@@ -1257,8 +1257,8 @@ async fn stack_action(
 
     // ── Stopping a stack is a deliberate stop, N times over ────────────────
     //
-    // Compose services carry `dockpanel.managed=true` and
-    // `dockpanel.app.template=compose`, which is exactly what the agent's
+    // Compose services carry `arsy.managed=true` and
+    // `arsy.app.template=compose`, which is exactly what the agent's
     // `/apps` listing filters on — so every service in a stopped stack is a
     // full `container_down` subject. One click on a five-service stack produced
     // five criticals, correlated into ONE public incident titled after whichever
@@ -1347,7 +1347,7 @@ pub async fn renew_ssl(
         return Err(err(
             StatusCode::UNPROCESSABLE_ENTITY,
             &format!(
-                "{domain} is served in '{mode}' mode, not ACME. DockPanel reissues only the \
+                "{domain} is served in '{mode}' mode, not ACME. ARSY reissues only the \
                  Let's Encrypt certificates it obtains itself — a registered certificate is \
                  replaced from the Certificates page, and a stack with no TLS has nothing to \
                  renew."
@@ -1375,7 +1375,7 @@ pub async fn renew_ssl(
         return Err(err(
             StatusCode::UNPROCESSABLE_ENTITY,
             &format!(
-                "The certificate on {domain} was not issued by DockPanel (issuer: {issuer}). \
+                "The certificate on {domain} was not issued by ARSY (issuer: {issuer}). \
                  Reissuing would replace it with a Let's Encrypt certificate. Renew it wherever \
                  it was issued, or install a replacement under Certificates."
             ),

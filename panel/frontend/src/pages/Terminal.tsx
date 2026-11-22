@@ -131,7 +131,7 @@ const serverSnippets = [
   { label: "Clear Cache", cmd: "sync && echo 3 > /proc/sys/vm/drop_caches" },
   { label: "System Info", cmd: "uname -a && uptime" },
   { label: "Tail Nginx Errors", cmd: "tail -50 /var/log/nginx/error.log" },
-  { label: "Persistent Session (tmux)", cmd: "tmux new-session -A -s dockpanel" },
+  { label: "Persistent Session (tmux)", cmd: "tmux new-session -A -s arsy" },
 ];
 
 // Things that actually work from inside /var/www/<domain> as www-data.

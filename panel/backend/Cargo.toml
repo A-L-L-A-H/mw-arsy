@@ -1,5 +1,5 @@
 [package]
-name = "dockpanel-api"
+name = "arsy-api"
 version = "2.242.1"
 license = "AGPL-3.0-only"
 edition = "2024"
@@ -58,3 +58,4 @@ hkdf = "0.12"
 zeroize = { version = "1", features = ["derive"] }
 # Phase 4 W2: render runbook markdown into HTML for email payloads.
 pulldown-cmark = { version = "0.10", default-features = false, features = ["html"] }
+regorus = "0.15"

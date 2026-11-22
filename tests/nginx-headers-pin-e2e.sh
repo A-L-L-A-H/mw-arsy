@@ -152,10 +152,10 @@ run_migrations() {
         NGINX_NEEDS_RELOAD=0
         # shellcheck disable=SC1090
         . <(sed -n '/^# ── v2.47.1: give index.html a cache directive/,/^done$/p' "$UPDATE" \
-              | sed "s#/etc/nginx/sites-enabled/dockpanel-panel.conf /etc/nginx/conf.d/dockpanel-panel.conf#$target#")
+              | sed "s#/etc/nginx/sites-enabled/arsy-panel.conf /etc/nginx/conf.d/arsy-panel.conf#$target#")
         # shellcheck disable=SC1090
         . <(sed -n '/^# ── v2.47.2: repeat the security headers on \/assets\//,/^done$/p' "$UPDATE" \
-              | sed "s#/etc/nginx/sites-enabled/dockpanel-panel.conf /etc/nginx/conf.d/dockpanel-panel.conf#$target#")
+              | sed "s#/etc/nginx/sites-enabled/arsy-panel.conf /etc/nginx/conf.d/arsy-panel.conf#$target#")
         echo "$NGINX_NEEDS_RELOAD"
     )
     echo "$out"
@@ -299,7 +299,7 @@ else
         -e "s#\${PANEL_TLS_BLOCK}##" \
         -e "s#\${FE_ROOT}#$TMP/www#" \
         -e "s#\\\\\$#\$#g" \
-        -e "s#include /etc/nginx/conf.d/dockpanel-panel.locations/\*.conf;##" \
+        -e "s#include /etc/nginx/conf.d/arsy-panel.locations/\*.conf;##" \
         "$TMP/template.conf" > "$TMP/ngx/server.conf"
 
     # When this runs as root, nginx would drop its workers to `nobody`, which

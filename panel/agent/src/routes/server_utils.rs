@@ -124,7 +124,7 @@ async fn file_upload(
 
     // Confine strictly to the site root via the shared, symlink-safe resolver.
     // (The former `domain == "_server"` magic-domain branch — a root-write primitive
-    // that could target /etc/nginx, /etc/dockpanel, /home, /opt via a hand-rolled,
+    // that could target /etc/nginx, /etc/arsy, /home, /opt via a hand-rolled,
     // weaker traversal check — was removed in s247: it had no live caller anywhere in
     // the panel/CLI/scripts and was dead attack surface.)
     let full_path = file_svc::resolve_safe_path(&domain, &target_rel)
@@ -206,11 +206,11 @@ async fn read_authorized_keys() -> Result<Option<String>, String> {
 
 /// Replace root's `authorized_keys` atomically, from outside the sandbox.
 ///
-/// Staged inside `/var/lib/dockpanel` (which IS in the unit's `ReadWritePaths`)
+/// Staged inside `/var/lib/arsy` (which IS in the unit's `ReadWritePaths`)
 /// and then moved into place by `install`, which creates `/root/.ssh`, sets the
 /// mode and copies in one call that runs outside the namespace.
 async fn write_authorized_keys(content: &str) -> Result<(), String> {
-    let staging = format!("/var/lib/dockpanel/.authorized_keys.{}", uuid::Uuid::new_v4());
+    let staging = format!("/var/lib/arsy/.authorized_keys.{}", uuid::Uuid::new_v4());
     {
         use std::io::Write as _;
         use std::os::unix::fs::OpenOptionsExt as _;
@@ -420,7 +420,7 @@ async fn disable_auto_updates() -> Result<Json<serde_json::Value>, ApiErr> {
 // ⚠ Deliberately spelled around: an absence pin greps this tree for the endpoint's
 // literal name, and a tombstone that spells it turns that pin red on a correct fix.
 // The route was the panel-side whitelist endpoint; the file was its `.conf` under
-// `/etc/dockpanel/`.
+// `/etc/arsy/`.
 //
 // They wrote that file and read it back for display, and those two functions were
 // the ONLY references to the path in the entire repository:

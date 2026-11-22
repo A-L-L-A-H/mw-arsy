@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# DockPanel Tier 2 Cert Pin E2E Test Suite
+# ARSY Tier 2 Cert Pin E2E Test Suite
 #
 # Exercises the full Phase 3 #3 Tier 2 flow end-to-end:
 #   - Trust-On-First-Use (TOFU) fingerprint capture via /api/agent/checkin
@@ -14,9 +14,9 @@
 #     CryptoProvider is not installed, the API process panics at ClientConfig
 #     build time instead of handling the request)
 #
-# Auth strategy: if DOCKPANEL_TEST_PASSWORD is set, logs in via the panel's
+# Auth strategy: if ARSY_TEST_PASSWORD is set, logs in via the panel's
 # /api/auth/login endpoint; otherwise mints a short-lived admin JWT locally
-# from the JWT_SECRET in /etc/dockpanel/api.env (which additionally needs
+# from the JWT_SECRET in /etc/arsy/api.env (which additionally needs
 # python3 with PyJWT — a bare CI runner has neither, so CI sets the password).
 # The CSRF-gate sub-test works in either mode because the minted token is
 # equally valid as a cookie. Inserts a synthetic "online" server row so the
@@ -34,9 +34,9 @@
 # like its neighbours, with a job of its own (ci.yml `tier2-certpin`).
 set -uo pipefail
 
-API="${DOCKPANEL_API_URL:-http://127.0.0.1:3080}"
-ADMIN_EMAIL="${DOCKPANEL_TEST_EMAIL:-admin@dockpanel.dev}"
-ADMIN_PASSWORD="${DOCKPANEL_TEST_PASSWORD:-}"
+API="${ARSY_API_URL:-http://127.0.0.1:3080}"
+ADMIN_EMAIL="${ARSY_TEST_EMAIL:-admin@moonwitness.dev}"
+ADMIN_PASSWORD="${ARSY_TEST_PASSWORD:-}"
 
 PASS=0 FAIL=0 TOTAL=0
 
@@ -48,16 +48,16 @@ sect()  { echo; echo "── $1 ──"; }
 # unrunnable anywhere but the box that happens to have a container by that
 # name. The default is unchanged, so a developer box behaves exactly as
 # before; CI points it at its own postgres service.
-DB_CONTAINER="${DOCKPANEL_TEST_DB_CONTAINER:-dockpanel-postgres}"
+DB_CONTAINER="${ARSY_TEST_DB_CONTAINER:-arsy-postgres}"
 
 psql_exec() {
     # -q suppresses psql's command tags (e.g. "INSERT 0 1") so INSERT ... RETURNING
     # returns ONLY the returned row.
-    docker exec "$DB_CONTAINER" psql -U dockpanel -d dockpanel -qtAc "$1" 2>/dev/null
+    docker exec "$DB_CONTAINER" psql -U arsy -d arsy -qtAc "$1" 2>/dev/null
 }
 
 echo "═══════════════════════════════════════════════"
-echo "  DockPanel Tier 2 Cert Pin E2E Test Suite"
+echo "  ARSY Tier 2 Cert Pin E2E Test Suite"
 echo "═══════════════════════════════════════════════"
 
 # ── Prove the database is reachable, before asking it anything ────────────
@@ -67,10 +67,10 @@ echo "════════════════════════�
 # ask is one whose empty answer already means something else entirely. Without
 # this probe a mistyped container name reports "Admin user row not found" and
 # sends whoever is fixing it to the users table.
-if ! DB_ERR=$(docker exec "$DB_CONTAINER" psql -U dockpanel -d dockpanel -qtAc 'SELECT 1' 2>&1); then
+if ! DB_ERR=$(docker exec "$DB_CONTAINER" psql -U arsy -d arsy -qtAc 'SELECT 1' 2>&1); then
     echo "FATAL: cannot reach the test database through container '$DB_CONTAINER'."
     echo "       $DB_ERR"
-    echo "       Point DOCKPANEL_TEST_DB_CONTAINER at the postgres container to use."
+    echo "       Point ARSY_TEST_DB_CONTAINER at the postgres container to use."
     exit 1
 fi
 
@@ -83,8 +83,8 @@ fi
 
 # ── Obtain admin JWT ──────────────────────────────────────────────────────
 # Strategy:
-#   1. If DOCKPANEL_TEST_PASSWORD is set, log in via /api/auth/login → cookie.
-#   2. Otherwise, if /etc/dockpanel/api.env is readable, mint a short-lived
+#   1. If ARSY_TEST_PASSWORD is set, log in via /api/auth/login → cookie.
+#   2. Otherwise, if /etc/arsy/api.env is readable, mint a short-lived
 #      admin JWT locally using the panel's JWT_SECRET. This lets the test
 #      run as part of dev smoke-checks without hard-coding a password.
 # The token is used as a Bearer header (CSRF-exempt). The CSRF-gate test
@@ -98,8 +98,8 @@ if [ -n "$ADMIN_PASSWORD" ]; then
         | grep -oP 'token=\K[^;]+')
     BEARER_TOKEN="$COOKIE_TOKEN"
 fi
-if [ -z "$BEARER_TOKEN" ] && [ -r /etc/dockpanel/api.env ]; then
-    JWT_SECRET=$(grep -E '^JWT_SECRET=' /etc/dockpanel/api.env | cut -d= -f2-)
+if [ -z "$BEARER_TOKEN" ] && [ -r /etc/arsy/api.env ]; then
+    JWT_SECRET=$(grep -E '^JWT_SECRET=' /etc/arsy/api.env | cut -d= -f2-)
     if [ -n "$JWT_SECRET" ]; then
         # Pass secret + UID + email via env so no interpolation into the
         # Python source (safe against any odd characters in the secret).
@@ -118,7 +118,7 @@ PYEOF
 fi
 if [ -z "$BEARER_TOKEN" ]; then
     echo "FATAL: Could not obtain an admin token."
-    echo "       Set DOCKPANEL_TEST_PASSWORD=<password> or run with read access to /etc/dockpanel/api.env."
+    echo "       Set ARSY_TEST_PASSWORD=<password> or run with read access to /etc/arsy/api.env."
     exit 1
 fi
 BEARER="Authorization: Bearer $BEARER_TOKEN"

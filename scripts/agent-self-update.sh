@@ -1,22 +1,22 @@
 #!/usr/bin/env bash
 #
-# DockPanel — update the AGENT binary on a remote (agent-only) server.
+# ARSY — update the AGENT binary on a remote (agent-only) server.
 #
 # This is what a fleet rolling update actually runs on each member box. It is
-# compiled into dockpanel-agent (`include_str!`) and written to
-# /var/lib/dockpanel/agent-self-update.sh at update time, so it cannot drift
-# from the binary that invokes it and needs nothing from /opt/dockpanel
+# compiled into arsy-agent (`include_str!`) and written to
+# /var/lib/arsy/agent-self-update.sh at update time, so it cannot drift
+# from the binary that invokes it and needs nothing from /opt/arsy
 # (lessons #35/#38 — a repo-side file no installer deploys is dev fiction).
 #
 # WHY THIS EXISTS AT ALL — measured on a two-box lab, s232:
-#   The agent used to shell out to /opt/dockpanel/scripts/update.sh. Two things
+#   The agent used to shell out to /opt/arsy/scripts/update.sh. Two things
 #   were wrong with that, and the second is why the first could not simply be
 #   "fixed" by shipping the repo to agent boxes:
 #
-#   1. `scripts/install-agent.sh` never creates /opt/dockpanel. On a real
+#   1. `scripts/install-agent.sh` never creates /opt/arsy. On a real
 #      agent-only box `/opt` holds nothing but containerd. So every fleet update
 #      died instantly with `500: update script not found at
-#      /opt/dockpanel/scripts/update.sh` — and install-agent.sh is the only
+#      /opt/arsy/scripts/update.sh` — and install-agent.sh is the only
 #      documented way to add a remote server, so the feature's success rate on
 #      its entire target population was zero.
 #
@@ -24,7 +24,7 @@
 #      container, replaces the API and the frontend, rewrites nginx. An
 #      agent-only box has none of that. Planting the repo and re-running the
 #      fleet update produced, on the lab: `Error response from daemon: No such
-#      container: dockpanel-postgres` → `[x] Database backup failed, aborting
+#      container: arsy-postgres` → `[x] Database backup failed, aborting
 #      upgrade` → exit 1, one second after the panel had already recorded the
 #      server as **succeeded**. Fixing only (1) would have turned a loud, safe
 #      500 into a silent false success on every box in the fleet — lesson #50.
@@ -33,7 +33,7 @@
 #   swap it, restart the unit, and prove the running version changed.
 #
 # WHY A PID1-OWNED TRANSIENT UNIT:
-#   This script restarts dockpanel-agent.service, and that unit is
+#   This script restarts arsy-agent.service, and that unit is
 #   KillMode=control-group (systemd's default). Anything left in the unit's
 #   cgroup — including the process doing the restarting — is SIGTERMed. The
 #   agent launches this via `systemd-run --collect --unit=`, and the guard below
@@ -45,12 +45,12 @@
 #   so the flag itself must not appear here, not even in a comment.
 #
 # Env:
-#   DOCKPANEL_VERSION                   required, `vX.Y.Z` release tag
-#   DOCKPANEL_AGENT_UPDATE_DETACHED     set by the caller once detached
-#   DOCKPANEL_GITHUB_REPO               optional override (default ovexro/dockpanel)
-#   DOCKPANEL_AGENT_BIN                 optional override of the binary path
+#   ARSY_VERSION                   required, `vX.Y.Z` release tag
+#   ARSY_AGENT_UPDATE_DETACHED     set by the caller once detached
+#   ARSY_GITHUB_REPO               optional override (default A-L-L-A-H/mw-arsy)
+#   ARSY_AGENT_BIN                 optional override of the binary path
 #
-# The result is ALWAYS written to /var/lib/dockpanel/last-agent-update.json,
+# The result is ALWAYS written to /var/lib/arsy/last-agent-update.json,
 # on every exit path including the abort trap — a run that failed and a run that
 # never happened are otherwise indistinguishable (lesson #52).
 #
@@ -59,24 +59,24 @@
 
 set -euo pipefail
 
-TARGET="${DOCKPANEL_VERSION:?DOCKPANEL_VERSION is required (vX.Y.Z)}"
-GITHUB_REPO="${DOCKPANEL_GITHUB_REPO:-ovexro/dockpanel}"
-AGENT_BIN="${DOCKPANEL_AGENT_BIN:-/usr/local/bin/dockpanel-agent}"
-SOCKET="${DOCKPANEL_AGENT_SOCKET:-/var/run/dockpanel/agent.sock}"
+TARGET="${ARSY_VERSION:?ARSY_VERSION is required (vX.Y.Z)}"
+GITHUB_REPO="${ARSY_GITHUB_REPO:-A-L-L-A-H/mw-arsy}"
+AGENT_BIN="${ARSY_AGENT_BIN:-/usr/local/bin/arsy-agent}"
+SOCKET="${ARSY_AGENT_SOCKET:-/var/run/arsy/agent.sock}"
 
-STATE_DIR=/var/lib/dockpanel
+STATE_DIR=/var/lib/arsy
 RESULT="$STATE_DIR/last-agent-update.json"
-LOG_TAG=dockpanel-agent-update
+LOG_TAG=arsy-agent-update
 
 # Re-exec outside the agent's own cgroup if we are somehow inside it.
-if [ -z "${DOCKPANEL_AGENT_UPDATE_DETACHED:-}" ] && command -v systemd-run >/dev/null 2>&1; then
-    if grep -q 'dockpanel-agent\.service' /proc/self/cgroup 2>/dev/null; then
-        echo "[agent-update] re-executing outside dockpanel-agent.service's cgroup"
+if [ -z "${ARSY_AGENT_UPDATE_DETACHED:-}" ] && command -v systemd-run >/dev/null 2>&1; then
+    if grep -q 'arsy-agent\.service' /proc/self/cgroup 2>/dev/null; then
+        echo "[agent-update] re-executing outside arsy-agent.service's cgroup"
         exec systemd-run --quiet --collect \
-            --unit="dockpanel-agent-update-manual-$$" \
-            --setenv=DOCKPANEL_AGENT_UPDATE_DETACHED=1 \
-            --setenv=DOCKPANEL_VERSION="$TARGET" \
-            --setenv=DOCKPANEL_GITHUB_REPO="$GITHUB_REPO" \
+            --unit="arsy-agent-update-manual-$$" \
+            --setenv=ARSY_AGENT_UPDATE_DETACHED=1 \
+            --setenv=ARSY_VERSION="$TARGET" \
+            --setenv=ARSY_GITHUB_REPO="$GITHUB_REPO" \
             bash "$0"
     fi
 fi
@@ -193,7 +193,7 @@ case "$(uname -m)" in
     aarch64|arm64)   ARCH_LABEL=arm64 ;;
     *) fail arch "unsupported architecture $(uname -m)" ;;
 esac
-ASSET="dockpanel-agent-linux-${ARCH_LABEL}"
+ASSET="arsy-agent-linux-${ARCH_LABEL}"
 BASE="https://github.com/${GITHUB_REPO}/releases/download/${TARGET}"
 
 # ── 2. Download to a file, then verify, then install ─────────────────────
@@ -236,7 +236,7 @@ chmod 0755 "$WORK/agent"
 # rename is atomic.
 stage="swap"
 BIN_DIR="$(dirname "$AGENT_BIN")"
-STAGED="${BIN_DIR}/.dockpanel-agent.new.$$"
+STAGED="${BIN_DIR}/.arsy-agent.new.$$"
 BACKUP="${AGENT_BIN}.bak"
 
 mv -f "$WORK/agent" "$STAGED" || fail swap "could not stage the new binary into $BIN_DIR"
@@ -283,13 +283,13 @@ log "binary swapped ($SIZE bytes)"
 # path list at all. This is how they get the real one. (The directives are not
 # named here on purpose — the pin suite greps the installers for them.)
 stage="unit"
-UNIT_PATH=/etc/systemd/system/dockpanel-agent.service
+UNIT_PATH=/etc/systemd/system/arsy-agent.service
 UNIT_BACKUP=""
 # Bounded for the same reason install-agent.sh bounds it: a binary that predates
 # the flag ignores it and starts the daemon instead, which would hang this
 # updater for ever inside its transient unit rather than skipping the step.
 if timeout 15 "$AGENT_BIN" --print-unit > "$WORK/unit" 2>/dev/null \
-   && grep -q '^ExecStart=/usr/local/bin/dockpanel-agent' "$WORK/unit"; then
+   && grep -q '^ExecStart=/usr/local/bin/arsy-agent' "$WORK/unit"; then
     if ! cmp -s "$WORK/unit" "$UNIT_PATH" 2>/dev/null; then
         # The directories first, always. An unprefixed ReadWritePaths entry that
         # does not exist fails the namespace mount and the agent does not start
@@ -319,7 +319,7 @@ fi
 # The whole point. "The service came back up" is a step, not an outcome
 # (lesson #49) — the outcome is what /health reports afterwards.
 stage="restart"
-systemctl restart dockpanel-agent || log "systemctl restart returned non-zero; still checking the outcome"
+systemctl restart arsy-agent || log "systemctl restart returned non-zero; still checking the outcome"
 
 stage="verify-running"
 NEW_VERSION=""
@@ -357,7 +357,7 @@ if [ "$NEW_VERSION" != "$TARGET_CLEAN" ]; then
     if [ -f "$BACKUP" ]; then
         # `mv` again: the new agent may well be running from that path right now.
         if mv -f "$BACKUP" "$AGENT_BIN"; then
-            systemctl restart dockpanel-agent || log "restart after rollback returned non-zero"
+            systemctl restart arsy-agent || log "restart after rollback returned non-zero"
             sleep 3
             back="$(running_version || true)"
             if [ -n "$back" ]; then

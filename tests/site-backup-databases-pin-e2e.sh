@@ -22,7 +22,7 @@
 #      restored + database not is the dangerous state: the site is running
 #      restored files against its previous content and the operator must be told.
 #
-# The behavioural half of this lives in `cargo test -p dockpanel-agent
+# The behavioural half of this lives in `cargo test -p arsy-agent
 # db_payload_tests`, which round-trips a real archive. This script needs no
 # running panel.
 #   run: bash tests/site-backup-databases-pin-e2e.sh

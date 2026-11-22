@@ -506,7 +506,7 @@ async fn delete_site(
     // under its siblings. That does not fail now — nginx is already serving from
     // memory — it fails at the next `nginx -t` anyone triggers, and leaves nginx
     // down box-wide at the next full restart.
-    let ssl_dir = format!("/etc/dockpanel/ssl/{domain}");
+    let ssl_dir = format!("/etc/arsy/ssl/{domain}");
     if std::path::Path::new(&ssl_dir).exists() {
         if services::ownership::cert_dir_in_use_elsewhere(&domain) {
             tracing::warn!(
@@ -633,7 +633,7 @@ async fn get_site(
     }
 
     let config_path = format!("{}/{domain}.conf", services::nginx::sites_dir());
-    let ssl_cert_path = format!("/etc/dockpanel/ssl/{domain}/fullchain.pem");
+    let ssl_cert_path = format!("/etc/arsy/ssl/{domain}/fullchain.pem");
     let config_exists = std::path::Path::new(&config_path).exists();
     let ssl_enabled = std::path::Path::new(&ssl_cert_path).exists();
 
@@ -682,7 +682,7 @@ fn copy_dir_shallow(src: &str, dst: &str) -> std::io::Result<()> {
 /// panel keeps listing the rows and answers a restore with a path that does
 /// not exist.
 fn domain_backup_trees(old_domain: &str, new_domain: &str) -> Vec<(String, String)> {
-    let root = "/var/backups/dockpanel";
+    let root = "/var/backups/arsy";
     vec![
         (format!("{root}/{old_domain}"), format!("{root}/{new_domain}")),
         (
@@ -870,8 +870,8 @@ async fn rename_site(
     // would take the whole server's config invalid — the same outage from the
     // other side. A copy is a duplicate that renewal will not refresh, and that
     // is worth saying out loud rather than discovering at expiry.
-    let old_ssl = format!("/etc/dockpanel/ssl/{old_domain}");
-    let new_ssl = format!("/etc/dockpanel/ssl/{new_domain}");
+    let old_ssl = format!("/etc/arsy/ssl/{old_domain}");
+    let new_ssl = format!("/etc/arsy/ssl/{new_domain}");
     if std::path::Path::new(&old_ssl).exists() {
         if services::ownership::cert_dir_in_use_elsewhere(&old_domain) {
             tracing::warn!(
@@ -1018,7 +1018,7 @@ async fn rename_site(
     // alone, remote pruning silently stops matching this site's archives — and
     // starts matching the previous occupant's if the old name is ever reused.
     if !carried.is_empty() {
-        let moved_dir = format!("/var/backups/dockpanel/{new_domain}");
+        let moved_dir = format!("/var/backups/arsy/{new_domain}");
         let old_prefix = format!("{old_domain}-");
         let new_prefix = format!("{new_domain}-");
         if let Ok(entries) = std::fs::read_dir(&moved_dir) {
@@ -2284,7 +2284,7 @@ async fn redis_enable(
 
             // Insert Redis config before "That's all, stop editing!" or before first require
             let redis_config = format!(
-                "// Redis Object Cache (managed by DockPanel)\n\
+                "// Redis Object Cache (managed by ARSY)\n\
                  define('WP_REDIS_HOST', '127.0.0.1');\n\
                  define('WP_REDIS_PORT', 6379);\n\
                  define('WP_REDIS_DATABASE', {redis_db});\n\
@@ -2356,7 +2356,7 @@ async fn redis_disable(
                 .filter(|l| {
                     !l.contains("WP_REDIS_") &&
                     !l.contains("WP_CACHE_KEY_SALT") &&
-                    !l.contains("// Redis Object Cache (managed by DockPanel)")
+                    !l.contains("// Redis Object Cache (managed by ARSY)")
                 })
                 .collect();
             let _ = std::fs::write(&wp_config, cleaned.join("\n"));
@@ -2449,7 +2449,7 @@ async fn waf_configure(
     let has_crs = std::path::Path::new(&format!("{crs_dir}/crs-setup.conf")).exists();
 
     let config = format!(
-        "# WAF config for {domain} (managed by DockPanel)\n\
+        "# WAF config for {domain} (managed by ARSY)\n\
          Include /etc/modsecurity/modsecurity.conf\n\
          SecRuleEngine {engine}\n\
          SecAuditLog {log_dir}/{safe_domain}_audit.log\n\
@@ -2819,7 +2819,7 @@ mod traffic_delta_tests {
         static COUNTER: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
         let n = COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         let path = std::env::temp_dir().join(format!(
-            "dockpanel-traffic-delta-test-{}-{n}",
+            "arsy-traffic-delta-test-{}-{n}",
             std::process::id()
         ));
         let mut f = std::fs::File::create(&path).unwrap();
@@ -2889,7 +2889,7 @@ mod traffic_delta_tests {
 
     #[tokio::test]
     async fn read_and_advance_on_a_missing_file_returns_zero_and_the_same_offset() {
-        let (sum, offset) = read_and_advance("/nonexistent/dockpanel-test-path.log", 42).await;
+        let (sum, offset) = read_and_advance("/nonexistent/arsy-test-path.log", 42).await;
         assert_eq!(sum, 0);
         assert_eq!(offset, 42);
     }

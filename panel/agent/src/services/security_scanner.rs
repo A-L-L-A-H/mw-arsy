@@ -89,7 +89,7 @@ const SECRET_PATTERNS: &[SecretPattern] = &[
 
 /// File types scanned for secrets — source + config where credentials get hardcoded.
 /// `.env*` is deliberately NOT included: an env file is the CORRECT home for a secret (and
-/// DockPanel's nginx blocks dotfiles from being served), so flagging one would be pure noise.
+/// ARSY's nginx blocks dotfiles from being served), so flagging one would be pure noise.
 const SECRET_INCLUDE_GLOBS: &[&str] = &[
     "*.php", "*.js", "*.jsx", "*.ts", "*.tsx", "*.mjs", "*.cjs", "*.py", "*.rb",
     "*.go", "*.java", "*.cs", "*.yml", "*.yaml", "*.json", "*.xml", "*.ini",
@@ -166,7 +166,7 @@ async fn scan_malware() -> Vec<Finding> {
     let mut findings = Vec::new();
 
     // Scan site directories for suspicious filenames
-    let web_roots = ["/var/www", "/etc/dockpanel/sites"];
+    let web_roots = ["/var/www", "/etc/arsy/sites"];
     for root in &web_roots {
         if let Ok(output) = tokio::time::timeout(
             std::time::Duration::from_secs(60),
@@ -236,7 +236,7 @@ async fn scan_open_ports() -> Vec<Finding> {
     let mut findings = Vec::new();
     let mut seen_ports = std::collections::HashSet::new();
 
-    // Expected ports on a web/panel server. This list means "ports DockPanel
+    // Expected ports on a web/panel server. This list means "ports ARSY
     // itself puts here", so an entry outlives its listener as a blind spot:
     // 9090 was dropped in s305 with the loopback command-forwarding listener
     // that bound it. Anything answering on 9090 now is genuinely not ours and
@@ -306,7 +306,7 @@ async fn scan_open_ports() -> Vec<Finding> {
 async fn scan_ssl_expiry() -> Vec<Finding> {
     let mut findings = Vec::new();
 
-    let ssl_dir = "/etc/dockpanel/ssl";
+    let ssl_dir = "/etc/arsy/ssl";
     let mut entries = match tokio::fs::read_dir(ssl_dir).await {
         Ok(e) => e,
         Err(_) => return findings,
@@ -405,7 +405,7 @@ async fn scan_container_vulnerabilities() -> Vec<Finding> {
         Err(_) => return Vec::new(),
     };
 
-    // List DockPanel-managed containers
+    // List ARSY-managed containers
     let containers = docker
         .list_containers(Some(bollard::container::ListContainersOptions::<String> {
             all: false,
@@ -413,7 +413,7 @@ async fn scan_container_vulnerabilities() -> Vec<Finding> {
                 let mut f = HashMap::new();
                 f.insert(
                     "label".to_string(),
-                    vec!["dockpanel.managed=true".to_string()],
+                    vec!["arsy.managed=true".to_string()],
                 );
                 f
             },
@@ -576,7 +576,7 @@ async fn scan_security_headers() -> Vec<Finding> {
         let filename = path.file_name().and_then(|f| f.to_str()).unwrap_or("");
 
         // Skip non-site configs
-        if !filename.ends_with(".conf") || filename == "dockpanel.dev.conf" {
+        if !filename.ends_with(".conf") || filename == "moonwitness.dev.conf" {
             continue;
         }
         let domain = filename.trim_end_matches(".conf");
@@ -677,7 +677,7 @@ async fn scan_secrets_in(roots: &[&str]) -> Vec<Finding> {
                         file_path: Some(file),
                         remediation: Some(
                             "Move the secret out of the webroot into an environment variable \
-                             (a .env file is not served by DockPanel's nginx) and rotate the \
+                             (a .env file is not served by ARSY's nginx) and rotate the \
                              exposed credential."
                                 .into(),
                         ),
@@ -756,7 +756,7 @@ mod secret_scan_tests {
         const AWS_ID: &str = "AKIA1234567890ABCDEF";
         const PW_VAL: &str = "Sup3rSecretValue123";
 
-        let base = format!("/tmp/dockpanel-sectest-{}", uuid::Uuid::new_v4());
+        let base = format!("/tmp/arsy-sectest-{}", uuid::Uuid::new_v4());
         let site = format!("{base}/site");
         let node_modules = format!("{site}/node_modules/pkg");
         std::fs::create_dir_all(&node_modules).unwrap();

@@ -31,7 +31,7 @@ oversize the server answers with the same sentence instead of an unreadable
 `413`. Two larger numbers used to sit in the code — 100 MB in the panel, 50 MB
 in the agent — and neither could ever fire, so the panel advertised a limit
 forty times the one it enforced and then refused in silence. That was
-[issue #121](https://github.com/ovexro/dockpanel/issues/121); both numbers now
+[issue #121](https://github.com/A-L-L-A-H/mw-arsy/issues/121); both numbers now
 read 1.5 MB.
 
 ## Other upload limits, and which is which

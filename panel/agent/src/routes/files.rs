@@ -194,7 +194,7 @@ async fn delete_entry(
 /// and this handler is reachable by the site's own non-admin owner. The
 /// agent — the one process per box mediating deploys/backups/terminal/Docker
 /// for every tenant — runs under a 512MB `MemoryMax` cgroup
-/// (`dockpanel-agent.service`); `tokio::fs::read`-ing an arbitrarily large
+/// (`arsy-agent.service`); `tokio::fs::read`-ing an arbitrarily large
 /// file into a `Vec<u8>` before sending a single response byte let an
 /// ordinary tenant OOM-kill it with one request.
 async fn download_file(

@@ -11,16 +11,16 @@
 //!
 //! ## What this used to do, and why it was wrong (s232, measured on a lab)
 //!
-//! It ran `/opt/dockpanel/scripts/update.sh`. Two defects, and the second is
+//! It ran `/opt/arsy/scripts/update.sh`. Two defects, and the second is
 //! why the first could not just be patched by shipping the repo:
 //!
-//! 1. `install-agent.sh` never creates `/opt/dockpanel`. Every fleet update
+//! 1. `install-agent.sh` never creates `/opt/arsy`. Every fleet update
 //!    against a real agent-only box died in 166 ms with `500: update script
 //!    not found`, and that installer is the only documented way to add a
 //!    remote server — so the feature never worked on any box it targeted.
 //! 2. `update.sh` is the *panel* updater: it wants a git repo, a postgres
 //!    container, an API, a frontend, nginx. Planting the repo and re-running
-//!    it produced `No such container: dockpanel-postgres` → `Database backup
+//!    it produced `No such container: arsy-postgres` → `Database backup
 //!    failed, aborting upgrade` — one second *after* the panel had recorded
 //!    the server as **succeeded**, because `update.sh` re-execs itself into a
 //!    transient unit with `exec systemd-run` (no `--wait`), so the child this
@@ -43,20 +43,20 @@ use tokio::process::Command;
 
 use super::AppState;
 
-/// The panel updater, present only on full DockPanel installs.
-const UPDATE_SCRIPT: &str = "/opt/dockpanel/scripts/update.sh";
+/// The panel updater, present only on full ARSY installs.
+const UPDATE_SCRIPT: &str = "/opt/arsy/scripts/update.sh";
 /// Present on a full install only; used to tell a panel box from an agent box.
-const API_BIN: &str = "/usr/local/bin/dockpanel-api";
+const API_BIN: &str = "/usr/local/bin/arsy-api";
 
 /// The agent-only updater. Compiled in rather than read from disk for the same
 /// reason the restore procedure is (lessons #35/#38): a remote agent box has no
 /// repo, and a script the running binary merely hopes is in sync is drift.
 const AGENT_UPDATE_SCRIPT: &str = include_str!("../../../../scripts/agent-self-update.sh");
-const AGENT_UPDATE_SCRIPT_PATH: &str = "/var/lib/dockpanel/agent-self-update.sh";
+const AGENT_UPDATE_SCRIPT_PATH: &str = "/var/lib/arsy/agent-self-update.sh";
 /// Where `agent-self-update.sh` records what actually happened. Read back after
 /// the restart it performs, because the agent's in-memory state does not
 /// survive its own update.
-const AGENT_UPDATE_RESULT_PATH: &str = "/var/lib/dockpanel/last-agent-update.json";
+const AGENT_UPDATE_RESULT_PATH: &str = "/var/lib/arsy/last-agent-update.json";
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(tag = "state", rename_all = "snake_case")]
@@ -259,7 +259,7 @@ enum UpdateMode {
 }
 
 async fn write_agent_update_script() -> std::io::Result<()> {
-    tokio::fs::create_dir_all("/var/lib/dockpanel").await?;
+    tokio::fs::create_dir_all("/var/lib/arsy").await?;
     tokio::fs::write(AGENT_UPDATE_SCRIPT_PATH, AGENT_UPDATE_SCRIPT).await?;
     #[cfg(unix)]
     {
@@ -273,14 +273,14 @@ async fn write_agent_update_script() -> std::io::Result<()> {
 }
 
 async fn run_update_subprocess(target: String, mode: UpdateMode) {
-    // Both updaters restart dockpanel-agent.service, and that unit is
+    // Both updaters restart arsy-agent.service, and that unit is
     // KillMode=control-group — so anything still in this process's cgroup when
     // that happens is SIGTERMed mid-update. PID1 has to own the work
     // (lesson #47). `update.sh` self-detaches the same way; doing it here too
     // means the agent path does not depend on the remote box's copy of a script
     // being new enough to protect itself.
     let unit = format!(
-        "dockpanel-agent-update-{}",
+        "arsy-agent-update-{}",
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .map(|d| d.as_millis())
@@ -291,18 +291,18 @@ async fn run_update_subprocess(target: String, mode: UpdateMode) {
     cmd.arg("--quiet")
         .arg("--collect")
         .arg(format!("--unit={unit}"))
-        .arg(format!("--setenv=DOCKPANEL_VERSION={target}"));
+        .arg(format!("--setenv=ARSY_VERSION={target}"));
 
     match mode {
         UpdateMode::FullPanel => {
             cmd.arg("--setenv=INSTALL_FROM_RELEASE=1")
-                .arg("--setenv=DOCKPANEL_NO_SELF_REFRESH=1")
-                .arg("--setenv=DOCKPANEL_UPDATE_DETACHED=1")
+                .arg("--setenv=ARSY_NO_SELF_REFRESH=1")
+                .arg("--setenv=ARSY_UPDATE_DETACHED=1")
                 .arg("bash")
                 .arg(UPDATE_SCRIPT);
         }
         UpdateMode::AgentOnly => {
-            cmd.arg("--setenv=DOCKPANEL_AGENT_UPDATE_DETACHED=1")
+            cmd.arg("--setenv=ARSY_AGENT_UPDATE_DETACHED=1")
                 .arg("bash")
                 .arg(AGENT_UPDATE_SCRIPT_PATH);
         }
@@ -656,7 +656,7 @@ mod tests {
         let rb = &s[s.find("stage=\"rollback\"").expect("no rollback branch")..];
         let rb = &rb[..rb.find("rm -f \"$BACKUP\"").unwrap_or(rb.len())];
         assert!(
-            !rb.contains(concat!("mv -f \"$BACKUP\" \"$AGENT_BIN\" && ", "systemctl restart dockpanel-agent || true")),
+            !rb.contains(concat!("mv -f \"$BACKUP\" \"$AGENT_BIN\" && ", "systemctl restart arsy-agent || true")),
             "a restore must not be suffixed with a status-swallowing || true"
         );
         assert!(

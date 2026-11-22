@@ -1,12 +1,12 @@
 [package]
-name = "dockpanel"
+name = "arsy"
 version = "2.242.1"
 license = "AGPL-3.0-only"
 edition = "2024"
-description = "CLI for DockPanel — self-hosted server management"
+description = "CLI for ARSY — self-hosted server management"
 
 [[bin]]
-name = "dockpanel"
+name = "arsy"
 path = "src/main.rs"
 
 [profile.release]

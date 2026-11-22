@@ -229,7 +229,7 @@ pub async fn send_notification(
                     "event_action": event_action,
                     "payload": {
                         "summary": subject,
-                        "source": "DockPanel",
+                        "source": "ARSY",
                         "severity": severity,
                         "custom_details": { "message": message },
                     },
@@ -258,7 +258,7 @@ pub async fn send_notification(
                 "message": custom_message,
                 "severity": severity,
                 "timestamp": chrono::Utc::now().to_rfc3339(),
-                "source": "dockpanel"
+                "source": "arsy"
             })).await;
         }
     }
@@ -431,7 +431,7 @@ pub async fn send_notification_with_runbook(
                     "event_action": event_action,
                     "payload": {
                         "summary": subject,
-                        "source": "DockPanel",
+                        "source": "ARSY",
                         "severity": severity,
                         "custom_details": custom_details,
                     },
@@ -460,7 +460,7 @@ pub async fn send_notification_with_runbook(
                 "message": custom_message,
                 "severity": severity,
                 "timestamp": chrono::Utc::now().to_rfc3339(),
-                "source": "dockpanel",
+                "source": "arsy",
             });
             if let Some(excerpt) = runbook_excerpt {
                 payload["runbook_excerpt"] = serde_json::json!(excerpt);
@@ -1386,7 +1386,7 @@ pub async fn try_fire_alert(
 
     // Build the notification payload once — both the NULL-policy fan-out and the
     // policy-driven fan-out reuse it.
-    let subject = format!("DockPanel Alert: {title}");
+    let subject = format!("ARSY Alert: {title}");
     let html = format!(
         "<div style=\"font-family:sans-serif;max-width:600px;margin:0 auto\">\
          <h2 style=\"color:{}\">{title}</h2>\
@@ -1614,7 +1614,7 @@ pub async fn resolve_alert(
         if is_type_muted(&channels, alert_type) {
             tracing::debug!("Alert type '{alert_type}' muted for user {user_id} — skipping recovery notice");
         } else {
-            let subject = format!("DockPanel Resolved: {title}");
+            let subject = format!("ARSY Resolved: {title}");
             let html = format!(
                 "<div style=\"font-family:sans-serif;max-width:600px;margin:0 auto\">\
                  <h2 style=\"color:#10b981\">{title}</h2>\

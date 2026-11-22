@@ -148,7 +148,7 @@ has_code()   { local f="$1"; shift; [ "$(code_count "$f" "$@")" -gt 0 ]; }
 # True file line numbers, because code_lines blanks rather than deletes.
 code_lineno() { local f="$1"; shift; code_lines "$f" | grep -n "$@" 2>/dev/null | head -1 | cut -d: -f1 || true; }
 
-UNIT=panel/agent/dockpanel-agent.service
+UNIT=panel/agent/arsy-agent.service
 SETUP=scripts/setup.sh
 UPDATE=scripts/update.sh
 
@@ -269,7 +269,7 @@ fi
 # moving the mkdir loop below the unit install and leaving a comment behind kept
 # this arm green AND made it print the comment's line number as its evidence.
 MK_LINE=$(code_lineno "$UPDATE" -F -e 'for d in $(agent_rwp_dirs)')
-CP_LINE=$(code_lineno "$UPDATE" -F -e 'cp "$AGENT_SRC/dockpanel-agent.service"')
+CP_LINE=$(code_lineno "$UPDATE" -F -e 'cp "$AGENT_SRC/arsy-agent.service"')
 if [ -n "$MK_LINE" ] && [ -n "$CP_LINE" ] && [ "$MK_LINE" -lt "$CP_LINE" ]; then
   ok "update.sh creates the directories (line $MK_LINE) before installing the unit (line $CP_LINE)"
 else
@@ -410,10 +410,10 @@ else
   bad "the agent no longer embeds the unit — install-agent.sh has nothing to ask for"
 fi
 
-if has_code "$AGENT_UNIT_RS" -F -e 'include_str!("../../dockpanel-agent.service")'; then
+if has_code "$AGENT_UNIT_RS" -F -e 'include_str!("../../arsy-agent.service")'; then
   ok "it embeds THAT unit, not a copy kept beside it"
 else
-  bad "the embedded unit no longer points at panel/agent/dockpanel-agent.service — a fourth mirror"
+  bad "the embedded unit no longer points at panel/agent/arsy-agent.service — a fourth mirror"
 fi
 
 if has_code "$AGENT_MAIN" -E -e 'agent_unit::heal_agent_unit\(\)'; then
@@ -446,7 +446,7 @@ else
 fi
 
 SU_UNIT=$(code_lineno "$SELF_UPDATE" -F -e 'install -m 644 "$WORK/unit"')
-SU_RESTART=$(code_lineno "$SELF_UPDATE" -E -e '^systemctl restart dockpanel-agent')
+SU_RESTART=$(code_lineno "$SELF_UPDATE" -E -e '^systemctl restart arsy-agent')
 if [ -n "$SU_UNIT" ] && [ -n "$SU_RESTART" ] && [ "$SU_UNIT" -lt "$SU_RESTART" ]; then
   ok "$SELF_UPDATE swaps the unit (line $SU_UNIT) before the restart (line $SU_RESTART) that applies it"
 else
@@ -464,7 +464,7 @@ fi
 
 # 6c. One unit, two roles. Without the '-' the panel box refuses to start;
 # without the line the fleet member loses its token and never phones home.
-if has_code "$UNIT" -F -e 'EnvironmentFile=-/etc/dockpanel/agent.env'; then
+if has_code "$UNIT" -F -e 'EnvironmentFile=-/etc/arsy/agent.env'; then
   ok "the unit reads agent.env optionally, so it serves a panel box and a fleet member"
 else
   bad "the unit's EnvironmentFile is missing or no longer optional — one of the two roles cannot start"
@@ -576,7 +576,7 @@ fi
 # have was the loud kind: appending an ordinary usage comment naming the demo
 # host turned it red on a correct file. §11 plants a matching hostname in code to
 # prove it still fires.
-if has_code scripts/deploy-demo.sh -E -e '/home/[a-z]|[a-z0-9-]+\.dockpanel\.dev'; then
+if has_code scripts/deploy-demo.sh -E -e '/home/[a-z]|[a-z0-9-]+\.arsy\.dev'; then
   bad "scripts/deploy-demo.sh hardcodes a home directory or a panel hostname — those belong in the caller, not in the repo"
 else
   ok "scripts/deploy-demo.sh hardcodes no path or hostname of its own"
@@ -814,7 +814,7 @@ PINNED=(
   "$SETUP|-F|agent_rwp_dirs()"
   "$UPDATE|-F|agent_rwp_dirs()"
   "$UPDATE|-F|for d in \$(agent_rwp_dirs)"
-  "$UPDATE|-F|cp \"\$AGENT_SRC/dockpanel-agent.service\""
+  "$UPDATE|-F|cp \"\$AGENT_SRC/arsy-agent.service\""
   "$INSTALL_AGENT|-F|--print-unit >"
   "$INSTALL_AGENT|-F|sed 's/^-//'"
   "$INSTALL_AGENT|-F|ReadWritePaths="
@@ -825,18 +825,18 @@ PINNED=(
   "$SELF_UPDATE|-F|--print-unit >"
   "$SELF_UPDATE|-E|timeout [0-9]+ .*--print-unit"
   "$SELF_UPDATE|-F|install -m 644 \"\$WORK/unit\""
-  "$SELF_UPDATE|-E|^systemctl restart dockpanel-agent"
+  "$SELF_UPDATE|-E|^systemctl restart arsy-agent"
   "$SELF_UPDATE|-F|stage=\"rollback\""
   "$SELF_UPDATE|-F|\"\$UNIT_BACKUP\""
   "$AGENT_MAIN|-F|\"--print-unit\""
   "$AGENT_MAIN|-E|unknown option"
   "$AGENT_MAIN|-E|agent_unit::heal_agent_unit\\(\\)"
   "$AGENT_UNIT_RS|-E|AGENT_UNIT: &str = include_str!"
-  "$AGENT_UNIT_RS|-F|include_str!(\"../../dockpanel-agent.service\")"
+  "$AGENT_UNIT_RS|-F|include_str!(\"../../arsy-agent.service\")"
   "$AGENT_UNIT_RS|-F|LoadError"
   "$AGENT_UNIT_RS|-F|create_dir_all"
   "$AGENT_UNIT_RS|-F|fs::write(UNIT_PATH"
-  "$UNIT|-F|EnvironmentFile=-/etc/dockpanel/agent.env"
+  "$UNIT|-F|EnvironmentFile=-/etc/arsy/agent.env"
   "$UNIT|-E|^ReadWritePaths="
   "$UNIT|-E|^ProtectSystem=strict"
   "$STAGER|-F|scripts/install-agent.sh"
@@ -913,8 +913,8 @@ fi
 # actual demo hostname here would put an internal address in the tree for no
 # gain, and the pre-commit leak scan is right to complain about it.
 cp scripts/deploy-demo.sh "$FIXDIR/dd.sh"
-printf '\nDEMO_HOST=example.dockpanel.dev\n' >> "$FIXDIR/dd.sh"
-if has_code "$FIXDIR/dd.sh" -E -e '/home/[a-z]|[a-z0-9-]+\.dockpanel\.dev'; then
+printf '\nDEMO_HOST=example.moonwitness.dev\n' >> "$FIXDIR/dd.sh"
+if has_code "$FIXDIR/dd.sh" -E -e '/home/[a-z]|[a-z0-9-]+\.arsy\.dev'; then
   ok "§7d's hardcoded-hostname arm still fires when a hostname is really in code"
 else
   bad "§7d's hardcoded-hostname arm no longer fires on a real hostname — the stripper is eating code"

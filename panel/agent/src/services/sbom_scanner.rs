@@ -10,8 +10,8 @@ use crate::safe_cmd::safe_command;
 use std::time::Duration;
 
 // Same hardened-sandbox-compatible install location used by image_scanner.rs.
-const SYFT_DIR: &str = "/var/lib/dockpanel/scanners";
-const SYFT_BIN: &str = "/var/lib/dockpanel/scanners/syft";
+const SYFT_DIR: &str = "/var/lib/arsy/scanners";
+const SYFT_BIN: &str = "/var/lib/arsy/scanners/syft";
 
 // Same pinning rationale as image_scanner.rs's GRYPE_VERSION — see that comment.
 const SYFT_VERSION: &str = "v1.51.1";
@@ -21,7 +21,7 @@ pub async fn is_installed() -> bool {
     tokio::fs::metadata(SYFT_BIN).await.is_ok()
 }
 
-/// Install syft via Anchore's official installer script into the DockPanel
+/// Install syft via Anchore's official installer script into the ARSY
 /// data directory so the hardened agent sandbox can read/write it.
 pub async fn install_syft() -> Result<(), String> {
     if is_installed().await {

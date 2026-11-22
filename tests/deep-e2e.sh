@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# DockPanel Deep E2E Test Suite
+# ARSY Deep E2E Test Suite
 # Tests edge cases, advanced features, and failure modes.
 #
 # Usage: bash tests/deep-e2e.sh <host> [port]
@@ -42,7 +42,7 @@ api_get_status() { curl -s -o /dev/null -w "%{http_code}" -H "$(auth_header)" "$
 api_post_status() { curl -s -o /dev/null -w "%{http_code}" -H "$(auth_header)" -X POST "${API}$1" -H "Content-Type: application/json" -d "$2" 2>/dev/null; }
 
 echo ""
-echo -e "${BOLD}DockPanel Deep E2E Test Suite${NC}"
+echo -e "${BOLD}ARSY Deep E2E Test Suite${NC}"
 echo -e "Target: ${BASE}"
 echo ""
 
@@ -469,8 +469,8 @@ if [ -n "$PAIR_ID" ]; then
     # by its compose service key. Run inside the container, so it tests Docker's
     # embedded DNS on the stack's own network rather than the host resolver.
     sleep 4
-    CLIENT_CID=$(docker ps -aq --filter "label=dockpanel.stack_id=$PAIR_ID" \
-                              --filter "label=dockpanel.compose.service=client" | head -1)
+    CLIENT_CID=$(docker ps -aq --filter "label=arsy.stack_id=$PAIR_ID" \
+                              --filter "label=arsy.compose.service=client" | head -1)
     if [ -n "$CLIENT_CID" ]; then
         if docker exec "$CLIENT_CID" getent hosts store >/dev/null 2>&1; then
             ok "A service resolves its sibling by compose service key"
@@ -617,7 +617,7 @@ section "15. SETTINGS & SYSTEM DEEP"
 
 # Export IaC
 # IaC export (CLI defaults to table, check exit code)
-IAC_EXIT=$(ssh root@${HOST} "dockpanel export 2>/dev/null; echo \$?" 2>/dev/null | tail -1)
+IAC_EXIT=$(ssh root@${HOST} "arsy export 2>/dev/null; echo \$?" 2>/dev/null | tail -1)
 if [ "$IAC_EXIT" = "0" ]; then
     ok "IaC export via CLI"
 else
@@ -739,7 +739,7 @@ else
     fail "Sites remain: $FINAL_COUNT"
 fi
 
-LEFTOVER=$(ssh root@${HOST} "docker ps --filter 'label=dockpanel' --format '{{.Names}}' 2>/dev/null | grep -v postgres | wc -l" 2>/dev/null || echo "?")
+LEFTOVER=$(ssh root@${HOST} "docker ps --filter 'label=arsy' --format '{{.Names}}' 2>/dev/null | grep -v postgres | wc -l" 2>/dev/null || echo "?")
 if [ "$LEFTOVER" = "0" ]; then
     ok "Zero leftover containers"
 else

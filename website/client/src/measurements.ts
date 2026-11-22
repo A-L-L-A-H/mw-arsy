@@ -1,5 +1,5 @@
 /**
- * Every figure this site publishes about DockPanel, in one place.
+ * Every figure this site publishes about ARSY, in one place.
  *
  * The reason this file exists: s271 audited every number on the landing page
  * and corrected six of them, and s272 found three more still wrong in the same
@@ -36,7 +36,7 @@ export const measurements = {
    * Resident set on a live box, by cgroup accounting
    * (`systemctl show -p MemoryCurrent`), measured 2026-07-27.
    *
-   * No CI job can reproduce these — a GitHub runner has no DockPanel install —
+   * No CI job can reproduce these — a GitHub runner has no ARSY install —
    * so they expire instead: the scheduled check fails once the register's date
    * is older than its budget. A measurement nobody has retaken is a claim.
    */

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # The scheduled check — the mechanism for the rot CI structurally cannot see.
 #
-# DockPanel's documentation-truth register (memory: the four rot classes) says
+# ARSY's documentation-truth register (memory: the four rot classes) says
 # the same thing four times: different facts rot for different reasons, so one
 # mechanism cannot cover them.
 #
@@ -39,9 +39,9 @@ ok()   { PASS=$((PASS+1)); printf '  \033[0;32m✓\033[0m %s\n' "$1"; }
 bad()  { FAIL=$((FAIL+1)); printf '  \033[0;31m✗\033[0m %s\n' "$1"; }
 note() { printf '    \033[0;90m%s\033[0m\n' "$1"; }
 
-SITE=${SITE:-https://dockpanel.dev}
-DOCS=${DOCS:-https://docs.dockpanel.dev}
-REPO=${REPO:-ovexro/dockpanel}
+SITE=${SITE:-https://moonwitness.dev}
+DOCS=${DOCS:-https://docs.moonwitness.dev}
+REPO=${REPO:-A-L-L-A-H/mw-arsy}
 CURL=(curl -fsS --max-time 30 --retry 2 --retry-delay 3)
 
 # Two arms below call the GitHub API. Unauthenticated it allows 60 requests an
@@ -101,10 +101,10 @@ if "${CURL[@]}" -o "$INSTALL_TMP" "$INSTALL_URL" 2>/dev/null; then
     ok "it is not HTML"
   fi
   # It must be OUR installer, not merely a shell script.
-  if grep -q 'dockpanel' "$INSTALL_TMP"; then
-    ok "it mentions dockpanel"
+  if grep -q 'arsy' "$INSTALL_TMP"; then
+    ok "it mentions arsy"
   else
-    bad "$INSTALL_URL serves a shell script that never mentions dockpanel"
+    bad "$INSTALL_URL serves a shell script that never mentions arsy"
   fi
   # And it must be the one in this repository. The published copy is the file
   # nginx serves out of website/client/dist/, which is built from public/.
@@ -128,7 +128,7 @@ rm -f "$INSTALL_TMP"
 echo
 echo "── 1b. Class B — the SIBLING installer URL, one surface over ──"
 
-# Section 1 checks dockpanel.dev/install.sh. It was written at s272 for a failure
+# Section 1 checks moonwitness.dev/install.sh. It was written at s272 for a failure
 # mode that is not specific to that URL: nginx serves the SPA with a try_files
 # fallback, so a MISSING file answers 200 with index.html rather than 404, and
 # the advertised command pipes a web page into bash.
@@ -173,10 +173,10 @@ else
       ok "it is not HTML"
     fi
 
-    if grep -q 'dockpanel' "$PANEL_TMP"; then
-      ok "it mentions dockpanel"
+    if grep -q 'arsy' "$PANEL_TMP"; then
+      ok "it mentions arsy"
     else
-      bad "the panel serves a shell script at /install-agent.sh that never mentions dockpanel"
+      bad "the panel serves a shell script at /install-agent.sh that never mentions arsy"
     fi
 
     # And it must be THIS commit's installer. A stale copy left in the dist by an
@@ -374,9 +374,9 @@ elif rel=$("${GH_API[@]}" "https://api.github.com/repos/$REPO/releases/latest" 2
     fi
   }
 
-  check_asset "API binary"   dockpanel-api-linux-amd64
-  check_asset "Agent binary" dockpanel-agent-linux-amd64
-  check_asset "CLI binary"   dockpanel-cli-linux-amd64
+  check_asset "API binary"   arsy-api-linux-amd64
+  check_asset "Agent binary" arsy-agent-linux-amd64
+  check_asset "CLI binary"   arsy-cli-linux-amd64
 else
   bad "could not read the latest release of $REPO"
 fi
@@ -514,7 +514,7 @@ else
         fi
         rm -f "$fetched"
       else
-        bad "dockpanel.dev is serving a stale build — committed source builds to $built, the live page loads $served. Run npm run build in website/client and purge the Cloudflare cache."
+        bad "moonwitness.dev is serving a stale build — committed source builds to $built, the live page loads $served. Run npm run build in website/client and purge the Cloudflare cache."
       fi
     else
       bad "the SPA does not build from committed source"

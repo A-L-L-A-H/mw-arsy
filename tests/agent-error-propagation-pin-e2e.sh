@@ -2,7 +2,7 @@
 #
 # Pins the fix for issues #90, #91 and #92 — three separate reporters filing
 # three separate bugs against one defect: the panel told them "Agent offline —
-# the DockPanel agent is not responding" while the agent was answering
+# the ARSY agent is not responding" while the agent was answering
 # perfectly clearly ("Path must be within /var/backups/ or /tmp/", "WAF not
 # installed", a full nginx -t diagnostic).
 #

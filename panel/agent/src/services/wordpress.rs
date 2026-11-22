@@ -393,7 +393,7 @@ impl CanonicalUrlOutcome {
 /// Decide whether a stored canonical URL should be moved to HTTPS.
 ///
 /// Returns the replacement only when the stored value is exactly the plain-HTTP
-/// form of this vhost's own domain — the state DockPanel itself creates when it
+/// form of this vhost's own domain — the state ARSY itself creates when it
 /// installs a site before the certificate exists. Any other value (a different
 /// host, a sub-path, an already-secure URL) was chosen by the operator and is
 /// left alone: promoting it would silently repoint someone's site.
@@ -521,7 +521,7 @@ pub fn is_auto_update_enabled(domain: &str) -> bool {
 /// Create a pre-update snapshot (files + DB) for rollback.
 pub async fn create_update_snapshot(domain: &str) -> Result<String, String> {
     let _path = site_path(domain)?;
-    let snapshot_dir = format!("/var/backups/dockpanel/wp-snapshots/{domain}");
+    let snapshot_dir = format!("/var/backups/arsy/wp-snapshots/{domain}");
     std::fs::create_dir_all(&snapshot_dir)
         .map_err(|e| format!("Create snapshot dir: {e}"))?;
 

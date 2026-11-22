@@ -2,7 +2,7 @@
 #
 # Regression pin for the RESOURCE-MUTATION AUDIT LOG extension.
 #
-# WHAT THIS CLOSES. DockPanel already had two logging paths: `activity::
+# WHAT THIS CLOSES. ARSY already had two logging paths: `activity::
 # log_activity(...)`, which writes to the MUTABLE `activity_logs` table (no
 # trigger stops an UPDATE/DELETE on it), and `security_hardening::audit_log
 # (...)`, which writes to the IMMUTABLE `security_audit_log` table (a Postgres
@@ -12,7 +12,7 @@
 # OTHER destructive or privilege-sensitive action (deleting a site or server,
 # promoting/demoting a reseller, resetting another user's password or 2FA,
 # rotating a secret or server token, disabling SSH password auth, etc.) only
-# ever reached the mutable table. DockPanel supports teams/resellers/multiple
+# ever reached the mutable table. ARSY supports teams/resellers/multiple
 # admins, so a compromised admin account or a malicious insider could perform
 # one of those actions and then edit or delete the activity_logs row that
 # recorded it, leaving zero forensic trace.

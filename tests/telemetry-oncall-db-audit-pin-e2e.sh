@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # telemetry-oncall-db-audit-pin-e2e.sh — s464
 #
-# dockpanel-fanout on panel/backend/src/routes/telemetry.rs +
+# arsy-fanout on panel/backend/src/routes/telemetry.rs +
 # panel/backend/src/services/telemetry_collector.rs (the s463 exhaustion
-# check's standing next candidate — see feedback_dockpanel_audit_scope_p2).
+# check's standing next candidate — see feedback_arsy_audit_scope_p2).
 # Found and fixed 3 real, independently-verified issues:
 #
 #   §A telemetry.rs's `preview` endpoint (and the frontend Preview modal)
@@ -12,7 +12,7 @@
 #      kernel, memory, disk, cpu, uptime, services) — but the function that
 #      actually POSTs to the external endpoint, `send_pending_events`, never
 #      receives an AgentClient at all and builds its own tiny
-#      {dockpanel_version, installation_id} system object. The false claim
+#      {arsy_version, installation_id} system object. The false claim
 #      existed in TWO independent places: the backend JSON `note` field and
 #      a separately hardcoded frontend footer (Telemetry.tsx). Direction of
 #      the error is over-claiming what leaves the box, not under-claiming —
@@ -31,13 +31,13 @@
 #      email/Slack/Discord/PagerDuty/webhook with no consent.
 #   §C (setup critic, re-scoped) the agent's `remove_database` force-removes
 #      a container (with volumes) by id with no check that the container is
-#      actually dockpanel-managed — unlike its sibling `require_managed()`/
+#      actually arsy-managed — unlike its sibling `require_managed()`/
 #      `is_managed_labels()` in docker_apps.rs (v2.15.0), which this module
 #      never had. Reachability is defense-in-depth only: every caller of
 #      `/databases/{cid}` DELETE sources `container_id` from the panel's own
 #      `databases` row, written once from this module's own create response,
 #      never from user input — confirmed unchanged since s297
-#      (project_dockpanel_tech_debt_p26.md). NOTE: that memory's own citation
+#      (project_arsy_tech_debt_p26.md). NOTE: that memory's own citation
 #      ("ensure_managed... defined in routes/docker_apps.rs, 19 call sites")
 #      does not match current code — grepped, zero hits anywhere in the
 #      backend. The real, current primitive is `is_managed_labels`/
@@ -102,8 +102,8 @@ else
   bad "A1 backend preview note still asserts the old false claim"
 fi
 
-if has "$TELEMETRY_BE_C" 'dockpanel_version.*installation_id' ; then
-  ok "A2 backend note names what actually IS sent (dockpanel_version, installation_id)"
+if has "$TELEMETRY_BE_C" 'arsy_version.*installation_id' ; then
+  ok "A2 backend note names what actually IS sent (arsy_version, installation_id)"
 else
   bad "A2 backend note no longer names the real outbound system fields"
 fi
@@ -124,8 +124,8 @@ fi
 # unchanged — the fix narrows the CLAIM, not the payload (widening the
 # payload would be the arming move the skeptic flagged against).
 SEND_PENDING_BODY=$(fnbody "$(code panel/backend/src/services/telemetry_collector.rs)" "send_pending_events")
-if has "$SEND_PENDING_BODY" 'dockpanel_version' && lacks "$SEND_PENDING_BODY" 'hostname\|system-info\|AgentClient'; then
-  ok "A5 (control) send_pending_events' real payload is still just {dockpanel_version, installation_id} — not widened"
+if has "$SEND_PENDING_BODY" 'arsy_version' && lacks "$SEND_PENDING_BODY" 'hostname\|system-info\|AgentClient'; then
+  ok "A5 (control) send_pending_events' real payload is still just {arsy_version, installation_id} — not widened"
 else
   bad "A5 (control) send_pending_events' payload shape changed — verify this wasn't accidentally widened"
 fi
@@ -161,7 +161,7 @@ else
 fi
 
 # ── §C agent database.rs: remove_database refuses an unmanaged container ─
-echo "── §C agent database.rs: remove_database requires dockpanel.managed=true ──"
+echo "── §C agent database.rs: remove_database requires arsy.managed=true ──"
 
 BEFORE_STOP=$(awk '{print} /stop_container/{exit}' <<< "$REMOVE_DB_BODY")
 
@@ -171,22 +171,22 @@ else
   bad "C1 remove_database no longer inspects the container before stop/remove"
 fi
 
-if has "$BEFORE_STOP" 'dockpanel\.managed'; then
-  ok "C2 remove_database checks the dockpanel.managed label before the stop/remove call"
+if has "$BEFORE_STOP" 'arsy\.managed'; then
+  ok "C2 remove_database checks the arsy.managed label before the stop/remove call"
 else
-  bad "C2 no dockpanel.managed check found ahead of stop/remove — guard regressed or reordered after the destructive call"
+  bad "C2 no arsy.managed check found ahead of stop/remove — guard regressed or reordered after the destructive call"
 fi
 
-if has "$REMOVE_DB_BODY" 'not a dockpanel-managed container'; then
+if has "$REMOVE_DB_BODY" 'not a arsy-managed container'; then
   ok "C3 remove_database returns a clear refusal error for an unmanaged container"
 else
   bad "C3 the refusal error is missing"
 fi
 
 # Positive control: create_database still labels its own containers
-# dockpanel.managed=true — the thing the new guard checks for.
-if has "$CREATE_DB_BODY" '"dockpanel\.managed"\.to_string\(\), "true"\.to_string\(\)'; then
-  ok "C4 (control) create_database still labels new containers dockpanel.managed=true"
+# arsy.managed=true — the thing the new guard checks for.
+if has "$CREATE_DB_BODY" '"arsy\.managed"\.to_string\(\), "true"\.to_string\(\)'; then
+  ok "C4 (control) create_database still labels new containers arsy.managed=true"
 else
   bad "C4 (control) create_database no longer sets the managed label — the new guard would reject every legitimate removal"
 fi

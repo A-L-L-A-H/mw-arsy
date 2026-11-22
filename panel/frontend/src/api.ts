@@ -50,7 +50,7 @@ async function request<T = unknown>(
   options?: RequestInit
 ): Promise<T> {
   const headers: Record<string, string> = {
-    "X-Requested-With": "DockPanel",
+    "X-Requested-With": "ARSY",
   };
   if (options?.body) headers["Content-Type"] = "application/json";
 
@@ -104,7 +104,7 @@ async function request<T = unknown>(
     // offline whenever it refused a request (issues #90, #91, #92), and did
     // the same for a Stripe or Cloudflare failure that never involved it.
     if ((data as { code?: string }).code === "agent_unreachable") {
-      message = "Agent offline — the DockPanel agent is not responding.";
+      message = "Agent offline — the ARSY agent is not responding.";
     }
     throw new ApiError(
       res.status,

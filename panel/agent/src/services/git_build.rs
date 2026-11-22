@@ -12,17 +12,17 @@ use crate::routes::docker_apps::TlsIntent;
 use crate::safe_cmd::safe_command;
 use crate::services::ownership;
 
-const GIT_BASE_DIR: &str = "/var/lib/dockpanel/git";
+const GIT_BASE_DIR: &str = "/var/lib/arsy/git";
 
 /// Where builder binaries are stored (vendored like grype/syft)
-const BUILDER_BIN_DIR: &str = "/var/lib/dockpanel/builders";
+const BUILDER_BIN_DIR: &str = "/var/lib/arsy/builders";
 
 /// Where a Git Deploy's PERSISTENT VOLUMES live — deliberately separate from
 /// [`GIT_BASE_DIR`], which holds the git checkout/build context and is wiped
 /// and re-cloned on every deploy. Mirrors `docker_apps::APP_DATA_DIR`: a
 /// directory per deploy, named after it, one subdirectory per declared
 /// container path.
-const GIT_DATA_DIR: &str = "/var/lib/dockpanel/git-data";
+const GIT_DATA_DIR: &str = "/var/lib/arsy/git-data";
 
 #[derive(Debug, Serialize)]
 pub struct CloneResult {
@@ -271,8 +271,8 @@ impl Builder for RailpackBuilder {
     async fn build(&self, name: &str, plan: BuildPlan, commit_hash: &str) -> Result<BuildOutput, String> {
         self.ensure_binary().await?;
 
-        let image_tag = format!("dockpanel-git-{name}:{commit_hash}");
-        let latest_tag = format!("dockpanel-git-{name}:latest");
+        let image_tag = format!("arsy-git-{name}:{commit_hash}");
+        let latest_tag = format!("arsy-git-{name}:latest");
         let context_dir = format!("{GIT_BASE_DIR}/{name}/{}", plan.build_context);
 
         // Build with railpack
@@ -285,7 +285,7 @@ impl Builder for RailpackBuilder {
         }
 
         // Set cache directory
-        let cache_dir = format!("/var/lib/dockpanel/cache/railpack/{name}");
+        let cache_dir = format!("/var/lib/arsy/cache/railpack/{name}");
         std::fs::create_dir_all(&cache_dir).ok();
         cmd.env("RAILPACK_CACHE_DIR", &cache_dir);
 
@@ -403,8 +403,8 @@ impl Builder for NixpacksBuilder {
     async fn build(&self, name: &str, plan: BuildPlan, commit_hash: &str) -> Result<BuildOutput, String> {
         self.ensure_binary().await?;
 
-        let image_tag = format!("dockpanel-git-{name}:{commit_hash}");
-        let latest_tag = format!("dockpanel-git-{name}:latest");
+        let image_tag = format!("arsy-git-{name}:{commit_hash}");
+        let latest_tag = format!("arsy-git-{name}:latest");
         let context_dir = format!("{GIT_BASE_DIR}/{name}/{}", plan.build_context);
 
         let mut cmd = safe_command(&self.binary_path);
@@ -415,7 +415,7 @@ impl Builder for NixpacksBuilder {
             cmd.arg("--env").arg(format!("{key}={value}"));
         }
 
-        let cache_dir = format!("/var/lib/dockpanel/cache/nixpacks/{name}");
+        let cache_dir = format!("/var/lib/arsy/cache/nixpacks/{name}");
         std::fs::create_dir_all(&cache_dir).ok();
         cmd.env("NIXPACKS_CACHE_DIR", &cache_dir);
 
@@ -495,8 +495,8 @@ impl Builder for DockerfileBuilder {
     }
 
     async fn build(&self, name: &str, plan: BuildPlan, commit_hash: &str) -> Result<BuildOutput, String> {
-        let image_tag = format!("dockpanel-git-{name}:{commit_hash}");
-        let latest_tag = format!("dockpanel-git-{name}:latest");
+        let image_tag = format!("arsy-git-{name}:{commit_hash}");
+        let latest_tag = format!("arsy-git-{name}:latest");
         let context_dir = format!("{GIT_BASE_DIR}/{name}/{}", plan.build_context);
         let dockerfile = plan.dockerfile_path.unwrap_or_else(|| "Dockerfile".to_string());
 
@@ -633,7 +633,7 @@ pub async fn build_image_with_builder(
     builder.build(name, plan, commit_hash).await
 }
 
-/// Clone or pull a git repository to `/var/lib/dockpanel/git/{name}/`.
+/// Clone or pull a git repository to `/var/lib/arsy/git/{name}/`.
 /// Uses `--depth 50` for clone and `fetch + reset --hard` for pull.
 pub async fn clone_or_pull(
     name: &str,
@@ -764,7 +764,7 @@ pub async fn clone_or_pull(
 }
 
 /// Build a Docker image from the git repo directory.
-/// Tags with both `dockpanel-git-{name}:{commit_hash}` and `dockpanel-git-{name}:latest`.
+/// Tags with both `arsy-git-{name}:{commit_hash}` and `arsy-git-{name}:latest`.
 /// Uses BuildKit for layer caching, supports build args and custom build context.
 pub async fn build_image(
     name: &str,
@@ -774,7 +774,7 @@ pub async fn build_image(
     build_context: &str,
 ) -> Result<BuildResult, String> {
     let deploy_dir = format!("{GIT_BASE_DIR}/{name}");
-    let image_name = format!("dockpanel-git-{name}");
+    let image_name = format!("arsy-git-{name}");
     let image_tag = format!("{image_name}:{commit_hash}");
     let latest_tag = format!("{image_name}:latest");
 
@@ -1130,7 +1130,7 @@ pub async fn deploy_or_update(
     let docker =
         Docker::connect_with_local_defaults().map_err(|e| format!("Docker connect failed: {e}"))?;
 
-    let container_name = format!("dockpanel-git-{name}");
+    let container_name = format!("arsy-git-{name}");
 
     // Build environment list
     let env_list: Vec<String> = env_vars
@@ -1138,21 +1138,21 @@ pub async fn deploy_or_update(
         .map(|(k, v)| format!("{k}={v}"))
         .collect();
 
-    // Build labels. `dockpanel.git.kind` is what a later run reads back to tell
+    // Build labels. `arsy.git.kind` is what a later run reads back to tell
     // a deployment's container from a preview's — the two used to be
     // indistinguishable, and a container is the one thing here with no file to
     // open and ask.
     let mut labels = HashMap::from([
-        ("dockpanel.managed".to_string(), "true".to_string()),
-        ("dockpanel.type".to_string(), "git".to_string()),
-        ("dockpanel.git.name".to_string(), name.to_string()),
+        ("arsy.managed".to_string(), "true".to_string()),
+        ("arsy.type".to_string(), "git".to_string()),
+        ("arsy.git.name".to_string(), name.to_string()),
         (
             ownership::GIT_KIND_LABEL.to_string(),
             scope.label().to_string(),
         ),
     ]);
     if let Some(d) = domain {
-        labels.insert("dockpanel.app.domain".to_string(), d.to_string());
+        labels.insert("arsy.app.domain".to_string(), d.to_string());
     }
 
     // Port bindings: 127.0.0.1:{host_port} -> {container_port}/tcp
@@ -1593,7 +1593,7 @@ pub async fn release_domain_artifacts(domain: &str, host_port: Option<u16>) {
     }
 
     // SSL certificates — not if a wildcard is shared across the zone.
-    let ssl_dir = format!("/etc/dockpanel/ssl/{domain}");
+    let ssl_dir = format!("/etc/arsy/ssl/{domain}");
     if std::path::Path::new(&ssl_dir).exists() {
         if crate::services::ownership::cert_dir_in_use_elsewhere(domain) {
             tracing::warn!("Leaving {ssl_dir} in place: another vhost still points at it.");
@@ -1624,7 +1624,7 @@ pub async fn cleanup_container(
     let docker =
         Docker::connect_with_local_defaults().map_err(|e| format!("Docker connect failed: {e}"))?;
 
-    let container_name = format!("dockpanel-git-{name}");
+    let container_name = format!("arsy-git-{name}");
 
     // Inspect to find the domain label AND the published port before removing.
     //
@@ -1663,7 +1663,7 @@ pub async fn cleanup_container(
                 info.config
                     .as_ref()
                     .and_then(|c| c.labels.as_ref())
-                    .and_then(|l| l.get("dockpanel.app.domain").cloned()),
+                    .and_then(|l| l.get("arsy.app.domain").cloned()),
                 info.host_config
                     .as_ref()
                     .and_then(crate::services::docker_apps::extract_host_port),
@@ -1765,7 +1765,7 @@ fn owned_git_data_dir(name: &str, binds: &[String]) -> Option<String> {
 /// Prune old images for a git app, keeping the last `keep` images (by creation time).
 /// The `:latest` tag is always excluded from pruning.
 pub async fn prune_images(name: &str, keep: usize) -> Result<Vec<String>, String> {
-    let image_prefix = format!("dockpanel-git-{name}");
+    let image_prefix = format!("arsy-git-{name}");
 
     // List all images via CLI to get tags and creation times
     let output = safe_command("docker")
@@ -2065,7 +2065,7 @@ async fn find_container(
     let domain = container
         .labels
         .as_ref()
-        .and_then(|l| l.get("dockpanel.app.domain").cloned());
+        .and_then(|l| l.get("arsy.app.domain").cloned());
 
     let host_port = container
         .ports
@@ -2097,7 +2097,7 @@ async fn clear_blue_leftover(docker: &Docker, blue_name: &str) -> Result<(), Str
     let owner = ownership::blue_leftover(info.config.as_ref().and_then(|c| c.labels.as_ref()));
     if !owner.may_delete() {
         return Err(format!(
-            "A container named {blue_name} exists and is not managed by DockPanel ({owner:?}); \
+            "A container named {blue_name} exists and is not managed by ARSY ({owner:?}); \
              refusing to force-remove it to make room for a blue-green swap"
         ));
     }
@@ -2514,12 +2514,12 @@ static NIXPACKS_PATH: OnceLock<Option<String>> = OnceLock::new();
 /// Where the agent keeps its own nixpacks copy, and its build cache.
 ///
 /// Both used to live outside the agent unit's `ReadWritePaths`
-/// (`/usr/local/bin` under `ProtectSystem=strict`, `/var/cache/dockpanel` not
+/// (`/usr/local/bin` under `ProtectSystem=strict`, `/var/cache/arsy` not
 /// listed at all), so the download failed with "Read-only file system" and the
 /// Dockerfile-less build path was unreachable on every hardened install (s261).
-const NIXPACKS_DIR: &str = "/var/lib/dockpanel/bin";
-const NIXPACKS_BIN: &str = "/var/lib/dockpanel/bin/nixpacks";
-const NIXPACKS_CACHE_ROOT: &str = "/var/lib/dockpanel/nixpacks-cache";
+const NIXPACKS_DIR: &str = "/var/lib/arsy/bin";
+const NIXPACKS_BIN: &str = "/var/lib/arsy/bin/nixpacks";
+const NIXPACKS_CACHE_ROOT: &str = "/var/lib/arsy/nixpacks-cache";
 
 /// Ensure nixpacks binary is available. Downloads on first use if not found.
 pub async fn ensure_nixpacks() -> Option<String> {
@@ -2618,8 +2618,8 @@ pub async fn nixpacks_build(
         return Err("Build context must not contain path traversal (..)".into());
     }
 
-    let image_tag = format!("dockpanel-git-{name}:{commit_hash}");
-    let context_dir = format!("/var/lib/dockpanel/git/{name}/{build_context}");
+    let image_tag = format!("arsy-git-{name}:{commit_hash}");
+    let context_dir = format!("/var/lib/arsy/git/{name}/{build_context}");
 
     // Set up persistent cache directory for faster rebuilds
     let cache_dir = format!("{NIXPACKS_CACHE_ROOT}/{name}");
@@ -2662,7 +2662,7 @@ pub async fn nixpacks_build(
 
     // Also tag as :latest
     let _ = safe_command("docker")
-        .args(["tag", &image_tag, &format!("dockpanel-git-{name}:latest")])
+        .args(["tag", &image_tag, &format!("arsy-git-{name}:latest")])
         .output()
         .await;
 

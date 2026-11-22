@@ -12,7 +12,7 @@ INSERT INTO settings (key, value)
     VALUES ('update_channel', 'stable')
     ON CONFLICT (key) DO NOTHING;
 
--- Persistent snapshots of the panel (binaries + DB dump + /etc/dockpanel/).
+-- Persistent snapshots of the panel (binaries + DB dump + /etc/arsy/).
 -- Survive past the .bak files that update.sh:432-499 deletes on success,
 -- so an operator who realizes hours later that the new version broke
 -- something has a rollback target.

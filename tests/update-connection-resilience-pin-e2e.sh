@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # update-connection-resilience-pin-e2e.sh — s447
 #
-# Pins the docker_apps.rs finding named in [[project_dockpanel_tech_debt_p185]]
+# Pins the docker_apps.rs finding named in [[project_arsy_tech_debt_p185]]
 # §A: Update / change-image / edit-env recreate a container between
 # `remove_container` and `create_container`, and until this fix every one of
 # those calls ran INLINE on the request's own connection task — agent-side
 # (`update`, `update_env`, `change_image` in panel/agent/src/routes/docker_apps.rs)
 # AND, for two of the three doors, backend-side too
 # (`update_env`/`update_image` in panel/backend/src/routes/docker_apps.rs;
-# `update_app` already spawned). A dropped connection (demo.dockpanel.dev is
+# `update_app` already spawned). A dropped connection (demo.moonwitness.dev is
 # Cloudflare-proxied with a ~100s origin budget, well inside the 900s these
 # calls are allowed) cancelled the in-flight future mid-recreate: the app
 # container vanishes, only its bind-mounted data survives.

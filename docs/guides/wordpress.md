@@ -2,9 +2,9 @@
 
 ## Prerequisites
 
-- DockPanel installed and running
+- ARSY installed and running
 - A domain with an A record pointing to your server's IP (see [Getting Started](../getting-started.md#dns-setup))
-- Port 80 and 443 open in your firewall (DockPanel opens these during install)
+- Port 80 and 443 open in your firewall (ARSY opens these during install)
 
 ## Create a WordPress Site
 
@@ -21,14 +21,14 @@
 ### From the CLI
 
 ```bash
-dockpanel sites create example.com --runtime php --ssl --ssl-email you@example.com
+arsy sites create example.com --runtime php --ssl --ssl-email you@example.com
 ```
 
 The CLI creates the site with PHP and SSL. WordPress CMS installation is available through the panel interface.
 
 ## What Happens Automatically
 
-When you create a WordPress site, DockPanel performs these steps in sequence:
+When you create a WordPress site, ARSY performs these steps in sequence:
 
 1. **Creates the document root** at `/var/www/example.com/public/`
 2. **Creates a MySQL database** in a Docker container with auto-generated credentials
@@ -43,10 +43,10 @@ You can watch each step complete in real-time from the panel.
 ### The site's address, before and after the certificate
 
 WordPress stores the address it thinks it lives at, and it redirects visitors to
-that address. So DockPanel installs the site at `http://example.com` — the URL
+that address. So ARSY installs the site at `http://example.com` — the URL
 the server can serve on the spot, whether or not a certificate has arrived yet.
 
-The moment a certificate is in place, DockPanel moves the stored address to
+The moment a certificate is in place, ARSY moves the stored address to
 `https://example.com` and Nginx starts redirecting HTTP to HTTPS. That happens
 automatically on every path that can produce a certificate: the one issued during
 site creation, a retry from the site's SSL card, a DNS-01 or wildcard
@@ -54,7 +54,7 @@ certificate, and an uploaded custom certificate. You do not have to change the
 WordPress Address or Site Address by hand.
 
 If you had already set a different address (a separate front end, WordPress in a
-subdirectory, a `www.` canonical host), DockPanel leaves it exactly as it is.
+subdirectory, a `www.` canonical host), ARSY leaves it exactly as it is.
 
 ## Post-Install
 
@@ -66,7 +66,7 @@ Once the site is created:
 
 ### WordPress Toolkit
 
-DockPanel includes a WordPress Toolkit (sidebar > WordPress) that provides:
+ARSY includes a WordPress Toolkit (sidebar > WordPress) that provides:
 
 - **Multi-site dashboard** -- See all WordPress installations on the server
 - **Vulnerability scanning** -- Checks plugins against 14 known exploited vulnerabilities. Manual "Scan" button, plus an optional scheduled background sweep (Settings → WordPress Vulnerability Scanning, off by default) that rescans every WordPress site on an interval and alerts on critical or high severity findings -- the direct peer of Docker image scanning's own scheduled sweep.
@@ -91,11 +91,11 @@ used to get a *specific* one.
 From the CLI:
 
 ```bash
-dockpanel php list
-dockpanel php install 8.3
+arsy php list
+arsy php install 8.3
 ```
 
-DockPanel validates that PHP-FPM is available before writing the Nginx config and will tell you exactly which version to install.
+ARSY validates that PHP-FPM is available before writing the Nginx config and will tell you exactly which version to install.
 
 ### SSL provisioning fails
 
@@ -114,7 +114,7 @@ WordPress afterwards.
 Retry SSL provisioning:
 
 ```bash
-dockpanel ssl provision example.com --email you@example.com --runtime php
+arsy ssl provision example.com --email you@example.com --runtime php
 ```
 
 ### 502 Bad Gateway

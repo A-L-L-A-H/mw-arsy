@@ -1,7 +1,7 @@
 -- Per-site SFTP accounts (GH #108).
 --
 -- sftp_enabled: opt-in per site, never automatic — enabling it is the one
--- controlled moment DockPanel is allowed to re-own an existing site's content
+-- controlled moment ARSY is allowed to re-own an existing site's content
 -- directory (see panel/agent/src/services/sftp_accounts.rs).
 --
 -- sftp_uid/sftp_gid: allocated once, on enable, from a real sequence rather

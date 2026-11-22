@@ -243,7 +243,7 @@ export default function Certificates() {
                       {cert.renewal_at && (
                         <div
                           className="text-[10px] text-dark-300 font-mono mt-0.5"
-                          title="The Certificate Authority's suggested renewal window (ACME Renewal Information). DockPanel's auto-healer renews automatically once this window opens — this is not a deadline you need to act on."
+                          title="The Certificate Authority's suggested renewal window (ACME Renewal Information). ARSY's auto-healer renews automatically once this window opens — this is not a deadline you need to act on."
                         >
                           CA suggests renewal {new Date(cert.renewal_at) <= new Date() ? "now" : `~${new Date(cert.renewal_at).toLocaleDateString()}`}
                         </div>
@@ -284,7 +284,7 @@ export default function Certificates() {
                         // ship adds. `managed` is the handler's own answer.
                         <span
                           className="text-xs text-dark-300"
-                          title="This certificate belongs to no site and no Let's Encrypt stack on this server, so DockPanel cannot renew or remove it from here."
+                          title="This certificate belongs to no site and no Let's Encrypt stack on this server, so ARSY cannot renew or remove it from here."
                         >
                           Not managed here
                         </span>
@@ -295,7 +295,7 @@ export default function Certificates() {
                         // silent.
                         <span
                           className="text-xs text-dark-300"
-                          title="This server's agent could not be reached, so this row is what DockPanel last recorded. Renewing needs the agent."
+                          title="This server's agent could not be reached, so this row is what ARSY last recorded. Renewing needs the agent."
                         >
                           Agent unreachable
                         </span>

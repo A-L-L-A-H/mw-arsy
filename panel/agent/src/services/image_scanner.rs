@@ -9,12 +9,12 @@ use crate::safe_cmd::safe_command;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
-// Scanner lives inside the DockPanel data dir so it works under the hardened
+// Scanner lives inside the ARSY data dir so it works under the hardened
 // agent sandbox (ProtectSystem=strict, ProtectHome=yes) without needing write
 // access to /usr/local/bin or $HOME.
-const GRYPE_DIR: &str = "/var/lib/dockpanel/scanners";
-const GRYPE_BIN: &str = "/var/lib/dockpanel/scanners/grype";
-const GRYPE_DB_CACHE: &str = "/var/lib/dockpanel/scanners/grype-db";
+const GRYPE_DIR: &str = "/var/lib/arsy/scanners";
+const GRYPE_BIN: &str = "/var/lib/arsy/scanners/grype";
+const GRYPE_DB_CACHE: &str = "/var/lib/arsy/scanners/grype-db";
 
 // Pinned to a known release rather than "latest" so the exact binary we run is
 // reviewable and reproducible. Anchore's install.sh already sha256-verifies the
@@ -52,7 +52,7 @@ pub async fn is_installed() -> bool {
     tokio::fs::metadata(GRYPE_BIN).await.is_ok()
 }
 
-/// Install grype via Anchore's official installer script into the DockPanel
+/// Install grype via Anchore's official installer script into the ARSY
 /// data directory so the hardened agent sandbox can read/write it.
 pub async fn install_grype() -> Result<(), String> {
     if is_installed().await {
@@ -64,7 +64,7 @@ pub async fn install_grype() -> Result<(), String> {
         .map_err(|e| format!("create {GRYPE_DIR}: {e}"))?;
 
     // Anchore's installer writes the binary to the path passed via `-b`. We
-    // pin it inside /var/lib/dockpanel (writable under systemd ProtectSystem=strict)
+    // pin it inside /var/lib/arsy (writable under systemd ProtectSystem=strict)
     // rather than /usr/local/bin. Both the script fetch AND the binary download are
     // pinned to GRYPE_VERSION (a tag, not `main`) so nothing here resolves "latest"
     // at install time.

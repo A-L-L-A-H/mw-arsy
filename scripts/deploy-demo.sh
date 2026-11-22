@@ -2,7 +2,7 @@
 #
 # Deploy THIS box to a published release, from the PUBLISHED static-musl assets.
 #
-# This is the third path that installs DockPanel onto a running machine. The
+# This is the third path that installs ARSY onto a running machine. The
 # other two are scripts/setup.sh (fresh install) and scripts/update.sh (upgrade
 # in place). It exists because the demo box is deployed from published artefacts
 # rather than from a git checkout, and it is the path used to prove that what
@@ -31,19 +31,19 @@ set -euo pipefail
 
 TAG="${1:?usage: DEMO_HOST=<panel-host> deploy-demo.sh vX.Y.Z}"
 DEMO_HOST="${DEMO_HOST:?DEMO_HOST must name the public hostname of the panel being deployed (no default)}"
-GITHUB_REPO="${GITHUB_REPO:-ovexro/dockpanel}"
+GITHUB_REPO="${GITHUB_REPO:-A-L-L-A-H/mw-arsy}"
 BASE="https://github.com/$GITHUB_REPO/releases/download/$TAG"
 
 # The published assets, named ONCE. The download loop, the checksum check, the
 # linkage guard and the swap all iterate this list, so a fourth asset cannot be
 # added and silently skip a check. That is exactly how the linkage guard came to
-# cover one binary of three: it named `dockpanel-api-linux-amd64` literally while
+# cover one binary of three: it named `arsy-api-linux-amd64` literally while
 # the loop above it fetched three and the swap below it installed three (s336).
-ASSETS=(dockpanel-agent-linux-amd64 dockpanel-api-linux-amd64 dockpanel-cli-linux-amd64)
+ASSETS=(arsy-agent-linux-amd64 arsy-api-linux-amd64 arsy-cli-linux-amd64)
 declare -A ASSET_DEST=(
-    [dockpanel-agent-linux-amd64]=/usr/local/bin/dockpanel-agent
-    [dockpanel-api-linux-amd64]=/usr/local/bin/dockpanel-api
-    [dockpanel-cli-linux-amd64]=/usr/local/bin/dockpanel
+    [arsy-agent-linux-amd64]=/usr/local/bin/arsy-agent
+    [arsy-api-linux-amd64]=/usr/local/bin/arsy-api
+    [arsy-cli-linux-amd64]=/usr/local/bin/arsy
 )
 
 # ── Resolve repo root — same idiom as setup.sh/update.sh ─────────────────
@@ -59,8 +59,8 @@ FE_DIST="$REPO_DIR/panel/frontend/dist"
 # pin-e2e.sh asserts all three agree, and discovers this file rather than naming
 # it, so a fourth copy joins the check by existing.
 agent_rwp_dirs() {
-    local unit="$AGENT_SRC/dockpanel-agent.service"
-    [ -f "$unit" ] || unit="/etc/systemd/system/dockpanel-agent.service"
+    local unit="$AGENT_SRC/arsy-agent.service"
+    [ -f "$unit" ] || unit="/etc/systemd/system/arsy-agent.service"
     [ -f "$unit" ] || return 0
     sed -n 's/^ReadWritePaths=//p' "$unit" | tr ' ' '\n' | sed 's/^-//' | grep '^/' || true
 }
@@ -70,7 +70,7 @@ trap 'rm -rf "$TMP"' EXIT
 
 echo "=== BEFORE ==="
 curl -s -m 8 "https://$DEMO_HOST/api/health"; echo
-dockpanel --version || true
+arsy --version || true
 
 # dp_fetch <url> <out> — download, retrying the failures curl's own --retry does
 # not. Same shape as setup.sh's dp_fetch, deliberately: four programs in this
@@ -176,14 +176,14 @@ echo "=== refresh the agent systemd unit ==="
 # an unprefixed path is missing, and "the agent won't start" is a far worse
 # outcome than a stale sandbox. Order matters — the namespace is fixed at start,
 # so a directory created afterwards does not rescue a running service.
-UNIT_SRC="$AGENT_SRC/dockpanel-agent.service"
+UNIT_SRC="$AGENT_SRC/arsy-agent.service"
 if [ -f "$UNIT_SRC" ]; then
     for d in $(agent_rwp_dirs); do
         [ -e "$d" ] || mkdir -p "$d"
     done
-    if ! cmp -s "$UNIT_SRC" /etc/systemd/system/dockpanel-agent.service; then
-        cp "$UNIT_SRC" /etc/systemd/system/dockpanel-agent.service
-        chmod 644 /etc/systemd/system/dockpanel-agent.service
+    if ! cmp -s "$UNIT_SRC" /etc/systemd/system/arsy-agent.service; then
+        cp "$UNIT_SRC" /etc/systemd/system/arsy-agent.service
+        chmod 644 /etc/systemd/system/arsy-agent.service
         systemctl daemon-reload
         echo "  agent unit refreshed from the repo"
     else
@@ -212,14 +212,14 @@ fi
 
 echo "=== stop, swap, start ==="
 # `mv`, never `cp` onto a running binary: cp fails ETXTBSY (lesson #48).
-systemctl stop dockpanel-api dockpanel-agent
+systemctl stop arsy-api arsy-agent
 for a in "${ASSETS[@]}"; do
     install -m 0755 "$TMP/$a" "${ASSET_DEST[$a]}.new"
     mv "${ASSET_DEST[$a]}.new" "${ASSET_DEST[$a]}"
 done
-systemctl start dockpanel-agent
+systemctl start arsy-agent
 sleep 2
-systemctl start dockpanel-api
+systemctl start arsy-api
 
 echo "=== AFTER ==="
 # This block used to REPORT and never ASSERT. The health loop fell out silently
@@ -245,7 +245,7 @@ PUBLIC_HEALTH=$(curl -fsS -m 8 "https://$DEMO_HOST/api/health" 2>/dev/null) || P
 echo "public: ${PUBLIC_HEALTH:-(no answer)}"
 [ -n "$PUBLIC_HEALTH" ] || fail "https://$DEMO_HOST/api/health returned no body"
 
-CLI_VERSION=$(dockpanel --version 2>/dev/null) || CLI_VERSION=""
+CLI_VERSION=$(arsy --version 2>/dev/null) || CLI_VERSION=""
 echo "cli:    ${CLI_VERSION:-(no answer)}"
 [ -n "$CLI_VERSION" ] || fail "the CLI did not report a version"
 
@@ -254,9 +254,9 @@ echo "cli:    ${CLI_VERSION:-(no answer)}"
 # shipped and only this read caught. An unreadable socket is a FAILURE, not a
 # footnote: it means the one probe that would catch a stale agent did not run.
 AGENT_HEALTH=""
-if [ -S /run/dockpanel/agent.sock ] && [ -r /etc/dockpanel/agent.token ]; then
-    AGENT_HEALTH=$(curl -fsS -m 8 --unix-socket /run/dockpanel/agent.sock \
-        -H "Authorization: Bearer $(cat /etc/dockpanel/agent.token)" \
+if [ -S /run/arsy/agent.sock ] && [ -r /etc/arsy/agent.token ]; then
+    AGENT_HEALTH=$(curl -fsS -m 8 --unix-socket /run/arsy/agent.sock \
+        -H "Authorization: Bearer $(cat /etc/arsy/agent.token)" \
         http://localhost/health 2>/dev/null) || AGENT_HEALTH=""
     echo "agent:  ${AGENT_HEALTH:-(no answer)}"
     [ -n "$AGENT_HEALTH" ] || fail "the agent socket did not answer /health"
@@ -275,14 +275,14 @@ for probe in "local|$LOCAL_HEALTH" "public|$PUBLIC_HEALTH" "cli|$CLI_VERSION" "a
     esac
 done
 
-API_STATE=$(systemctl is-active dockpanel-api || true)
-AGENT_STATE=$(systemctl is-active dockpanel-agent || true)
+API_STATE=$(systemctl is-active arsy-api || true)
+AGENT_STATE=$(systemctl is-active arsy-agent || true)
 echo "units:  $API_STATE $AGENT_STATE"
-[ "$API_STATE" = active ] || fail "dockpanel-api is $API_STATE"
-[ "$AGENT_STATE" = active ] || fail "dockpanel-agent is $AGENT_STATE"
+[ "$API_STATE" = active ] || fail "arsy-api is $API_STATE"
+[ "$AGENT_STATE" = active ] || fail "arsy-agent is $AGENT_STATE"
 
 echo "=== journal errors (2 min) ==="
-journalctl -u dockpanel-api -u dockpanel-agent --since "-2 min" -p err --no-pager | tail -10 || true
+journalctl -u arsy-api -u arsy-agent --since "-2 min" -p err --no-pager | tail -10 || true
 
 if [ "$DEPLOY_OK" -ne 1 ]; then
     echo "=== DEPLOY FAILED — see the FAILED lines above ==="

@@ -906,7 +906,7 @@ pub async fn certificate_dashboard(
 /// `/api/admin/sites` with its own projection, so that a per-caller list can
 /// never quietly start returning other people's rows.
 ///
-/// **Why it had to exist.** The agent's diagnostics walks `/etc/dockpanel/ssl`
+/// **Why it had to exist.** The agent's diagnostics walks `/etc/arsy/ssl`
 /// on the HOST and raises "SSL certificate expiring soon: {domain}" for anything
 /// it finds, so an administrator on a multi-tenant box was shown a finding — with
 /// a Fix button — about a certificate that appeared on no list they could open.
@@ -1015,7 +1015,7 @@ pub async fn certificate_dashboard_for_admin(
     };
 
     // ⛔ Only an ACME stack is ours. A `provided` stack serves its certificate from
-    //    the registry, and the file this walk finds under /etc/dockpanel/ssl is a
+    //    the registry, and the file this walk finds under /etc/arsy/ssl is a
     //    LEFTOVER from before the switch — offering to renew it, or stamping the
     //    row with its expiry, would be the panel describing a certificate the
     //    stack does not serve. Read through the one spelling of the rule.

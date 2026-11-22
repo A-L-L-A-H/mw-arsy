@@ -53,11 +53,11 @@ jobs:
 
           ---
 
-          **Install:** `curl -sL dockpanel.dev/install.sh | bash`
+          **Install:** `curl -sL moonwitness.dev/install.sh | bash`
 
           Every release is installed on a throwaway VPS and driven as a user before
           it ships. What that means, and what it has found, is written up at
-          <https://docs.dockpanel.dev/testing.html>.
+          <https://docs.moonwitness.dev/testing.html>.
 
           Binaries are static musl builds signed with Sigstore; `checksums.txt`
           and the `.sig`/`.pem` pairs are attached below.
@@ -168,17 +168,17 @@ jobs:
       - name: Package binaries
         run: |
           mkdir -p release
-          cp panel/agent/target/${{ matrix.target }}/release/dockpanel-agent release/dockpanel-agent-linux-${{ matrix.arch }}
-          cp panel/backend/target/${{ matrix.target }}/release/dockpanel-api release/dockpanel-api-linux-${{ matrix.arch }}
-          cp panel/cli/target/${{ matrix.target }}/release/dockpanel release/dockpanel-cli-linux-${{ matrix.arch }}
-          cp panel/mcp/target/${{ matrix.target }}/release/dockpanel-mcp release/dockpanel-mcp-linux-${{ matrix.arch }}
+          cp panel/agent/target/${{ matrix.target }}/release/arsy-agent release/arsy-agent-linux-${{ matrix.arch }}
+          cp panel/backend/target/${{ matrix.target }}/release/arsy-api release/arsy-api-linux-${{ matrix.arch }}
+          cp panel/cli/target/${{ matrix.target }}/release/arsy release/arsy-cli-linux-${{ matrix.arch }}
+          cp panel/mcp/target/${{ matrix.target }}/release/arsy-mcp release/arsy-mcp-linux-${{ matrix.arch }}
           chmod +x release/*
 
           # Report binary sizes + confirm static linkage
           echo "Binary sizes (${{ matrix.arch }}):"
           ls -lh release/
           echo "Linkage check:"
-          file release/dockpanel-agent-linux-${{ matrix.arch }}
+          file release/arsy-agent-linux-${{ matrix.arch }}
 
       - name: Install cargo-sbom
         if: matrix.arch == 'amd64'
@@ -187,10 +187,10 @@ jobs:
       - name: Generate SBOMs (SPDX JSON)
         if: matrix.arch == 'amd64'
         run: |
-          cargo sbom --project-directory panel/agent   --output-format spdx_json_2_3 > release/dockpanel-agent.spdx.json
-          cargo sbom --project-directory panel/backend --output-format spdx_json_2_3 > release/dockpanel-api.spdx.json
-          cargo sbom --project-directory panel/cli     --output-format spdx_json_2_3 > release/dockpanel-cli.spdx.json
-          cargo sbom --project-directory panel/mcp     --output-format spdx_json_2_3 > release/dockpanel-mcp.spdx.json
+          cargo sbom --project-directory panel/agent   --output-format spdx_json_2_3 > release/arsy-agent.spdx.json
+          cargo sbom --project-directory panel/backend --output-format spdx_json_2_3 > release/arsy-api.spdx.json
+          cargo sbom --project-directory panel/cli     --output-format spdx_json_2_3 > release/arsy-cli.spdx.json
+          cargo sbom --project-directory panel/mcp     --output-format spdx_json_2_3 > release/arsy-mcp.spdx.json
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v7
@@ -217,13 +217,13 @@ jobs:
       - name: Package frontend
         run: |
           cd panel/frontend
-          tar czf ../../dockpanel-frontend.tar.gz dist/
+          tar czf ../../arsy-frontend.tar.gz dist/
 
       - name: Upload artifact
         uses: actions/upload-artifact@v7
         with:
           name: frontend
-          path: dockpanel-frontend.tar.gz
+          path: arsy-frontend.tar.gz
 
   release:
     needs: [changelog, build, frontend]
@@ -242,7 +242,7 @@ jobs:
           mkdir -p release
           cp artifacts/binaries-amd64/* release/
           cp artifacts/binaries-arm64/* release/
-          cp artifacts/frontend/dockpanel-frontend.tar.gz release/
+          cp artifacts/frontend/arsy-frontend.tar.gz release/
 
           # The notes come down with the other artifacts but are the release
           # BODY, not an asset — keep them out of release/ so they are not
@@ -251,7 +251,7 @@ jobs:
 
           # Create checksums (over binaries + SBOMs, before signatures)
           cd release
-          sha256sum dockpanel-* > checksums.txt
+          sha256sum arsy-* > checksums.txt
 
           echo "Release contents:"
           ls -lh

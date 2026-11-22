@@ -700,7 +700,7 @@ async fn send_alerts(pool: &PgPool, monitor: &MonitorRow, message: &str, severit
         muted_types: String::new(),
     };
 
-    let subject = format!("DockPanel Alert: {}", monitor.name);
+    let subject = format!("ARSY Alert: {}", monitor.name);
     let html = format!(
         "<h2>Monitor Alert</h2>\
          <p><strong>{}</strong></p>\

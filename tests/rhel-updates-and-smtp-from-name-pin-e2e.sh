@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Regression pins for the s460 rotation: services/smtp.rs + routes/smtp.rs
 # (never a PRIMARY finder/skeptic target) and routes/updates.rs (same),
-# LOC-ranked and pre-selection-checked per feedback_dockpanel_audit_scope.
+# LOC-ranked and pre-selection-checked per feedback_arsy_audit_scope.
 #
 #   Topic 1 (routes/updates.rs) — the whole System Updates feature
 #     (list/count/apply) was 100% hardcoded to apt/apt-get, with zero use of
@@ -57,7 +57,7 @@ bad() { FAIL=$((FAIL+1)); printf '  \033[0;31m✗\033[0m %s\n' "$1"; }
 
 # Strip comments and the test module. Only exits at a #[cfg(test)] line
 # immediately followed by `mod ` — a real test module, not a cfg-gated
-# function/const variant elsewhere in the file (project_dockpanel_lessons_p182).
+# function/const variant elsewhere in the file (project_arsy_lessons_p182).
 code() {
   awk '
     held == 1 {

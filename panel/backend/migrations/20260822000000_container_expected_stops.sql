@@ -53,7 +53,7 @@ CREATE TABLE IF NOT EXISTS container_expected_stops (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     server_id UUID NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
     -- The name as the agent reports it in /apps, i.e. carrying the
-    -- `dockpanel-app-` prefix. Both sides of the join read that same field, so
+    -- `arsy-app-` prefix. Both sides of the join read that same field, so
     -- the representation never has to be agreed on separately.
     container_name VARCHAR(255) NOT NULL,
     -- 'operator_stop' | 'manual_sleep' | 'auto_sleep' | 'stack_stop'

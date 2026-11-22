@@ -24,7 +24,7 @@ echo "── F1: the BASE_URL repair must not be shadowed by DATABASE_URL ──
 # string CONTAINS "BASE_URL" — an unanchored grep matched on every install
 # that has ever existed, so the repair below it never ran once.
 cat > "$TMP/api.env" <<'EOF'
-DATABASE_URL=postgresql://dockpanel:pw@127.0.0.1:5450/dockpanel
+DATABASE_URL=postgresql://arsy:pw@127.0.0.1:5450/arsy
 JWT_SECRET=x
 LISTEN_ADDR=127.0.0.1:3080
 EOF

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Regression pins for the s456 dockpanel-fanout run over the '.git-blind
-# recursive chown' bug class (workflow wf_76c47b26-e5f; project_dockpanel_tech_debt
-# ledger p194's own item 14 — "Recommend its own dedicated dockpanel-fanout rep",
-# carried since s377/project_dockpanel_tech_debt_p108).
+# Regression pins for the s456 arsy-fanout run over the '.git-blind
+# recursive chown' bug class (workflow wf_76c47b26-e5f; project_arsy_tech_debt
+# ledger p194's own item 14 — "Recommend its own dedicated arsy-fanout rep",
+# carried since s377/project_arsy_tech_debt_p108).
 #
 #   G1  services/app_process.rs::create_app_service handed a git-deployed
 #       Node/Python app's whole site directory to www-data, `.git` included —
@@ -27,7 +27,7 @@
 #   G7  routes/backups.rs::restore — the tar-based restore path
 #       (services/backups.rs::restore_inner, `--no-same-owner
 #       --no-same-permissions`) left the whole restored site root:root,
-#       unwritable by the www-data-running app, on DockPanel's flagship
+#       unwritable by the www-data-running app, on ARSY's flagship
 #       documented "Restore a Backup" feature. The git-aware
 #       chown_restored_tree helper existed in the same file but was wired
 #       only to the separate opt-in Restic restore path.
@@ -49,7 +49,7 @@ bad() { FAIL=$((FAIL+1)); printf '  \033[0;31m✗\033[0m %s\n' "$1"; }
 # tree use — services/backups.rs has #[cfg(test)]-attributed function
 # VARIANTS (test-safe path resolvers) at lines 23-29, ~650 lines before its
 # real `#[cfg(test)] mod db_payload_tests` at line 930. That is exactly the
-# class reference_dockpanel_ops_p7 documents (s447: "the trigger is ANY
+# class reference_arsy_ops_p7 documents (s447: "the trigger is ANY
 # #[cfg(test)] token, not just a mod tests block") — quitting at the first
 # token would blank restore_inner (line 680) and everything after it. Only
 # exit at a #[cfg(test)] line immediately followed by `mod ` — a real test

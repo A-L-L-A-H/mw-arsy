@@ -317,7 +317,7 @@ fn open_pty_shell(cwd: &str, cols: u16, rows: u16, site_domain: Option<&str>) ->
                     // `write(2, …)` is async-signal-safe, so the user is told
                     // why the shell refused to open instead of seeing it vanish.
                     const DROP_FAILED: &[u8] =
-                        b"dockpanel: refusing to open this shell (privilege drop failed)\r\n";
+                        b"arsy: refusing to open this shell (privilege drop failed)\r\n";
                     // Group first: setgid/initgroups need the privilege setuid drops.
                     if libc::setgid(gid) != 0
                         || libc::initgroups(username, gid) != 0
@@ -497,7 +497,7 @@ async fn handle_terminal(mut socket: WebSocket, domain: String, user_email: Stri
     // `security_session_recording` toggle allows it. Until v2.46.0 this ran
     // unconditionally and the toggle was inert, so switching it off changed
     // nothing while the UI reported "Session recording disabled".
-    let recording_dir = "/var/lib/dockpanel/recordings";
+    let recording_dir = "/var/lib/arsy/recordings";
     let session_id = uuid::Uuid::new_v4();
     let recording_path = format!("{recording_dir}/{session_id}.cast");
     let recording_start = std::time::Instant::now();
@@ -531,7 +531,7 @@ async fn handle_terminal(mut socket: WebSocket, domain: String, user_email: Stri
 
     // Feature 6: Write session start to tamper-resistant audit file
     {
-        let dir = "/var/lib/dockpanel/audit";
+        let dir = "/var/lib/arsy/audit";
         let _ = std::fs::create_dir_all(dir);
         let date = chrono::Utc::now().format("%Y-%m-%d");
         let path = format!("{dir}/audit-{date}.log");
@@ -740,7 +740,7 @@ fn observe_input(data: &str, buf: &mut String, is_site_terminal: bool) -> Vec<Ob
 /// Write a suspicious event to the shared JSONL file for backend ingestion.
 fn write_suspicious_event(event_type: &str, user_email: &str, domain: &str, command: &str) {
     use std::io::Write;
-    let path = "/var/lib/dockpanel/suspicious-events.jsonl";
+    let path = "/var/lib/arsy/suspicious-events.jsonl";
     if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(path) {
         let event = serde_json::json!({
             "timestamp": chrono::Utc::now().to_rfc3339(),

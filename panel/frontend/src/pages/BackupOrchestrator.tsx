@@ -917,7 +917,7 @@ function SlaCard({ health }: { health: BackupHealth }) {
         <div className="px-5 py-8 text-center">
           <p className="text-sm text-warn-400 font-mono">Restore confidence could not be measured</p>
           <p className="text-xs text-dark-300 font-mono mt-1">
-            The verification query failed — see the dockpanel-api service log. This is not a report that your backups are unverified.
+            The verification query failed — see the arsy-api service log. This is not a report that your backups are unverified.
           </p>
         </div>
       ) : total === 0 ? (

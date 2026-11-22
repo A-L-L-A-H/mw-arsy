@@ -1,12 +1,12 @@
-// DockPanel chain-of-trust report.
+// ARSY chain-of-trust report.
 // Compiled by services/chain_report.rs:render_chain_report_pdf via the typst
 // CLI. Reads its data from sys.inputs.data_path (a JSON file).
 
 #let data = json(sys.inputs.data_path)
 
 #set document(
-  title: "DockPanel Chain-of-Trust Report",
-  author: "DockPanel " + data.panel_version,
+  title: "ARSY Chain-of-Trust Report",
+  author: "ARSY " + data.panel_version,
 )
 #set page(
   paper: "us-letter",
@@ -16,7 +16,7 @@
   footer: context [
     #set text(size: 8pt, fill: rgb("#777"))
     #grid(columns: (1fr, 1fr),
-      align(left)[Generated #data.generated_at by DockPanel #data.panel_version],
+      align(left)[Generated #data.generated_at by ARSY #data.panel_version],
       align(right)[Page #counter(page).display() of #counter(page).final().first()],
     )
   ],
@@ -78,7 +78,7 @@
 }
 
 #align(left)[
-  #text(size: 22pt, weight: "bold", fill: dp_brand)[DockPanel]
+  #text(size: 22pt, weight: "bold", fill: dp_brand)[ARSY]
   #h(0.5em)
   #text(size: 14pt, fill: dp_dim, weight: "regular")[Chain-of-Trust Report]
   #h(0.5em)

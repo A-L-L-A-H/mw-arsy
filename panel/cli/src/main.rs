@@ -6,8 +6,8 @@ use clap::{CommandFactory, Parser, Subcommand};
 
 #[derive(Parser)]
 #[command(
-    name = "dockpanel",
-    about = "DockPanel CLI — self-hosted server management",
+    name = "arsy",
+    about = "ARSY CLI — self-hosted server management",
     version
 )]
 struct Cli {
@@ -288,7 +288,7 @@ enum BackupCmd {
     },
     /// Create a database backup
     DbCreate {
-        /// Container name (e.g., dockpanel-db-mydb)
+        /// Container name (e.g., arsy-db-mydb)
         container: String,
         /// Database name
         db_name: String,
@@ -393,7 +393,7 @@ async fn main() {
 
     // Handle completions before token loading (no agent needed)
     if let Commands::Completions { shell } = cli.command {
-        clap_complete::generate(shell, &mut Cli::command(), "dockpanel", &mut std::io::stdout());
+        clap_complete::generate(shell, &mut Cli::command(), "arsy", &mut std::io::stdout());
         return;
     }
 

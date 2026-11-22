@@ -7,7 +7,7 @@
 # and paste the resulting path — `analyze()` required `body.path` to already
 # exist on the server's disk, full stop. This adds a URL-fetch alternative: the
 # AGENT downloads the archive itself into the one subtree it can actually write
-# (`/var/backups/dockpanel/migration-fetch/`, NOT the bare `/var/backups/` an
+# (`/var/backups/arsy/migration-fetch/`, NOT the bare `/var/backups/` an
 # operator-copied archive can otherwise live anywhere under — a new path outside
 # a granted `ReadWritePaths` entry is the exact EROFS class the per-site SFTP
 # jail hit), then analysis proceeds exactly as it always did.
@@ -89,10 +89,10 @@ fi
 echo
 echo "§2 the destination is deterministic and confined before the agent ever sees it"
 
-if hasE "$ANALYZE" '/var/backups/dockpanel/migration-fetch/'; then
+if hasE "$ANALYZE" '/var/backups/arsy/migration-fetch/'; then
   ok "the resolved path is computed under the agent's one writable migration subtree"
 else
-  bad "resolved_path does not target /var/backups/dockpanel/migration-fetch/"
+  bad "resolved_path does not target /var/backups/arsy/migration-fetch/"
 fi
 
 if hasE "$ANALYZE" 'Uuid::new_v4\(\)'; then

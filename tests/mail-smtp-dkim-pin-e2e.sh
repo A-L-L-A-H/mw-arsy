@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Regression pins for the s262 SMTP drill.
 #
-# Two real Vultr boxes, two real dockpanel.dev domains, two real Let's Encrypt
+# Two real Vultr boxes, two real moonwitness.dev domains, two real Let's Encrypt
 # certificates, and the first message this product has ever been asked to
 # actually deliver. What that found:
 #
@@ -36,7 +36,7 @@ set -u
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 MAIL="$REPO/panel/agent/src/routes/mail.rs"
-AGENT_UNIT="$REPO/panel/agent/dockpanel-agent.service"
+AGENT_UNIT="$REPO/panel/agent/arsy-agent.service"
 PASS=0; FAIL=0
 ok()   { PASS=$((PASS+1)); printf '  \033[0;32m✓\033[0m %s\n' "$1"; }
 bad()  { FAIL=$((FAIL+1)); printf '  \033[0;31m✗\033[0m %s\n' "$1"; }
@@ -55,8 +55,8 @@ has()  { grep -qF -- "$2" <<<"$1"; }
 hasre(){ grep -qE -- "$2" <<<"$1"; }
 
 echo "── A. the installer must not write a path the sandbox refuses ──"
-if has "$CODE" 'const OPENDKIM_CONF: &str = "/etc/dockpanel/opendkim.conf"'; then
-  ok "OpenDKIM config lives under /etc/dockpanel (inside ReadWritePaths)"
+if has "$CODE" 'const OPENDKIM_CONF: &str = "/etc/arsy/opendkim.conf"'; then
+  ok "OpenDKIM config lives under /etc/arsy (inside ReadWritePaths)"
 else
   bad "OPENDKIM_CONF is no longer the ReadWritePaths-safe path"
 fi

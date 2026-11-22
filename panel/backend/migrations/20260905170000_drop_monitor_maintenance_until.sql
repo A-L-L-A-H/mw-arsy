@@ -1,4 +1,4 @@
--- Loose-ends audit (first dockpanel sweep): monitors.maintenance_until was
+-- Loose-ends audit (first arsy sweep): monitors.maintenance_until was
 -- added for a per-monitor maintenance-window override but never wired into
 -- any INSERT/UPDATE/SELECT — the shipped feature uses the separate
 -- maintenance_windows table instead (fully wired: monitors.rs create/list/

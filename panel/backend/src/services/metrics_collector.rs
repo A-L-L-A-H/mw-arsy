@@ -6,14 +6,14 @@ use crate::services::agent::{AgentRegistry, FleetMember};
 ///
 /// # Why this iterates the fleet
 ///
-/// DockPanel kept its per-host telemetry in two stores that were written by
+/// ARSY kept its per-host telemetry in two stores that were written by
 /// mutually exclusive halves of the fleet, and every consumer was therefore
 /// blind to one half:
 ///
 /// * `servers.{cpu_usage, mem_used_mb, ram_mb, disk_usage_pct, …}` is written
 ///   ONLY by `routes::agent_checkin`, which is reached only by an agent's
 ///   phone-home loop — and phone-home starts only when `agent.env` supplies
-///   `DOCKPANEL_CENTRAL_URL`/`_SERVER_TOKEN`/`_SERVER_ID`, a file only
+///   `ARSY_CENTRAL_URL`/`_SERVER_TOKEN`/`_SERVER_ID`, a file only
 ///   `install-agent.sh` writes. **The panel's own box has no such file**, so its
 ///   row carried NULL in every one of those columns, for ever, on every install.
 ///   `alert_engine::check_resource_thresholds` is their only reader and guards

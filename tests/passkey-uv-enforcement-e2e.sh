@@ -1,5 +1,5 @@
 #!/bin/bash
-# Passkey UV/2FA-skip enforcement — EXECUTE-class, needs a live dockpanel-api.
+# Passkey UV/2FA-skip enforcement — EXECUTE-class, needs a live arsy-api.
 #
 # This is the "virtual-authenticator harness" `tests/passkey-ceremony-pin-e2e.sh`
 # §G4 named as the missing piece: a real WebAuthn client+authenticator,
@@ -10,7 +10,7 @@
 # never verifies) is unaffected — the grandfathering guarantee.
 #
 # Third EXECUTE-class member of the pin family alongside nginx-headers and
-# update-rollback (reference_dockpanel_ops) — needs a running box, not pure
+# update-rollback (reference_arsy_ops) — needs a running box, not pure
 # source analysis. Builds and runs `passkey_virtual_authenticator`, a Cargo
 # binary in panel/backend/src/bin/, which does the actual CBOR/ECDSA work and
 # prints its own ✓/✗ marks in the same family format; this wrapper just
@@ -25,7 +25,7 @@ echo "=============================================="
 echo
 
 if ! command -v curl >/dev/null || ! curl -sf "http://127.0.0.1:3080/api/health" >/dev/null 2>&1; then
-  printf '  \033[33m~\033[0m SKIPPED — no dockpanel-api reachable at 127.0.0.1:3080\n'
+  printf '  \033[33m~\033[0m SKIPPED — no arsy-api reachable at 127.0.0.1:3080\n'
   echo "0 passed, 0 failed, 1 skipped"
   exit 0
 fi
@@ -36,9 +36,9 @@ if ! (cd panel/backend && cargo build --bin passkey_virtual_authenticator 2>&1 |
   exit 1
 fi
 
-export DOCKPANEL_TEST_BASE_URL="${DOCKPANEL_TEST_BASE_URL:-http://127.0.0.1:3080}"
-export DOCKPANEL_TEST_EMAIL="${DOCKPANEL_TEST_EMAIL:-admin@dockpanel.dev}"
-export DOCKPANEL_TEST_PASSWORD="${DOCKPANEL_TEST_PASSWORD:-testpassword}"
+export ARSY_TEST_BASE_URL="${ARSY_TEST_BASE_URL:-http://127.0.0.1:3080}"
+export ARSY_TEST_EMAIL="${ARSY_TEST_EMAIL:-admin@moonwitness.dev}"
+export ARSY_TEST_PASSWORD="${ARSY_TEST_PASSWORD:-testpassword}"
 
 panel/backend/target/debug/passkey_virtual_authenticator
 exit $?

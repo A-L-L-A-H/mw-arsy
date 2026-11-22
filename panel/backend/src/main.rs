@@ -80,7 +80,7 @@ pub struct AppState {
 /// committed files differ, which is what makes drift impossible rather than
 /// merely discouraged.
 ///
-/// Usage: `dockpanel-api --emit-guidance <repo-root>`
+/// Usage: `arsy-api --emit-guidance <repo-root>`
 fn emit_guidance(root: &str) -> std::io::Result<()> {
     use services::prerequisites::copy;
 
@@ -616,7 +616,7 @@ async fn main() {
         .expect("Failed to bind TCP listener");
 
     tracing::info!(
-        "DockPanel API v{} listening on {listen_addr}",
+        "ARSY API v{} listening on {listen_addr}",
         env!("CARGO_PKG_VERSION")
     );
 
@@ -641,7 +641,7 @@ async fn main() {
     shutdown_db.close().await;
     tracing::info!("Database connection pool closed");
 
-    tracing::info!("DockPanel API shut down gracefully");
+    tracing::info!("ARSY API shut down gracefully");
 }
 
 /// Hard bound on the drain phase after a shutdown signal fires: a 78% cut from

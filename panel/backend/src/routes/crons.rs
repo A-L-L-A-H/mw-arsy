@@ -61,7 +61,7 @@ async fn get_site_domain(state: &AppState, site_id: Uuid, claims: &Claims) -> Re
 /// Sends EVERY cron of the site, disabled ones included, because the agent uses
 /// the payload to decide which crontab lines this sync owns. Sending only the
 /// enabled ones made the request indistinguishable from "this site has no
-/// disabled crons", and the agent compensated by stripping every `# dockpanel:`
+/// disabled crons", and the agent compensated by stripping every `# arsy:`
 /// line on the box — every other site's jobs with them. The `enabled` flag now
 /// carries that information explicitly, so the agent can remove exactly this
 /// site's disabled lines and touch nothing else.

@@ -6,7 +6,7 @@ use bollard::container::{
 use bollard::Docker;
 use std::collections::HashMap;
 
-const DB_NETWORK: &str = "dockpanel-db";
+const DB_NETWORK: &str = "arsy-db";
 
 #[derive(serde::Serialize)]
 pub struct DbContainer {
@@ -23,7 +23,7 @@ pub struct DbContainer {
 /// instead of a Site), puts the container on that stack's OWN private bridge
 /// network — the same one `compose::deploy_stack` already gives the stack's other
 /// containers, which is how they reach each other by name — instead of the shared,
-/// ICC-disabled `dockpanel-db` bridge every site-owned database joins. Mirrors
+/// ICC-disabled `arsy-db` bridge every site-owned database joins. Mirrors
 /// `app_sidecar.rs`'s own design: host-port publishing does not care which
 /// bridge-driver network a container is on, so the existing `127.0.0.1:{port}`
 /// publish below keeps working unchanged either way, and every panel-side
@@ -106,7 +106,7 @@ pub async fn create_database(
         }
     }
 
-    let container_name = format!("dockpanel-db-{name}");
+    let container_name = format!("arsy-db-{name}");
 
     let mut port_bindings = HashMap::new();
     port_bindings.insert(
@@ -143,12 +143,12 @@ pub async fn create_database(
         host_config: Some(host_config),
         labels: Some({
             let mut labels = HashMap::from([
-                ("dockpanel.managed".to_string(), "true".to_string()),
-                ("dockpanel.db.name".to_string(), name.to_string()),
-                ("dockpanel.db.engine".to_string(), engine.to_string()),
+                ("arsy.managed".to_string(), "true".to_string()),
+                ("arsy.db.name".to_string(), name.to_string()),
+                ("arsy.db.engine".to_string(), engine.to_string()),
             ]);
             // This label does NOT make stack teardown find this container — it is
-            // deliberately absent from `list_deployed_apps()` (no `dockpanel.app.*`
+            // deliberately absent from `list_deployed_apps()` (no `arsy.app.*`
             // labels, same "operator manages exactly one thing" exclusion
             // `app_sidecar.rs`'s sidecar containers use), so the backend's own
             // stack-delete route removes it explicitly by `databases.stack_id`
@@ -156,7 +156,7 @@ pub async fn create_database(
             // `docker ps --filter`) and so a future stack-scoped tool has
             // something to key on.
             if let Some(sid) = stack_id {
-                labels.insert("dockpanel.stack_id".to_string(), sid.to_string());
+                labels.insert("arsy.stack_id".to_string(), sid.to_string());
             }
             labels
         }),
@@ -237,7 +237,7 @@ pub async fn remove_database(container_id: &str) -> Result<(), String> {
     // sources `container_id` from its own DB row (written once, from this module's own
     // create response), so this is defense-in-depth, not a live-reachable gap — but every
     // OTHER destructive-by-id surface (docker_apps.rs's require_managed(), v2.15.0) already
-    // carries this same `dockpanel.managed=true` boundary, and this module never did. A
+    // carries this same `arsy.managed=true` boundary, and this module never did. A
     // stray unmanaged container sharing this exact id would otherwise be force-removed
     // with its volumes.
     let info = docker
@@ -248,11 +248,11 @@ pub async fn remove_database(container_id: &str) -> Result<(), String> {
         .config
         .as_ref()
         .and_then(|c| c.labels.as_ref())
-        .and_then(|l| l.get("dockpanel.managed"))
+        .and_then(|l| l.get("arsy.managed"))
         .map(|v| v == "true")
         .unwrap_or(false);
     if !managed {
-        return Err("not a dockpanel-managed container".to_string());
+        return Err("not a arsy-managed container".to_string());
     }
 
     // Stop first
@@ -277,13 +277,13 @@ pub async fn remove_database(container_id: &str) -> Result<(), String> {
     Ok(())
 }
 
-/// List all DockPanel-managed database containers.
+/// List all ARSY-managed database containers.
 pub async fn list_databases() -> Result<Vec<DbContainer>, String> {
     let docker =
         Docker::connect_with_local_defaults().map_err(|e| format!("Docker connect failed: {e}"))?;
 
     let mut filters = HashMap::new();
-    filters.insert("label", vec!["dockpanel.managed=true"]);
+    filters.insert("label", vec!["arsy.managed=true"]);
 
     let containers = docker
         .list_containers(Some(ListContainersOptions {
@@ -298,8 +298,8 @@ pub async fn list_databases() -> Result<Vec<DbContainer>, String> {
         .into_iter()
         .filter_map(|c| {
             let labels = c.labels.as_ref()?;
-            let _db_name = labels.get("dockpanel.db.name")?;
-            let engine = labels.get("dockpanel.db.engine")?;
+            let _db_name = labels.get("arsy.db.name")?;
+            let engine = labels.get("arsy.db.engine")?;
             let id = c.id.as_ref()?;
 
             let port = c
@@ -361,7 +361,7 @@ pub async fn execute_query(
     // The credential goes in via `--env-file`, NOT `-e KEY=value`: a `-e`
     // argument is literal `docker` argv, world-readable via `ps`/`/proc/<pid>/
     // cmdline` for the life of the child (no `hidepid=` assumed). See
-    // `DockerEnvFile` — `dockpanel-fanout` s445 completeness critic.
+    // `DockerEnvFile` — `arsy-fanout` s445 completeness critic.
     let env_file = match engine {
         "mysql" | "mariadb" => DockerEnvFile::new(&[("MYSQL_PWD", password)]),
         _ => DockerEnvFile::new(&[("PGPASSWORD", password)]),
@@ -810,13 +810,13 @@ fn tenant_role_sql(db_name: &str, password: &str) -> [String; 3] {
     ]
 }
 
-/// Ensure the shared `dockpanel-db` bridge exists AND has inter-container communication
+/// Ensure the shared `arsy-db` bridge exists AND has inter-container communication
 /// disabled. No consumer connects to a managed DB over this network (every consumer uses
 /// the 127.0.0.1-published host port), so ICC can be off — which blocks a compromised
 /// tenant DB container from reaching sibling tenants' DB containers (H2 lateral movement).
 ///
 /// s242 set `enable_icc=false` only when the network was FIRST created, so installs whose
-/// `dockpanel-db` predates that keep ICC on (and even NEW DBs there join the ICC-on net) —
+/// `arsy-db` predates that keep ICC on (and even NEW DBs there join the ICC-on net) —
 /// the gap that made the s242 mitigation partial. This reconciles a legacy ICC-on network
 /// to ICC=false (one-time, idempotent) since ICC is a create-time, in-place-immutable option.
 async fn ensure_network(docker: &Docker) -> Result<(), String> {
@@ -863,7 +863,7 @@ async fn create_db_network_at(docker: &Docker, network: &str) -> Result<(), Stri
     Ok(())
 }
 
-/// Recreate `dockpanel-db` with ICC disabled, reconnecting every attached DB container.
+/// Recreate `arsy-db` with ICC disabled, reconnecting every attached DB container.
 /// One-time reconcile for pre-s242 installs whose network still has ICC enabled.
 async fn reconcile_network_icc(docker: &Docker, attached: &[String]) -> Result<(), String> {
     reconcile_network_icc_at(docker, DB_NETWORK, attached).await
@@ -967,13 +967,13 @@ mod tests {
     /// failure, silently orphaning every container later in `attached` — its
     /// network was already torn down, so a container the loop never reached
     /// had ZERO attachment. Proven against a REAL, fully disposable Docker
-    /// network (never the real `dockpanel-db`, so this cannot touch
+    /// network (never the real `arsy-db`, so this cannot touch
     /// production networking on this box): two real containers straddle a
     /// third id that cannot possibly connect, forcing a real mid-loop
     /// failure. Both real containers must still end up connected, and the
     /// error must name exactly the bad id.
     #[tokio::test]
-    #[ignore = "creates real containers and a real (disposable) network; run with cargo test -p dockpanel-agent reconcile_network_icc -- --ignored --nocapture"]
+    #[ignore = "creates real containers and a real (disposable) network; run with cargo test -p arsy-agent reconcile_network_icc -- --ignored --nocapture"]
     async fn reconcile_network_icc_reconnects_every_container_despite_one_bad_id() {
         use bollard::container::{Config, CreateContainerOptions, RemoveContainerOptions};
         use bollard::network::{ConnectNetworkOptions, CreateNetworkOptions};
@@ -992,7 +992,7 @@ mod tests {
                         image: Some("alpine:latest".to_string()),
                         // Never started; connect/disconnect only needs the
                         // container to exist, not to be running.
-                        cmd: Some(vec!["dockpanel-test-probe".to_string()]),
+                        cmd: Some(vec!["arsy-test-probe".to_string()]),
                         ..Default::default()
                     },
                 )

@@ -22,7 +22,7 @@ The agent samples `df` every minute. Disk-full is uniquely bad — postgres halt
 - `/var/log` filled by unrotated logs (check `logrotate -d /etc/logrotate.conf`)
 - `/var/lib/docker` overlay images and dead containers (`docker system prune -af`)
 - Old backups not pruned (retention policy too generous)
-- `/var/lib/dockpanel/scanners/` syft+grype databases (auto-healer manages this)
+- `/var/lib/arsy/scanners/` syft+grype databases (auto-healer manages this)
 - Database growth (slow query logs, audit logs, abandoned sessions)
 - Customer site pile-up (tarballs, stale staging environments)
 

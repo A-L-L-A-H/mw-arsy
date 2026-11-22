@@ -655,7 +655,7 @@ export default function Settings() {
                 value={panelName}
                 onChange={(e) => setPanelName(e.target.value)}
                 className="w-full px-3 py-2 border border-dark-500 rounded-lg text-sm focus:ring-2 focus:ring-accent-500 focus:border-accent-500"
-                placeholder="DockPanel"
+                placeholder="ARSY"
               />
             </div>
             <div>
@@ -734,7 +734,7 @@ export default function Settings() {
                   <div className="pr-4">
                     <p className="text-sm text-dark-100">Also reclaim unused Docker resources</p>
                     <p className="text-xs text-dark-300 mt-0.5">
-                      When a disk alert triggers cleanup, additionally remove <span className="font-medium">dangling images, build cache and unattached networks that DockPanel does not manage</span>.
+                      When a disk alert triggers cleanup, additionally remove <span className="font-medium">dangling images, build cache and unattached networks that ARSY does not manage</span>.
                       Containers, volumes and images belonging to your apps are never touched — including apps that are only sleeping.
                     </p>
                   </div>
@@ -918,7 +918,7 @@ export default function Settings() {
                       const res = await fetch("/api/branding/logo", {
                         method: "POST",
                         credentials: "same-origin",
-                        headers: { "Content-Type": file.type, "X-Requested-With": "DockPanel" },
+                        headers: { "Content-Type": file.type, "X-Requested-With": "ARSY" },
                         body: buf,
                       });
                       const data = await res.json().catch(() => ({}));
@@ -949,15 +949,15 @@ export default function Settings() {
             </div>
             {/* hide_branding was the third key in this card's own family with no
                 control: GET /api/branding returns it, and NexusLayout,
-                CommandLayout and Login all hide the DockPanel mark when it is
+                CommandLayout and Login all hide the ARSY mark when it is
                 set — a white-label switch every consumer honoured and nobody
                 could throw. Default is closed (an absent row reads false), so
                 this compares === "true", unlike the default-open toggles in the
                 Security Hardening card. */}
             <div className="flex items-center justify-between pt-1">
               <div>
-                <p className="text-sm text-dark-100">Hide DockPanel Branding</p>
-                <p className="text-xs text-dark-400">Remove the DockPanel name from the sidebar, header and login page</p>
+                <p className="text-sm text-dark-100">Hide ARSY Branding</p>
+                <p className="text-xs text-dark-400">Remove the ARSY name from the sidebar, header and login page</p>
               </div>
               <button onClick={() => setSettings({ ...settings, hide_branding: settings.hide_branding === "true" ? "false" : "true" })}
                 className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${settings.hide_branding === "true" ? "bg-rust-500" : "bg-dark-600"}`}>
@@ -989,7 +989,7 @@ export default function Settings() {
                 const data = await api.get<ExportConfig>("/settings/export");
                 const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
                 const url = URL.createObjectURL(blob);
-                const a = document.createElement("a"); a.href = url; a.download = "dockpanel-config.json"; a.click();
+                const a = document.createElement("a"); a.href = url; a.download = "arsy-config.json"; a.click();
                 URL.revokeObjectURL(url);
               } catch (err) { setMessage({ text: err instanceof Error ? err.message : "Export failed", type: "error" }); }
             }} className="px-4 py-2 bg-dark-700 text-dark-100 rounded-lg text-sm font-medium hover:bg-dark-600">Export Config</button>
@@ -1348,7 +1348,7 @@ export default function Settings() {
                   value={smtpFromName}
                   onChange={(e) => setSmtpFromName(e.target.value)}
                   className="w-full px-3 py-2 border border-dark-500 rounded-lg text-sm focus:ring-2 focus:ring-accent-500 focus:border-accent-500 outline-none"
-                  placeholder="DockPanel"
+                  placeholder="ARSY"
                 />
               </div>
             </div>
@@ -1779,7 +1779,7 @@ export default function Settings() {
         {/* Data retention windows. The reader (auto_healer.rs's run_retention_cleanup,
             GAP 67) has existed for a while but had no ALLOWED_KEYS entry and no
             control here — every install was stuck at the hardcoded defaults with no
-            way to change them. Found by the first dockpanel loose-ends audit. */}
+            way to change them. Found by the first arsy loose-ends audit. */}
         {user?.role === "admin" && (
         <div className="bg-dark-800 rounded-lg border border-dark-500 overflow-hidden mt-4">
           <div className="px-5 py-3 border-b border-dark-600">
@@ -1925,9 +1925,9 @@ export default function Settings() {
           {oauthRedirects && !oauthRedirects.base_url_configured && (
             <div className="px-5 py-3 border-b border-dark-600 bg-danger-500/5">
               <p className="text-xs text-danger-400">
-                <span className="font-medium">BASE_URL is not set</span> in <code className="font-mono">/etc/dockpanel/api.env</code>.
+                <span className="font-medium">BASE_URL is not set</span> in <code className="font-mono">/etc/arsy/api.env</code>.
                 Redirect URIs are relative without it and no provider will accept one, so sign-in fails after the operator
-                has already registered the app. Set it and restart <code className="font-mono">dockpanel-api</code> before configuring below.
+                has already registered the app. Set it and restart <code className="font-mono">arsy-api</code> before configuring below.
               </p>
             </div>
           )}
@@ -2456,7 +2456,7 @@ export default function Settings() {
         {/* AI-assisted build/deploy failure diagnosis (BYO API key) */}
         <AiDiagnosisSettings setMessage={setMessage} />
 
-        {/* MCP server (dockpanel-mcp) — read-only introspection for AI agents */}
+        {/* MCP server (arsy-mcp) — read-only introspection for AI agents */}
         <McpServerSettings setMessage={setMessage} onManageKeys={() => setTab("account")} />
 
         {/* System Health */}
@@ -2773,7 +2773,7 @@ webserver-port=8081
 webserver-allow-from=127.0.0.1`}</pre>
               <p className="text-xs text-dark-300">On Ubuntu (and anywhere <span className="font-mono text-dark-200">systemd-resolved</span> is running) port 53 is already taken by the stub resolver on <span className="font-mono text-dark-200">127.0.0.53</span>, so PowerDNS's default wildcard bind fails with <span className="font-mono text-dark-200">Address already in use</span> and the service restart-loops. Add a <span className="font-mono text-dark-200">local-address</span> line listing your real IPs — the one-click installer detects this and does it for you:</p>
               <pre className="bg-dark-950 border border-dark-600 p-3 text-xs text-dark-100 font-mono overflow-x-auto whitespace-pre">{`local-address=YOUR.PUBLIC.IP.HERE,127.0.0.1`}</pre>
-              <p className="text-xs text-dark-300">Prefer PostgreSQL? DockPanel's database runs in the <span className="font-mono text-dark-200">dockpanel-postgres</span> container, not on localhost — so <span className="font-mono text-dark-200">sudo -u postgres createdb pdns</span> won't work. Use the one-click installer's PostgreSQL option (it creates the <span className="font-mono text-dark-200">pdns</span> database inside the container for you).</p>
+              <p className="text-xs text-dark-300">Prefer PostgreSQL? ARSY's database runs in the <span className="font-mono text-dark-200">arsy-postgres</span> container, not on localhost — so <span className="font-mono text-dark-200">sudo -u postgres createdb pdns</span> won't work. Use the one-click installer's PostgreSQL option (it creates the <span className="font-mono text-dark-200">pdns</span> database inside the container for you).</p>
               <p className="text-dark-200 font-medium">Then restart and verify:</p>
               <pre className="bg-dark-950 border border-dark-600 p-3 text-xs text-dark-100 font-mono overflow-x-auto whitespace-pre">{`systemctl restart pdns
 curl -s -H "X-API-Key: your-secret-key-here" \\
@@ -3009,7 +3009,7 @@ function McpServerSettings({ setMessage, onManageKeys }: { setMessage: (m: { tex
   };
 
   const endpoint = bindMode === "direct"
-    ? "Whatever address you set in /etc/dockpanel/mcp.env's LISTEN_ADDR — not proxied by nginx in this mode."
+    ? "Whatever address you set in /etc/arsy/mcp.env's LISTEN_ADDR — not proxied by nginx in this mode."
     : `${window.location.origin}/mcp`;
 
   return (
@@ -3017,11 +3017,11 @@ function McpServerSettings({ setMessage, onManageKeys }: { setMessage: (m: { tex
       <div className="px-5 py-3 border-b border-dark-600">
         <h3 className="text-xs font-medium text-dark-300 uppercase font-mono tracking-widest">MCP Server</h3>
         <p className="text-xs text-dark-200 mt-0.5">
-          Read-only DockPanel introspection for AI agents (list sites, read logs/metrics, check security posture) over the Model Context Protocol.
+          Read-only ARSY introspection for AI agents (list sites, read logs/metrics, check security posture) over the Model Context Protocol.
         </p>
         <p className="text-[10px] text-dark-300 mt-1 italic">
           The toggle and bind mode below are a record for this Settings page to display — they don't start, stop, or
-          reconfigure the <code>dockpanel-mcp</code> systemd service themselves. Set them to match what you've actually
+          reconfigure the <code>arsy-mcp</code> systemd service themselves. Set them to match what you've actually
           done on the host.
         </p>
       </div>
@@ -3029,7 +3029,7 @@ function McpServerSettings({ setMessage, onManageKeys }: { setMessage: (m: { tex
         <div className="flex items-center justify-between border border-dark-600 bg-dark-900/50 rounded p-4">
           <div>
             <div className="text-sm font-medium text-dark-50">MCP server enabled</div>
-            <p className="text-[10px] text-dark-300 mt-0.5">Reflects whether you've run <code>systemctl enable --now dockpanel-mcp</code> on the host.</p>
+            <p className="text-[10px] text-dark-300 mt-0.5">Reflects whether you've run <code>systemctl enable --now arsy-mcp</code> on the host.</p>
           </div>
           <button
             type="button"
@@ -3060,8 +3060,8 @@ function McpServerSettings({ setMessage, onManageKeys }: { setMessage: (m: { tex
           <p className="text-xs font-medium text-dark-100">Setup, if you haven't already</p>
           <ol className="text-[10px] text-dark-300 list-decimal list-inside space-y-0.5">
             <li>Mint an API key named "MCP server" — <button type="button" onClick={onManageKeys} className="text-rust-400 hover:text-rust-300 underline">manage API keys</button>.</li>
-            <li>Save it to <code>/etc/dockpanel/mcp.token</code> on the host (root:root, mode 600).</li>
-            <li>Run <code>systemctl enable --now dockpanel-mcp</code>.</li>
+            <li>Save it to <code>/etc/arsy/mcp.token</code> on the host (root:root, mode 600).</li>
+            <li>Run <code>systemctl enable --now arsy-mcp</code>.</li>
           </ol>
         </div>
 
@@ -3694,7 +3694,7 @@ function PrometheusSettings({ setMessage }: { setMessage: (m: { text: string; ty
 
   const scrapeUrl = `${window.location.origin}/api/metrics`;
   const scrapeConfig = `scrape_configs:
-  - job_name: 'dockpanel'
+  - job_name: 'arsy'
     metrics_path: /api/metrics
     scheme: ${window.location.protocol.replace(":", "")}
     bearer_token: ${newToken ?? "<your-scrape-token>"}
@@ -3866,7 +3866,7 @@ function AcmeContactSettings({ setMessage }: { setMessage: (m: { text: string; t
       <div className="px-5 py-3 border-b border-dark-600">
         <h3 className="text-xs font-medium text-dark-300 uppercase font-mono tracking-widest">ACME Contact</h3>
         <p className="text-xs text-dark-200 mt-0.5">
-          The address DockPanel registers with Let's Encrypt. Certificates cannot be issued without one the CA accepts.
+          The address ARSY registers with Let's Encrypt. Certificates cannot be issued without one the CA accepts.
         </p>
       </div>
       <div className="p-5 space-y-3">
@@ -4014,7 +4014,7 @@ function AcmeSettings({ setMessage }: { setMessage: (m: { text: string; type: st
           <h3 className="text-xs font-medium text-dark-300 uppercase font-mono tracking-widest">ACME Profile</h3>
         </div>
         <div className="p-5 text-sm text-dark-300">
-          The configured CA doesn't advertise the ACME profiles extension — DockPanel will request its default profile.
+          The configured CA doesn't advertise the ACME profiles extension — ARSY will request its default profile.
         </div>
       </div>
     );

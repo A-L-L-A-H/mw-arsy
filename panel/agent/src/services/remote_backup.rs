@@ -23,7 +23,7 @@ struct TempFileGuard {
 impl TempFileGuard {
     fn create(label: &str, content: &str) -> Result<Self, String> {
         let random_suffix: u64 = rand::random();
-        let path = format!("/tmp/.dockpanel-s3-{}-{:016x}", label, random_suffix);
+        let path = format!("/tmp/.arsy-s3-{}-{:016x}", label, random_suffix);
         std::fs::write(&path, content)
             .map_err(|e| format!("Failed to write S3 config: {e}"))?;
         #[cfg(unix)]
@@ -202,11 +202,11 @@ pub async fn upload_s3(
 ///
 /// The two settings encoded here each cost a release to find (s288):
 ///
-/// * `UserKnownHostsFile=/etc/dockpanel/known_hosts` — `accept-new` means "trust on
+/// * `UserKnownHostsFile=/etc/arsy/known_hosts` — `accept-new` means "trust on
 ///   first use, then pin", and pinning is a WRITE. ssh's default target is
 ///   `~/.ssh/known_hosts`, which under this unit's `ProtectHome=yes` cannot be
 ///   created: *"Could not create directory '/root/.ssh' (Read-only file system)"*.
-///   `/etc/dockpanel` is in the unit's `ReadWritePaths` and is where `deploy.rs`
+///   `/etc/arsy` is in the unit's `ReadWritePaths` and is where `deploy.rs`
 ///   already points git's ssh, so one trust store serves both. Redirecting the file
 ///   keeps first-use pinning; `/dev/null` or `StrictHostKeyChecking=no` would have
 ///   "fixed" it by discarding host verification entirely.
@@ -225,7 +225,7 @@ fn sftp_opts(port: u16, password: Option<&str>, key_path: Option<&str>) -> Vec<S
         "-o".into(),
         "StrictHostKeyChecking=accept-new".into(),
         "-o".into(),
-        "UserKnownHostsFile=/etc/dockpanel/known_hosts".into(),
+        "UserKnownHostsFile=/etc/arsy/known_hosts".into(),
         "-o".into(),
         "ConnectTimeout=10".into(),
         "-P".into(),
@@ -523,7 +523,7 @@ pub async fn test_s3(
     path_prefix: &str,
 ) -> Result<(), String> {
     let prefix = path_prefix.trim_matches('/');
-    let probe_name = format!(".dockpanel-write-probe-{:016x}", rand::random::<u64>());
+    let probe_name = format!(".arsy-write-probe-{:016x}", rand::random::<u64>());
     let key = if prefix.is_empty() {
         probe_name.clone()
     } else {
@@ -547,7 +547,7 @@ pub async fn test_s3(
             "-H".into(),
             "Content-Type: text/plain".into(),
             "--data-binary".into(),
-            "dockpanel write probe".into(),
+            "arsy write probe".into(),
             url.clone(),
         ],
         15,
@@ -623,7 +623,7 @@ pub async fn test_sftp(
     // own tmp. `PrivateTmp=yes` makes that namespace private to the unit and the
     // sftp child inherits it.
     let probe_local = std::env::temp_dir().join(format!(
-        ".dockpanel-sftp-probe-{}-{}",
+        ".arsy-sftp-probe-{}-{}",
         std::process::id(),
         PROBE_SEQ.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
     ));
@@ -637,7 +637,7 @@ pub async fn test_sftp(
         tokio::fs::write(&probe_local, b"")
             .await
             .map_err(|e| format!("Could not stage a local probe file: {e}"))?;
-        let remote_probe = format!("{dir}/.dockpanel-write-probe");
+        let remote_probe = format!("{dir}/.arsy-write-probe");
         format!(
             "{}put {} {}\nrm {}\n",
             sftp_mkdir_script(dir),
@@ -798,8 +798,8 @@ mod tests {
     #[test]
     fn mkdir_script_creates_every_ancestor_shallowest_first() {
         assert_eq!(
-            sftp_mkdir_script("/srv/backups/dockpanel"),
-            "-mkdir \"/srv\"\n-mkdir \"/srv/backups\"\n-mkdir \"/srv/backups/dockpanel\"\n"
+            sftp_mkdir_script("/srv/backups/arsy"),
+            "-mkdir \"/srv\"\n-mkdir \"/srv/backups\"\n-mkdir \"/srv/backups/arsy\"\n"
         );
         assert_eq!(sftp_mkdir_script("/backups"), "-mkdir \"/backups\"\n");
         // A relative path must not acquire a leading slash.
@@ -835,7 +835,7 @@ mod tests {
             pw.windows(2).any(|w| w[0] == "-o" && w[1] == "BatchMode=no"),
             "password auth must disable BatchMode explicitly: {pw:?}"
         );
-        let key = sftp_opts(22, None, Some("/etc/dockpanel/id"));
+        let key = sftp_opts(22, None, Some("/etc/arsy/id"));
         assert!(
             key.windows(2).any(|w| w[0] == "-o" && w[1] == "BatchMode=yes"),
             "key auth must keep BatchMode on: {key:?}"
@@ -875,7 +875,7 @@ mod tests {
     /// End-to-end against a real sshd running `ForceCommand internal-sftp`.
     ///
     /// Opt-in because it needs that server: export
-    /// `DOCKPANEL_SFTP_LAB=user:password@host:port:/remote/path` and run
+    /// `ARSY_SFTP_LAB=user:password@host:port:/remote/path` and run
     /// `cargo test -- --ignored`. Run s339 against a chrooted Debian sshd in a
     /// container. CI is unaffected because the test is `#[ignore]`d, not because
     /// it quietly returns — that distinction is the whole point of the note below.
@@ -895,10 +895,10 @@ mod tests {
     /// guard; this is the deeper check you run by hand when touching the
     /// transport, and if you are touching it, set the variable.
     #[tokio::test]
-    #[ignore = "needs an sshd running ForceCommand internal-sftp; set DOCKPANEL_SFTP_LAB and run with --ignored"]
+    #[ignore = "needs an sshd running ForceCommand internal-sftp; set ARSY_SFTP_LAB and run with --ignored"]
     async fn lab_upload_and_test_survive_forcecommand() {
-        let spec = std::env::var("DOCKPANEL_SFTP_LAB").expect(
-            "DOCKPANEL_SFTP_LAB must be set to run this test \
+        let spec = std::env::var("ARSY_SFTP_LAB").expect(
+            "ARSY_SFTP_LAB must be set to run this test \
              (user:password@host:port:/remote/path). It is #[ignore]d by default; \
              being asked to run means a lab was expected, so an unset variable is \
              a configuration error, not a reason to pass.",
@@ -912,7 +912,7 @@ mod tests {
             .await
             .expect("Test Connection must succeed through ForceCommand internal-sftp");
 
-        let local = std::env::temp_dir().join("dockpanel-sftp-lab-upload.txt");
+        let local = std::env::temp_dir().join("arsy-sftp-lab-upload.txt");
         tokio::fs::write(&local, b"s339").await.unwrap();
         let dest = upload_sftp(
             local.to_str().unwrap(),
@@ -925,7 +925,7 @@ mod tests {
         )
         .await
         .expect("upload must succeed through ForceCommand internal-sftp");
-        assert!(dest.contains("dockpanel-sftp-lab-upload.txt"));
+        assert!(dest.contains("arsy-sftp-lab-upload.txt"));
         let _ = tokio::fs::remove_file(&local).await;
 
         // A path that cannot exist must still FAIL — otherwise the arms above only

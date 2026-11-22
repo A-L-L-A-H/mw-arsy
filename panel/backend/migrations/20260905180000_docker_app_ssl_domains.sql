@@ -3,7 +3,7 @@
 -- Compose-stack fallback, both inside `security_scanner::auto_fix_safe_findings`
 -- — could ever find one. A domain is deliberately not a database row for a
 -- Docker app otherwise (`services::domain_claim`'s own comment: "Docker apps
--- are not rows" — the agent's `dockpanel.app.domain` container label is the
+-- are not rows" — the agent's `arsy.app.domain` container label is the
 -- only source of truth for WHICH domain an app serves), but SSL renewal needs
 -- a home for exactly the three facts a renewal decision needs: who owns it
 -- (the ACME contact and the alert recipient), which mode it was deployed in

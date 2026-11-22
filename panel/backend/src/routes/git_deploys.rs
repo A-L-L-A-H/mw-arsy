@@ -50,9 +50,9 @@ const GIT_DEPLOY_SELECT: &str = "SELECT d.id, d.user_id, d.server_id, d.name, d.
     d.tls_mode, d.tls_certificate_id, d.volumes, c.alias AS tls_certificate \
     FROM git_deploys d LEFT JOIN tls_certificates c ON c.id = d.tls_certificate_id";
 
-/// git_previews.container_name is stored WITH the `dockpanel-git-` prefix that
+/// git_previews.container_name is stored WITH the `arsy-git-` prefix that
 /// the agent's `/git/cleanup` handler re-adds (agent `cleanup_container` does
-/// `format!("dockpanel-git-{name}")`). Passing the stored value verbatim yields
+/// `format!("arsy-git-{name}")`). Passing the stored value verbatim yields
 /// a double-prefixed name that matches no container, so the teardown silently
 /// no-ops and leaks the container/image/nginx/SSL/repo dir while the DB frees
 /// its port. Every preview-cleanup caller MUST route the stored name through
@@ -60,14 +60,14 @@ const GIT_DEPLOY_SELECT: &str = "SELECT d.id, d.user_id, d.server_id, d.name, d.
 /// `delete_preview` path). See lesson #70 (resolve by the identity the resource
 /// was created with, and fix the whole class at one choke point).
 pub(crate) fn strip_container_prefix(stored: &str) -> &str {
-    stored.strip_prefix("dockpanel-git-").unwrap_or(stored)
+    stored.strip_prefix("arsy-git-").unwrap_or(stored)
 }
 
 /// The container-name prefix a preview is created under from v2.55.0 on.
 ///
 /// `.` is the whole point: `is_valid_name` rejects it, so no *deployment* can be
 /// named into this space. Before the split, a preview of config `C` on branch
-/// `B` was `dockpanel-git-{C}-pr-{slug(B)}` — which is exactly the container of
+/// `B` was `arsy-git-{C}-pr-{slug(B)}` — which is exactly the container of
 /// a deployment named `{C}-pr-{slug(B)}`, a name the panel will happily create.
 pub(crate) const PREVIEW_SCOPE_PREFIX: &str = "pr.";
 
@@ -1249,7 +1249,7 @@ pub async fn remove(
     //
     // `trigger_deploy_task` already documents what that costs from the scheduler
     // side: `idx_git_deploys_name_server` makes `name` unique only PER SERVER while
-    // the agent's checkout path is `/var/lib/dockpanel/git/{name}`, keyed by name
+    // the agent's checkout path is `/var/lib/arsy/git/{name}`, keyed by name
     // alone — so addressing the wrong box does not error, it finds the same-named
     // neighbour and acts on THAT. Removal is the sharpest form of it. `/git/cleanup`
     // stops the container and deletes its image, vhost, certificate and checkout,
@@ -1979,7 +1979,7 @@ pub async fn keygen(
 /// The name the agent's container actually carries, and therefore the key
 /// `container_expected_stops` and the alert engine both use.
 ///
-/// The stored `git_deploys.name` is BARE — the agent adds `dockpanel-git-` in
+/// The stored `git_deploys.name` is BARE — the agent adds `arsy-git-` in
 /// `stop_container`/`start_container` (`agent routes/git_build.rs`) via
 /// `scope_of(..).scoped(..)`, which is the identity for `GitScope::Deploy`, the
 /// scope the lifecycle trio always uses because it sends no `scope` key. So the
@@ -1987,7 +1987,7 @@ pub async fn keygen(
 /// of this file for what happens when a caller gets that wrong in either
 /// direction.
 fn expected_stop_key(name: &str) -> String {
-    format!("dockpanel-git-{name}")
+    format!("arsy-git-{name}")
 }
 
 /// POST /api/git-deploys/{id}/stop
@@ -2021,7 +2021,7 @@ pub async fn stop(
     // the auto-healer restarted the operator's Stop within 120s. **It does not,
     // and it never did** — measured on a box, both versions, not reasoned:
     // `list_deployed_apps` (agent `services/docker_apps.rs`) keeps only
-    // containers carrying `dockpanel.app.template`, and a git container carries
+    // containers carrying `arsy.app.template`, and a git container carries
     // no template label at all. So `/apps` never lists one, and BOTH readers of
     // this table — the healer's container leg and `alert_engine` — walk exactly
     // that listing. A git deploy is invisible to container healing and to
@@ -2627,7 +2627,7 @@ fn spawn_deploy_task(
 
         // A pre-build command skips Nixpacks entirely and goes straight to
         // auto-detect, so the command always gets spliced into the Dockerfile
-        // DockPanel controls — never silently discarded on a Nixpacks-success
+        // ARSY controls — never silently discarded on a Nixpacks-success
         // path the way the old host-exec pre-build-hook was (it used to fire
         // unconditionally after this block, with no check on whether
         // Nixpacks had already built the image and made its filesystem
@@ -3063,7 +3063,7 @@ fn spawn_deploy_task(
                                 Ok(_) => {} // Container is responding — alive
                                 Err(_) => {
                                     // Container might be down — check status
-                                    let container_name = format!("dockpanel-git-{monitor_config_name}");
+                                    let container_name = format!("arsy-git-{monitor_config_name}");
                                     tracing::warn!("Auto-rollback: container {container_name} may have crashed, checking...");
 
                                     // Get last successful deploy before this one
@@ -3251,7 +3251,7 @@ fn spawn_deploy_task(
 /// an operator's CVE threshold applies to, and images their container policy
 /// may restrict. It also skipped `validate_compose_yaml`, which the three
 /// front-door compose paths run — not an escape, because the agent refuses any
-/// bind outside `/var/lib/dockpanel/compose/` and blocks the Docker socket by
+/// bind outside `/var/lib/arsy/compose/` and blocks the Docker socket by
 /// name, but it meant the same document was judged by different rules
 /// depending on which door it arrived through.
 ///
@@ -3320,7 +3320,7 @@ fn dropped_service_refusal(yaml: &str) -> Option<String> {
         ("they", "them")
     };
     Some(format!(
-        "this repository's compose file gives no image for {}, and DockPanel's Compose support \
+        "this repository's compose file gives no image for {}, and ARSY's Compose support \
          runs registry images rather than building them — {it} would be skipped and the deploy \
          would come up without {them}. Either name an already-built image for each of them, or \
          remove the compose file: without it this deployment builds your Dockerfile and also \
@@ -3482,7 +3482,7 @@ async fn set_github_status(token: &str, repo_url: &str, sha: &str, state: &str, 
 
     let target_url = target_url.unwrap_or_default();
     let description = match state {
-        "success" => "Deployed successfully via DockPanel",
+        "success" => "Deployed successfully via ARSY",
         "failure" => "Deploy failed",
         "pending" => "Deploying...",
         _ => "Deploy status update",
@@ -3493,12 +3493,12 @@ async fn set_github_status(token: &str, repo_url: &str, sha: &str, state: &str, 
         .post(&format!("https://api.github.com/repos/{owner}/{repo}/statuses/{sha}"))
         .header("Authorization", format!("Bearer {token}"))
         .header("Accept", "application/vnd.github+json")
-        .header("User-Agent", "DockPanel")
+        .header("User-Agent", "ARSY")
         .json(&serde_json::json!({
             "state": state,
             "target_url": target_url,
             "description": description,
-            "context": "dockpanel/deploy",
+            "context": "arsy/deploy",
         }))
         .timeout(std::time::Duration::from_secs(10))
         .send()
@@ -3562,7 +3562,7 @@ pub async fn trigger_deploy_task(
     // even read. `git_deploys.server_id` is NOT NULL and
     // `idx_git_deploys_name_server` makes `name` unique only PER SERVER, so two
     // servers may legitimately own a deployment called the same thing — and the
-    // agent's checkout path is `/var/lib/dockpanel/git/{name}`, keyed by name
+    // agent's checkout path is `/var/lib/arsy/git/{name}`, keyed by name
     // alone. Driven on a two-box fleet against v2.56.0: a member's cron deploy
     // ran entirely on the panel host, and because both owned an `api`, whichever
     // cloned first owned the checkout while the other silently built the WRONG
@@ -3725,7 +3725,7 @@ pub async fn trigger_deploy_task(
 
     // A pre-build command skips Nixpacks entirely and goes straight to
     // auto-detect, so the command always gets spliced into the Dockerfile
-    // DockPanel controls — mirrors spawn_deploy_task's twin block.
+    // ARSY controls — mirrors spawn_deploy_task's twin block.
     let pre_build_cmd = config.pre_build_cmd.as_deref().filter(|c| !c.trim().is_empty());
 
     if pre_build_cmd.is_some() {
@@ -4044,14 +4044,14 @@ async fn handle_preview_deploy(
     };
 
     // The preview's own name space. Before v2.55.0 this was
-    // `dockpanel-git-{config}-pr-{slug}` — the container name of a DEPLOYMENT
+    // `arsy-git-{config}-pr-{slug}` — the container name of a DEPLOYMENT
     // called `{config}-pr-{slug}`, which any admin can create and which the
     // agent resolved by name alone. Both halves of that string are reachable by
     // whoever can push to the repo (the webhook has no auth extractor), so a
     // push could blue-green a stranger's production container out of existence
     // and repoint that stranger's domain at the pushed branch.
     let preview_name = format!("{}-pr-{}", config.name, branch_slug);
-    let container_name = format!("dockpanel-git-{PREVIEW_SCOPE_PREFIX}{preview_name}");
+    let container_name = format!("arsy-git-{PREVIEW_SCOPE_PREFIX}{preview_name}");
 
     // A row written before the split names its container in the OLD shared
     // space. The upsert below overwrites that name, so unless it is torn down
@@ -4194,7 +4194,7 @@ async fn handle_preview_deploy(
     // Same GitHub-status wiring the regular/scheduled deploy paths already use
     // (`set_github_status`, 9 existing call sites) — a preview builds, deploys
     // and gets a subdomain today, but nothing tells GitHub a commit or PR where
-    // to find it, so the pusher has to go look in the DockPanel UI instead of
+    // to find it, so the pusher has to go look in the ARSY UI instead of
     // seeing a status check / link on the commit.
     let github_token = config.github_token.clone();
     let github_target = preview_domain.as_deref().map(|d| deploy_url(d, effective_mode));
@@ -4328,7 +4328,7 @@ async fn handle_preview_deploy(
                     .and_then(|v| v.as_str())
                     .filter(|s| !s.is_empty())
                     .map(|s| s.to_string())
-                    .unwrap_or_else(|| format!("dockpanel-git-{name}-pr-{branch_slug}"));
+                    .unwrap_or_else(|| format!("arsy-git-{name}-pr-{branch_slug}"));
                 if let Err(db_err) = sqlx::query("UPDATE git_previews SET status = 'running', container_id = $1, commit_hash = $2, container_name = $3 WHERE git_deploy_id = $4 AND branch = $5")
                     .bind(&cid).bind(&commit_hash).bind(&created).bind(deploy_id).bind(&branch).execute(&db).await
                 {
@@ -4404,7 +4404,7 @@ pub async fn delete_preview(
     )
     .await?;
 
-    // Clean up container — the stored name carries both the `dockpanel-git-`
+    // Clean up container — the stored name carries both the `arsy-git-`
     // prefix the agent re-adds and, for rows written from v2.55.0 on, the
     // preview scope. `preview_cleanup_target` resolves both.
     if let Err(e) = agent
@@ -4876,14 +4876,14 @@ mod tests {
         // Written from v2.55.0 on: scoped, so the agent addresses the preview's
         // own space and refuses anything labelled as a deployment.
         assert_eq!(
-            preview_cleanup_target("dockpanel-git-pr.myapp-pr-feature-x"),
+            preview_cleanup_target("arsy-git-pr.myapp-pr-feature-x"),
             ("myapp-pr-feature-x".to_string(), "preview")
         );
         // Written before it: the old shared space. Addressed by the old name —
         // recomputing it would be a second answer to a question the row already
         // holds — but with the ownership rule that refuses a labelled deploy.
         assert_eq!(
-            preview_cleanup_target("dockpanel-git-myapp-pr-feature-x"),
+            preview_cleanup_target("arsy-git-myapp-pr-feature-x"),
             ("myapp-pr-feature-x".to_string(), "preview_legacy")
         );
     }
@@ -4893,8 +4893,8 @@ mod tests {
         // The collision this replaced: the legacy preview of config `myapp` on
         // branch `feature-x` WAS the container of a deployment named
         // `myapp-pr-feature-x`, which `is_valid_name` accepts.
-        let legacy = "dockpanel-git-myapp-pr-feature-x";
-        let scoped = format!("dockpanel-git-{}myapp-pr-feature-x", super::PREVIEW_SCOPE_PREFIX);
+        let legacy = "arsy-git-myapp-pr-feature-x";
+        let scoped = format!("arsy-git-{}myapp-pr-feature-x", super::PREVIEW_SCOPE_PREFIX);
         assert_ne!(legacy, scoped);
         assert!(!crate::routes::is_valid_name(strip_container_prefix(&scoped)));
         assert!(crate::routes::is_valid_name(strip_container_prefix(legacy)));
@@ -4903,7 +4903,7 @@ mod tests {
     fn body_with(env: serde_json::Value) -> serde_json::Value {
         build_deploy_body(DeployBody {
             name: "app",
-            image_tag: "dockpanel-git-app:abc",
+            image_tag: "arsy-git-app:abc",
             container_port: 3000,
             host_port: 30001,
             env_vars: &env,
@@ -4945,7 +4945,7 @@ mod tests {
         // every declared path silently unmounted (#118's exact original defect).
         let body = build_deploy_body(DeployBody {
             name: "app",
-            image_tag: "dockpanel-git-app:abc",
+            image_tag: "arsy-git-app:abc",
             container_port: 3000,
             host_port: 30001,
             env_vars: &serde_json::json!({}),
@@ -4971,7 +4971,7 @@ mod tests {
         // goes from `None` to `Some("ops@example.com")`.
         let body = build_deploy_body(DeployBody {
             name: "app",
-            image_tag: "dockpanel-git-app:abc",
+            image_tag: "arsy-git-app:abc",
             container_port: 3000,
             host_port: 30001,
             env_vars: &serde_json::json!({}),
@@ -4993,7 +4993,7 @@ mod tests {
     fn acme_mode_still_sends_the_address() {
         let body = build_deploy_body(DeployBody {
             name: "app",
-            image_tag: "dockpanel-git-app:abc",
+            image_tag: "arsy-git-app:abc",
             container_port: 3000,
             host_port: 30001,
             env_vars: &serde_json::json!({}),
@@ -5057,8 +5057,8 @@ mod tests {
     #[test]
     fn strip_prefix_from_stored_preview_name() {
         // git_previews.container_name is stored WITH the prefix; cleanup must strip it
-        // so the agent (which re-adds "dockpanel-git-") resolves the real container.
-        assert_eq!(strip_container_prefix("dockpanel-git-myapp-pr-feat-x"), "myapp-pr-feat-x");
+        // so the agent (which re-adds "arsy-git-") resolves the real container.
+        assert_eq!(strip_container_prefix("arsy-git-myapp-pr-feat-x"), "myapp-pr-feat-x");
     }
 
     #[test]
@@ -5067,7 +5067,7 @@ mod tests {
         assert_eq!(strip_container_prefix("myapp-pr-feat-x"), "myapp-pr-feat-x");
         // Only ONE prefix is stripped — a double-prefixed input still loses just one,
         // but the stored value only ever carries a single prefix.
-        assert_eq!(strip_container_prefix("dockpanel-git-dockpanel-git-x"), "dockpanel-git-x");
+        assert_eq!(strip_container_prefix("arsy-git-arsy-git-x"), "arsy-git-x");
     }
 
     #[test]

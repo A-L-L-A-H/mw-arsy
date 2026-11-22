@@ -50,14 +50,14 @@ struct DeployRequest {
     gpu_indices: Option<Vec<u32>>,
 }
 
-/// Reject the request unless `container_id` names a dockpanel-managed container. WRITE-scope parity
-/// with the `list` READ path (which filters on `dockpanel.managed=true`): prevents an admin from
+/// Reject the request unless `container_id` names a arsy-managed container. WRITE-scope parity
+/// with the `list` READ path (which filters on `arsy.managed=true`): prevents an admin from
 /// acting on the panel's OWN infrastructure containers (postgres/api/agent) by id. Returns 403.
 async fn ensure_managed(container_id: &str) -> Result<(), (StatusCode, Json<serde_json::Value>)> {
     docker_apps::require_managed(container_id).await.map_err(|_| {
         (
             StatusCode::FORBIDDEN,
-            Json(serde_json::json!({ "error": "Not a dockpanel-managed container" })),
+            Json(serde_json::json!({ "error": "Not a arsy-managed container" })),
         )
     })
 }
@@ -661,7 +661,7 @@ async fn unexpose_domain(domain: &str, host_port: Option<u16>, response: &mut se
     // sitting there ready to be restored by a future enable. Same ownership
     // check on each: the parked body is a frozen copy of the same rendered
     // vhost, so its `proxy_pass` still names this container's port.
-    // [[project_dockpanel_tech_debt_p185]] carry I.
+    // [[project_arsy_tech_debt_p185]] carry I.
     let (live_path, parked_path) = nginx::vhost_paths(domain);
     let mut removed_vhost = false;
     for (config_path, is_live) in [(&live_path, true), (&parked_path, false)] {
@@ -706,7 +706,7 @@ async fn unexpose_domain(domain: &str, host_port: Option<u16>, response: &mut se
     // still named them — breaking `nginx -t` for the WHOLE server at the next
     // reload for any reason. Only delete the certs when the vhost naming them
     // was ALSO just removed this call, matching the log-removal gate below.
-    let ssl_dir = format!("/etc/dockpanel/ssl/{domain}");
+    let ssl_dir = format!("/etc/arsy/ssl/{domain}");
     if removed_vhost && std::path::Path::new(&ssl_dir).exists() {
         if ownership::cert_dir_in_use_elsewhere(domain) {
             tracing::warn!(
@@ -729,7 +729,7 @@ async fn unexpose_domain(domain: &str, host_port: Option<u16>, response: &mut se
 
     // Let's Encrypt is NOT the panel's namespace and this code never had any
     // business in it. Neither tree issues through certbot — provisioning is
-    // instant_acme into /etc/dockpanel/ssl above — so every lineage this
+    // instant_acme into /etc/arsy/ssl above — so every lineage this
     // could reach was created by the operator, out of band. Deleting
     // live/ + archive/ + renewal/ destroyed the certificate, its whole
     // history, and the automation that would have renewed it, for a
@@ -1410,7 +1410,7 @@ async fn remove(
     // Clean up persistent volume data — only when this container actually
     // bind-mounts out of that directory. The name label is not proof: a compose
     // service carries a caller-supplied `container_name` in the same label while
-    // its own data lives under /var/lib/dockpanel/compose, so removing it used
+    // its own data lives under /var/lib/arsy/compose, so removing it used
     // to delete the identically-named template app's entire data tree.
     // The directory comes from the container's OWN binds, never from its name label.
     // Rebuilding it from the label missed anything the v2.111.0-v2.113.3 migration had
@@ -1533,7 +1533,7 @@ async fn compose_validate(
                 // This deployer has no field for user/healthcheck/entrypoint —
                 // saying "valid" over a compose file that declares one would
                 // silently drop a directive the author wrote and expects
-                // honoured. [[project_dockpanel_tech_debt_p185]] carry I.
+                // honoured. [[project_arsy_tech_debt_p185]] carry I.
                 if svc.user_ignored {
                     warnings.push(serde_json::json!({
                         "service": svc.key,
@@ -1797,9 +1797,9 @@ async fn list_images() -> Result<Json<serde_json::Value>, (StatusCode, Json<serd
 ///
 /// Deliberately NOT `-a`: `-a` widens the sweep from dangling (untagged)
 /// images to every image not backing a running container, which reaches
-/// git-deploy rollback targets (`dockpanel-git-<name>:<hash>`, kept for
+/// git-deploy rollback targets (`arsy-git-<name>:<hash>`, kept for
 /// `deploy_or_update`'s rollback path with no pull fallback) and manual
-/// snapshots (`dockpanel-snapshot:*`) — neither can be re-pulled from a
+/// snapshots (`arsy-snapshot:*`) — neither can be re-pulled from a
 /// registry. Mirrors the scoped reclaim's own C4 rule
 /// (`diagnostics.rs`'s `docker-reclaim` arm, `tests/unattended-host-scope-
 /// pin-e2e.sh` §C4): the label filter is defense in depth for a dangling
@@ -1809,7 +1809,7 @@ async fn prune_images_all() -> Result<Json<serde_json::Value>, (StatusCode, Json
     let output = tokio::time::timeout(
         std::time::Duration::from_secs(120),
         safe_command("docker")
-            .args(["image", "prune", "-f", "--filter", "label!=dockpanel.managed=true"])
+            .args(["image", "prune", "-f", "--filter", "label!=arsy.managed=true"])
             .output(),
     ).await
         .map_err(|_| (StatusCode::GATEWAY_TIMEOUT, Json(serde_json::json!({"error": "Image prune timed out (120s)"}))))?
@@ -1872,8 +1872,8 @@ async fn snapshot_container(
                 .as_secs();
             now.to_string()
         });
-        // Force-namespace with dockpanel-snapshot: prefix to prevent overwriting system images
-        let suffix = raw.strip_prefix("dockpanel-snapshot:").unwrap_or(&raw);
+        // Force-namespace with arsy-snapshot: prefix to prevent overwriting system images
+        let suffix = raw.strip_prefix("arsy-snapshot:").unwrap_or(&raw);
         // Sanitise the suffix: only allow alphanumeric, -, _, .
         let safe_suffix: String = suffix.chars()
             .filter(|c| c.is_ascii_alphanumeric() || *c == '-' || *c == '_' || *c == '.')
@@ -1884,9 +1884,9 @@ async fn snapshot_container(
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap_or_default()
                 .as_secs();
-            format!("dockpanel-snapshot:{}", now)
+            format!("arsy-snapshot:{}", now)
         } else {
-            format!("dockpanel-snapshot:{}", safe_suffix)
+            format!("arsy-snapshot:{}", safe_suffix)
         }
     };
 

@@ -13,7 +13,7 @@ The agent reads each managed cert and the panel fires at the configured ladder (
 3. From the host:
    ```
    openssl s_client -connect <domain>:443 -servername <domain> </dev/null 2>/dev/null | openssl x509 -noout -dates
-   journalctl -u dockpanel-agent --since "24 hours ago" | grep -i acme
+   journalctl -u arsy-agent --since "24 hours ago" | grep -i acme
    ```
 
 ## Common causes

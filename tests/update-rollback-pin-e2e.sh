@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 #
-# DockPanel — pins for the two update-subsystem defects closed at s282.
+# ARSY — pins for the two update-subsystem defects closed at s282.
 #
 # 1. RESTORE (s231): a failure in a post-commit stage must not restart the
-#    still-installed NEWER dockpanel-api on top of a database that has just been
+#    still-installed NEWER arsy-api on top of a database that has just been
 #    reverted. It used to: `database-verify` and `record-rollback` both run after
 #    the restore transaction commits and before the binaries are swapped back, so
 #    a `fail` in either tripped the exit trap, the trap restarted the api
@@ -216,10 +216,10 @@ make_snapshot() {
     local dir="$1" with_api="${2:-yes}"
     rm -rf "$dir"; mkdir -p "$dir/src/binaries" "$dir/src/db" "$dir/src/etc"
 
-    printf 'OLD-API\n'   > "$dir/src/binaries/dockpanel-api"
-    printf 'OLD-AGENT\n' > "$dir/src/binaries/dockpanel-agent"
-    printf 'OLD-CLI\n'   > "$dir/src/binaries/dockpanel"
-    [ "$with_api" = "yes" ] || rm -f "$dir/src/binaries/dockpanel-api"
+    printf 'OLD-API\n'   > "$dir/src/binaries/arsy-api"
+    printf 'OLD-AGENT\n' > "$dir/src/binaries/arsy-agent"
+    printf 'OLD-CLI\n'   > "$dir/src/binaries/arsy"
+    [ "$with_api" = "yes" ] || rm -f "$dir/src/binaries/arsy-api"
     printf 'OLD-ENV\n' > "$dir/src/etc/api.env"
 
     {
@@ -254,9 +254,9 @@ run_restore() {
 
     # What is installed right now: the NEWER build the operator is rolling away
     # from. If it is still here at the end, the rollback did not happen.
-    printf 'NEW-API\n'   > "$base/bin/dockpanel-api"
-    printf 'NEW-AGENT\n' > "$base/bin/dockpanel-agent"
-    printf 'NEW-CLI\n'   > "$base/bin/dockpanel"
+    printf 'NEW-API\n'   > "$base/bin/arsy-api"
+    printf 'NEW-AGENT\n' > "$base/bin/arsy-agent"
+    printf 'NEW-CLI\n'   > "$base/bin/arsy"
     printf 'NEW-ENV\n'   > "$base/etc/api.env"
 
     ACTIONS="$base/actions.log"; : > "$ACTIONS"
@@ -272,14 +272,14 @@ run_restore() {
     # `env` takes its VAR=VALUE arguments after expansion, which is the point.
     env PATH="$STUBS:$PATH" \
         STUB_ACTIONS="$ACTIONS" \
-        DOCKPANEL_RESTORE_DETACHED=1 \
-        DOCKPANEL_SNAPSHOT_ID="0000-$name" \
-        DOCKPANEL_SNAPSHOT_TARBALL="$base/snap.tar.gz" \
-        DOCKPANEL_SNAPSHOT_SHA256="$sha" \
-        DOCKPANEL_STATE_DIR="$base/state" \
-        DOCKPANEL_BIN_DIR="${BIN_DIR_OVERRIDE:-$base/bin}" \
-        DOCKPANEL_ETC_DIR="$base/etc" \
-        DOCKPANEL_HEALTH_URL="http://127.0.0.1:1/api/health" \
+        ARSY_RESTORE_DETACHED=1 \
+        ARSY_SNAPSHOT_ID="0000-$name" \
+        ARSY_SNAPSHOT_TARBALL="$base/snap.tar.gz" \
+        ARSY_SNAPSHOT_SHA256="$sha" \
+        ARSY_STATE_DIR="$base/state" \
+        ARSY_BIN_DIR="${BIN_DIR_OVERRIDE:-$base/bin}" \
+        ARSY_ETC_DIR="$base/etc" \
+        ARSY_HEALTH_URL="http://127.0.0.1:1/api/health" \
         "$@" \
         bash "$RESTORE_SH" > "$base/out.log" 2>&1
     RC=$?
@@ -294,8 +294,8 @@ chk "$([ "$RC" = "0" ] && echo 0 || echo 1)" "exits 0"
 J="$(cat "$RES_JSON" 2>/dev/null)"; A="$(cat "$ACTIONS" 2>/dev/null)"
 assert_has "verdict is ok=true"                  '"ok":true'              "$J"
 assert_has "stage is complete"                   '"stage":"complete"'     "$J"
-assert_has "dockpanel-api was started"           'systemctl start dockpanel-api' "$A"
-chk "$([ "$(cat "$BIN_DIR_OUT/dockpanel-api")" = "OLD-API" ] && echo 0 || echo 1)" \
+assert_has "arsy-api was started"           'systemctl start arsy-api' "$A"
+chk "$([ "$(cat "$BIN_DIR_OUT/arsy-api")" = "OLD-API" ] && echo 0 || echo 1)" \
     "the api binary was actually reverted to the snapshot's"
 
 echo
@@ -305,9 +305,9 @@ chk "$([ "$RC" = "0" ] && echo 0 || echo 1)" "exits 0 — the restore itself suc
 J="$(cat "$RES_JSON")"; A="$(cat "$ACTIONS")"
 assert_has "verdict is ok=false — there is something to read"  '"ok":false'      "$J"
 assert_has "the detail names the bookkeeping failure"   'could not be recorded'  "$J"
-assert_has "dockpanel-api WAS started (binaries match the database)" \
-           'systemctl start dockpanel-api' "$A"
-chk "$([ "$(cat "$BIN_DIR_OUT/dockpanel-api")" = "OLD-API" ] && echo 0 || echo 1)" \
+assert_has "arsy-api WAS started (binaries match the database)" \
+           'systemctl start arsy-api' "$A"
+chk "$([ "$(cat "$BIN_DIR_OUT/arsy-api")" = "OLD-API" ] && echo 0 || echo 1)" \
     "the rollback completed rather than aborting mid-way"
 
 echo
@@ -317,7 +317,7 @@ chk "$([ "$RC" = "0" ] && echo 0 || echo 1)" "exits 0"
 J="$(cat "$RES_JSON")"; A="$(cat "$ACTIONS")"
 assert_has "verdict is ok=false"                        '"ok":false'             "$J"
 assert_has "the detail names the shortfall"             'expected >= 3'          "$J"
-assert_has "dockpanel-api WAS started"     'systemctl start dockpanel-api'       "$A"
+assert_has "arsy-api WAS started"     'systemctl start arsy-api'       "$A"
 
 run_restore verify_junk yes STUB_VERIFY_COUNT=notanumber
 chk "$([ "$RC" = "0" ] && echo 0 || echo 1)" "a NON-NUMERIC count does not abort the script either"
@@ -332,9 +332,9 @@ J="$(cat "$RES_JSON")"; A="$(cat "$ACTIONS")"
 assert_has "verdict is ok=false"                         '"ok":false'            "$J"
 assert_has "the detail says the panel was left down ON PURPOSE" 'LEFT STOPPED'   "$J"
 assert_has "the detail points at the pre-rollback dump"  'pre-rollback'          "$J"
-assert_lacks "dockpanel-api was NOT started"   'systemctl start dockpanel-api'   "$A"
+assert_lacks "arsy-api was NOT started"   'systemctl start arsy-api'   "$A"
 assert_has "the agent WAS started — the box stays reachable" \
-           'systemctl start dockpanel-agent' "$A"
+           'systemctl start arsy-agent' "$A"
 
 echo
 echo "S5 · THE HAZARD · a hard failure in the binaries stage, same answer"
@@ -353,7 +353,7 @@ J="$(cat "$RES_JSON" 2>/dev/null)"; A="$(cat "$ACTIONS")"
 chk "$([ "$RC" != "0" ] && echo 0 || echo 1)" "exits non-zero"
 assert_has  "the binary swap is what failed"  'could not stage'                  "$J"
 assert_has  "the detail says the panel was left down ON PURPOSE" 'LEFT STOPPED'  "$J"
-assert_lacks "dockpanel-api was NOT started"  'systemctl start dockpanel-api'    "$A"
+assert_lacks "arsy-api was NOT started"  'systemctl start arsy-api'    "$A"
 
 echo
 echo "S6 · a failure BEFORE the commit must still bring the panel back"
@@ -364,8 +364,8 @@ run_restore psql_fails yes STUB_PSQL_RC=3
 chk "$([ "$RC" != "0" ] && echo 0 || echo 1)" "exits non-zero"
 J="$(cat "$RES_JSON")"; A="$(cat "$ACTIONS")"
 assert_has  "the detail says nothing changed"   'nothing changed'                "$J"
-assert_has  "dockpanel-api WAS restarted — nothing was lost, so nothing is held" \
-            'systemctl start dockpanel-api' "$A"
+assert_has  "arsy-api WAS restarted — nothing was lost, so nothing is held" \
+            'systemctl start arsy-api' "$A"
 assert_lacks "and it is NOT reported as left down" 'LEFT STOPPED'                "$J"
 
 echo

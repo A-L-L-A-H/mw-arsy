@@ -1,6 +1,6 @@
 # Roles and Site Ownership
 
-DockPanel has one ownership rule and it is deliberately simple: **every site
+ARSY has one ownership rule and it is deliberately simple: **every site
 belongs to exactly one account.** There is no access-control list, no sharing,
 and no second owner. Almost everything below follows from that.
 
@@ -84,11 +84,11 @@ This is the second correction to this page in a week, and the direction reversed
 The first one removed a reach the role did not have. Then the operator who had
 been using the feature pointed out that an administrator who cannot repair a
 tenant's site is not much use on a server they are responsible for, which was the
-better argument ([#51](https://github.com/ovexro/dockpanel/issues/51)).
+better argument ([#51](https://github.com/A-L-L-A-H/mw-arsy/issues/51)).
 
 What still does not exist is two *non-admin* accounts holding one domain at once.
 If that is what you need, say so on
-[the issue tracker](https://github.com/ovexro/dockpanel/issues) rather than
+[the issue tracker](https://github.com/A-L-L-A-H/mw-arsy/issues) rather than
 working around it — the workaround people reach for is a second account with a
 shared password, and that removes the audit trail that makes the panel worth
 having.

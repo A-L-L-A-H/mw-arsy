@@ -1,6 +1,6 @@
 # CLI Reference
 
-The `dockpanel` CLI provides full command-line access to all panel operations. It communicates with the agent via Unix socket using the token stored at `/etc/dockpanel/agent.token`.
+The `arsy` CLI provides full command-line access to all panel operations. It communicates with the agent via Unix socket using the token stored at `/etc/arsy/agent.token`.
 
 ## Global Options
 
@@ -14,12 +14,12 @@ The `dockpanel` CLI provides full command-line access to all panel operations. I
 
 ---
 
-### `dockpanel status`
+### `arsy status`
 
 Show server status including CPU, memory, disk, and uptime.
 
 ```bash
-dockpanel status
+arsy status
 ```
 
 ```
@@ -39,17 +39,17 @@ Disk:        12.3 GB / 50.0 GB (24.6%)
 JSON output:
 
 ```bash
-dockpanel status -o json
+arsy status -o json
 ```
 
 ---
 
-### `dockpanel sites`
+### `arsy sites`
 
 List all Nginx sites.
 
 ```bash
-dockpanel sites
+arsy sites
 ```
 
 ```
@@ -62,15 +62,15 @@ blog.example.com      static     ✓      active
 Filter by domain:
 
 ```bash
-dockpanel sites -f blog
+arsy sites -f blog
 ```
 
-#### `dockpanel sites create`
+#### `arsy sites create`
 
 Create a new site.
 
 ```bash
-dockpanel sites create example.com --runtime php --ssl --ssl-email admin@example.com
+arsy sites create example.com --runtime php --ssl --ssl-email admin@example.com
 ```
 
 | Argument | Required | Default | Description |
@@ -88,12 +88,12 @@ Site created: example.com
   SSL:      provisioned (expires 2026-06-18)
 ```
 
-#### `dockpanel sites info`
+#### `arsy sites info`
 
 Show site details.
 
 ```bash
-dockpanel sites info example.com
+arsy sites info example.com
 ```
 
 ```
@@ -106,12 +106,12 @@ SSL:         active (expires 2026-06-18)
 Created:     2026-03-15 10:30:00
 ```
 
-#### `dockpanel sites delete`
+#### `arsy sites delete`
 
 Delete a site and its Nginx configuration.
 
 ```bash
-dockpanel sites delete example.com
+arsy sites delete example.com
 ```
 
 ```
@@ -120,12 +120,12 @@ Site deleted: example.com
 
 ---
 
-### `dockpanel db`
+### `arsy db`
 
 List databases.
 
 ```bash
-dockpanel db
+arsy db
 ```
 
 ```
@@ -137,10 +137,10 @@ analytics_db      postgres    5433    running    1.2 GB
 Filter by name:
 
 ```bash
-dockpanel db -f analytics
+arsy db -f analytics
 ```
 
-#### `dockpanel db create`
+#### `arsy db create`
 
 Create a new database in a Docker container.
 
@@ -148,10 +148,10 @@ Create a new database in a Docker container.
 # Prefer --password-stdin — a bare --password is visible to other local
 # users via `ps`/`/proc` for the life of the process and lands in shell
 # history.
-echo -n "s3cureP@ss" | dockpanel db create blog_db --engine mysql --password-stdin --port 3307
+echo -n "s3cureP@ss" | arsy db create blog_db --engine mysql --password-stdin --port 3307
 
 # Or omit both --password and --password-stdin for an interactive, masked prompt.
-dockpanel db create blog_db --engine mysql --port 3307
+arsy db create blog_db --engine mysql --port 3307
 ```
 
 | Argument | Required | Description |
@@ -168,25 +168,25 @@ If neither `--password` nor `--password-stdin` is given, the CLI prompts interac
 Database created: blog_db
   Engine:    mysql
   Port:      3307
-  Container: dockpanel-db-blog_db
+  Container: arsy-db-blog_db
 ```
 
-#### `dockpanel db delete`
+#### `arsy db delete`
 
 Delete a database container.
 
 ```bash
-dockpanel db delete abc123def456
+arsy db delete abc123def456
 ```
 
 ---
 
-### `dockpanel apps`
+### `arsy apps`
 
 List Docker apps.
 
 ```bash
-dockpanel apps
+arsy apps
 ```
 
 ```
@@ -199,15 +199,15 @@ n8n            n8nio/n8n:latest        5678    running    —
 Filter by name or domain:
 
 ```bash
-dockpanel apps -f grafana
+arsy apps -f grafana
 ```
 
-#### `dockpanel apps templates`
+#### `arsy apps templates`
 
 List all available app templates.
 
 ```bash
-dockpanel apps templates
+arsy apps templates
 ```
 
 ```
@@ -222,12 +222,12 @@ nextcloud         storage       Nextcloud        Self-hosted cloud storage
 (147 templates across 14 categories)
 ```
 
-#### `dockpanel apps deploy`
+#### `arsy apps deploy`
 
 Deploy an app from a template.
 
 ```bash
-dockpanel apps deploy ghost --name my-blog --port 2368 --domain blog.example.com --ssl-email admin@example.com
+arsy apps deploy ghost --name my-blog --port 2368 --domain blog.example.com --ssl-email admin@example.com
 ```
 
 | Argument | Required | Description |
@@ -247,44 +247,44 @@ Deploying ghost as "my-blog"...
 App deployed: my-blog (blog.example.com)
 ```
 
-#### `dockpanel apps stop`
+#### `arsy apps stop`
 
 ```bash
-dockpanel apps stop abc123def456
+arsy apps stop abc123def456
 ```
 
-#### `dockpanel apps start`
+#### `arsy apps start`
 
 ```bash
-dockpanel apps start abc123def456
+arsy apps start abc123def456
 ```
 
-#### `dockpanel apps restart`
+#### `arsy apps restart`
 
 ```bash
-dockpanel apps restart abc123def456
+arsy apps restart abc123def456
 ```
 
-#### `dockpanel apps remove`
+#### `arsy apps remove`
 
 ```bash
-dockpanel apps remove abc123def456
+arsy apps remove abc123def456
 ```
 
-#### `dockpanel apps logs`
+#### `arsy apps logs`
 
 View container logs.
 
 ```bash
-dockpanel apps logs abc123def456
+arsy apps logs abc123def456
 ```
 
-#### `dockpanel apps compose`
+#### `arsy apps compose`
 
 Deploy from a Docker Compose file.
 
 ```bash
-dockpanel apps compose /path/to/docker-compose.yml
+arsy apps compose /path/to/docker-compose.yml
 ```
 
 A stack deployed this way carries no domain. To front a stack with a domain — over
@@ -296,18 +296,18 @@ a stack.
 
 ---
 
-### `dockpanel services`
+### `arsy services`
 
 Check service health.
 
 ```bash
-dockpanel services
+arsy services
 ```
 
 ```
 SERVICE              STATUS      PID     MEMORY
-dockpanel-agent      ● running   1234    30 MB
-dockpanel-api        ● running   1235    27 MB
+arsy-agent      ● running   1234    30 MB
+arsy-api        ● running   1235    27 MB
 nginx                ● running   1236    12 MB
 docker               ● running   1237    45 MB
 php8.3-fpm           ● running   1238    18 MB
@@ -318,21 +318,21 @@ ufw                  ● active    —       —
 Filter by service name:
 
 ```bash
-dockpanel services -f nginx
+arsy services -f nginx
 ```
 
 ---
 
-### `dockpanel ssl`
+### `arsy ssl`
 
 SSL certificate management.
 
-#### `dockpanel ssl status`
+#### `arsy ssl status`
 
 Check certificate details for a domain.
 
 ```bash
-dockpanel ssl status example.com
+arsy ssl status example.com
 ```
 
 ```
@@ -345,12 +345,12 @@ SSL Certificate: example.com
 The days remaining are coloured: green above 30, amber above 7, red at or below.
 A domain with no certificate prints `No SSL certificate for example.com`.
 
-#### `dockpanel ssl provision`
+#### `arsy ssl provision`
 
 Provision a Let's Encrypt certificate.
 
 ```bash
-dockpanel ssl provision example.com --email admin@example.com --runtime php
+arsy ssl provision example.com --email admin@example.com --runtime php
 ```
 
 | Argument | Required | Default | Description |
@@ -362,36 +362,36 @@ dockpanel ssl provision example.com --email admin@example.com --runtime php
 | `--force` | No | | Issue even if the installed certificate came from elsewhere — it will be **replaced** |
 
 **Ordering over somebody else's certificate is refused.** Provisioning writes
-`fullchain.pem` and `privkey.pem` into `/etc/dockpanel/ssl/<domain>/`, so a
+`fullchain.pem` and `privkey.pem` into `/etc/arsy/ssl/<domain>/`, so a
 domain already serving a purchased, Origin CA or corporate PKI certificate would
 have it destroyed rather than refreshed. The agent checks the installed
 certificate's issuer first and refuses by name:
 
 ```
 Refusing to issue a Let's Encrypt certificate for example.com: the certificate
-already installed there was issued by DigiCert Inc, not by DockPanel, and
+already installed there was issued by DigiCert Inc, not by ARSY, and
 ordering would overwrite it. Renew it wherever it was issued, or pass --force if
 you intend to replace it.
 ```
 
 A certificate whose issuer cannot be read is **not** treated as somebody else's —
 refusing on doubt is how a real certificate lapses. The same guard covers
-`dockpanel sites create --ssl` and `dockpanel apply`, because it lives at the
+`arsy sites create --ssl` and `arsy apply`, because it lives at the
 point where the file is written rather than at each command.
 
-> There is no `dockpanel ssl renew`. Renewal is the panel's job — the weekly
+> There is no `arsy ssl renew`. Renewal is the panel's job — the weekly
 > security scan reissues what it owns, including Compose stacks since 2.161.0.
 
 ---
 
-### `dockpanel backup`
+### `arsy backup`
 
 Backup management.
 
-#### `dockpanel backup create`
+#### `arsy backup create`
 
 ```bash
-dockpanel backup create example.com
+arsy backup create example.com
 ```
 
 ```
@@ -409,16 +409,16 @@ Creating backup for example.com...
 CLI backups never include databases — the agent has no access to the panel's database records.
 Create the backup from the panel if you need one that holds the site's content.
 
-#### `dockpanel backup list`
+#### `arsy backup list`
 
 ```bash
-dockpanel backup list example.com
+arsy backup list example.com
 ```
 
-#### `dockpanel backup restore`
+#### `arsy backup restore`
 
 ```bash
-dockpanel backup restore example.com example.com_2026-03-20_143022.tar.gz
+arsy backup restore example.com example.com_2026-03-20_143022.tar.gz
 ```
 
 ```
@@ -428,7 +428,7 @@ Restoring example.com from example.com_2026-03-20_143022.tar.gz...
 ```
 
 Restoring an archive that carries database dumps works from the CLI when a panel API key is
-configured (`Settings → API Keys`, saved to `/etc/dockpanel/backend.token`) — `backup restore`
+configured (`Settings → API Keys`, saved to `/etc/arsy/backend.token`) — `backup restore`
 prefers that path automatically, restoring files and databases through the same route the panel
 UI's own Restore button uses, then following its progress stream to completion.
 
@@ -437,20 +437,20 @@ only, same behavior as before this existed): it **fails** on a DB-bearing archiv
 restoring the files and calling that success, and its error message points you at minting a key
 or restoring from the panel instead.
 
-#### `dockpanel backup delete`
+#### `arsy backup delete`
 
 ```bash
-dockpanel backup delete example.com example.com_2026-03-18_020000.tar.gz
+arsy backup delete example.com example.com_2026-03-18_020000.tar.gz
 ```
 
 ---
 
-### `dockpanel logs`
+### `arsy logs`
 
 View system and site logs.
 
 ```bash
-dockpanel logs
+arsy logs
 ```
 
 | Option | Default | Description |
@@ -465,26 +465,26 @@ Examples:
 
 ```bash
 # View system log
-dockpanel logs
+arsy logs
 
 # View Nginx error log for a site
-dockpanel logs -d example.com -t nginx -n 100
+arsy logs -d example.com -t nginx -n 100
 
 # Search for errors in auth log
-dockpanel logs -t auth -s "Failed password"
+arsy logs -t auth -s "Failed password"
 
 # Filter PHP logs
-dockpanel logs -t php -f "Fatal error" -n 200
+arsy logs -t php -f "Fatal error" -n 200
 ```
 
 ---
 
-### `dockpanel security`
+### `arsy security`
 
 Security overview.
 
 ```bash
-dockpanel security
+arsy security
 ```
 
 ```
@@ -495,12 +495,12 @@ Security Overview
   SSH password: disabled
 ```
 
-#### `dockpanel security scan`
+#### `arsy security scan`
 
 Run a security scan.
 
 ```bash
-dockpanel security scan
+arsy security scan
 ```
 
 ```
@@ -519,12 +519,12 @@ Risk level and each finding's severity are one of `critical`/`warning`/`info`,
 derived from the findings the scan actually returns — there is no
 separate numeric score.
 
-#### `dockpanel security firewall`
+#### `arsy security firewall`
 
 List firewall rules.
 
 ```bash
-dockpanel security firewall
+arsy security firewall
 ```
 
 ```
@@ -535,13 +535,13 @@ dockpanel security firewall
 4      8443/tcp     ALLOW IN   Anywhere
 ```
 
-#### `dockpanel security firewall add`
+#### `arsy security firewall add`
 
 Add a firewall rule.
 
 ```bash
-dockpanel security firewall add --port 3000 --proto tcp --action allow
-dockpanel security firewall add --port 5432 --proto tcp --action allow --from 10.0.0.0/8
+arsy security firewall add --port 3000 --proto tcp --action allow
+arsy security firewall add --port 5432 --proto tcp --action allow --from 10.0.0.0/8
 ```
 
 | Option | Default | Description |
@@ -551,22 +551,22 @@ dockpanel security firewall add --port 5432 --proto tcp --action allow --from 10
 | `--action` | `allow` | Action: `allow` or `deny` |
 | `--from` | | Source IP or CIDR (optional) |
 
-#### `dockpanel security firewall remove`
+#### `arsy security firewall remove`
 
 Remove a rule by number.
 
 ```bash
-dockpanel security firewall remove 4
+arsy security firewall remove 4
 ```
 
 ---
 
-### `dockpanel top`
+### `arsy top`
 
 Show top processes by CPU usage.
 
 ```bash
-dockpanel top
+arsy top
 ```
 
 ```
@@ -574,18 +574,18 @@ PID      CPU%    MEM%    COMMAND
 1234     12.3    2.1     /usr/sbin/mysqld
 5678     8.7     1.4     php-fpm: pool www
 9012     3.2     0.8     nginx: worker process
-1357     2.1     1.2     dockpanel-agent
-2468     1.8     1.1     dockpanel-api
+1357     2.1     1.2     arsy-agent
+2468     1.8     1.1     arsy-api
 ```
 
 ---
 
-### `dockpanel php`
+### `arsy php`
 
 PHP version management.
 
 ```bash
-dockpanel php
+arsy php
 ```
 
 ```
@@ -594,24 +594,24 @@ VERSION    STATUS     FPM SOCKET
 8.3        installed  /run/php/php8.3-fpm.sock
 ```
 
-#### `dockpanel php install`
+#### `arsy php install`
 
 Install a PHP version.
 
 ```bash
-dockpanel php install 8.4
+arsy php install 8.4
 ```
 
 Supported versions: `8.1`, `8.2`, `8.3`, `8.4`, `8.5`.
 
 ---
 
-### `dockpanel diagnose`
+### `arsy diagnose`
 
 Run server diagnostics across 6 categories.
 
 ```bash
-dockpanel diagnose
+arsy diagnose
 ```
 
 ```
@@ -631,16 +631,16 @@ Score: 95/100 (1 warning)
 
 ---
 
-### `dockpanel export`
+### `arsy export`
 
 Export server configuration as YAML (Infrastructure as Code).
 
 ```bash
 # Print to stdout
-dockpanel export
+arsy export
 
 # Save to file
-dockpanel export -O config.yml
+arsy export -O config.yml
 ```
 
 Sample output:
@@ -668,16 +668,16 @@ apps:
 
 ---
 
-### `dockpanel apply`
+### `arsy apply`
 
 Apply server configuration from a YAML file.
 
 ```bash
 # Dry run (show what would change)
-dockpanel apply config.yml --dry-run
+arsy apply config.yml --dry-run
 
 # Apply changes
-dockpanel apply config.yml --email admin@example.com
+arsy apply config.yml --email admin@example.com
 ```
 
 | Argument | Required | Description |
@@ -693,7 +693,7 @@ on an existing site is silently ignored). Cron jobs are the one exception: a
 matching `id` already in the crontab is compared and re-synced if its schedule or
 command changed. Firewall rules in an exported file are shown for reference only —
 `apply` never creates, updates, or removes them; manage those with
-`dockpanel security firewall`.
+`arsy security firewall`.
 
 Dry run output:
 
@@ -710,19 +710,19 @@ Plan:
 
 ---
 
-### `dockpanel completions`
+### `arsy completions`
 
 Generate shell completions.
 
 ```bash
 # Bash
-dockpanel completions bash > /etc/bash_completion.d/dockpanel
+arsy completions bash > /etc/bash_completion.d/arsy
 
 # Zsh
-dockpanel completions zsh > ~/.zfunc/_dockpanel
+arsy completions zsh > ~/.zfunc/_arsy
 
 # Fish
-dockpanel completions fish > ~/.config/fish/completions/dockpanel.fish
+arsy completions fish > ~/.config/fish/completions/arsy.fish
 ```
 
 Supported shells: `bash`, `zsh`, `fish`, `powershell`, `elvish`.

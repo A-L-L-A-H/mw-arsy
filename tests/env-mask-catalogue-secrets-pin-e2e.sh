@@ -2,7 +2,7 @@
 # env-mask-catalogue-secrets-pin-e2e.sh — s447
 #
 # Pins docker_apps.rs's `GET /apps/{id}/env` mask gap named in
-# [[project_dockpanel_tech_debt_p185]] §B: the route's mask condition was a
+# [[project_arsy_tech_debt_p185]] §B: the route's mask condition was a
 # substring heuristic (PASSWORD|SECRET|KEY|TOKEN|CREDENTIAL|AUTH) that never
 # consulted the catalogue's own `secret: true` flag, so a declared-secret
 # name that doesn't happen to contain one of those substrings was returned

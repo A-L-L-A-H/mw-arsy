@@ -197,25 +197,25 @@ jobs:
           for b in agent api cli; do
             n=0
             until curl -fsSL --connect-timeout 20 --max-time 300 \
-                       "${BASE}/dockpanel-${b}-linux-amd64" -o "dockpanel-${b}"; do
+                       "${BASE}/arsy-${b}-linux-amd64" -o "arsy-${b}"; do
               n=$((n+1))
               if [ "$n" -ge 5 ]; then
-                echo "FAIL: could not download dockpanel-${b}-linux-amd64 after ${n} attempts."
+                echo "FAIL: could not download arsy-${b}-linux-amd64 after ${n} attempts."
                 exit 1
               fi
-              echo "::warning::download of dockpanel-${b}-linux-amd64 failed (attempt ${n}) - retrying"
+              echo "::warning::download of arsy-${b}-linux-amd64 failed (attempt ${n}) - retrying"
               sleep $((n * 3))
             done
-            chmod +x "dockpanel-${b}"
+            chmod +x "arsy-${b}"
           done
 
       - name: Assert static linkage (primary #70 guard)
         run: |
           set -eux
           for b in agent api cli; do
-            file "dockpanel-${b}"
-            if ! file "dockpanel-${b}" | grep -c "statically linked" >/dev/null; then
-              echo "FAIL: dockpanel-${b} is NOT statically linked on ${{ matrix.distro }} — would reintroduce the #70 glibc break."
+            file "arsy-${b}"
+            if ! file "arsy-${b}" | grep -c "statically linked" >/dev/null; then
+              echo "FAIL: arsy-${b} is NOT statically linked on ${{ matrix.distro }} — would reintroduce the #70 glibc break."
               exit 1
             fi
           done
@@ -227,7 +227,7 @@ jobs:
           # via command substitution) would otherwise abort the step. Neutralise
           # both and manage exit codes explicitly via $fail.
           set +e +o pipefail
-          mkdir -p /var/run/dockpanel
+          mkdir -p /var/run/arsy
           fail=0
           # A static binary that loads correctly reaches main(). It may then exit
           # non-zero for a benign runtime reason (the API/agent panic on missing
@@ -235,24 +235,24 @@ jobs:
           # NOT a #70 failure. We ONLY hard-fail on a real loader/ABI error, which
           # is the exact signature #70 produced (`... GLIBC_2.38 not found`).
           for b in cli api agent; do
-            out="$(timeout 6 ./dockpanel-$b --version 2>&1)"; rc=$?
-            echo "--- dockpanel-$b (rc=$rc) ---"
+            out="$(timeout 6 ./arsy-$b --version 2>&1)"; rc=$?
+            echo "--- arsy-$b (rc=$rc) ---"
             printf '%s\n' "$out" | head -4
             if printf '%s' "$out" | grep -ciE "GLIBC_|not a dynamic executable|cannot execute binary|Exec format error" >/dev/null; then
-              echo "FAIL: loader/ABI error for dockpanel-$b on ${{ matrix.distro }} — the #70 break."
+              echo "FAIL: loader/ABI error for arsy-$b on ${{ matrix.distro }} — the #70 break."
               fail=1
             fi
           done
           # Positive proof that at least one binary reaches main() on this distro:
           # the CLI has a real --version path that prints and exits 0.
-          if ! timeout 6 ./dockpanel-cli --version | grep -ci dockpanel >/dev/null; then
-            echo "FAIL: dockpanel-cli --version did not print a version on ${{ matrix.distro }}"
+          if ! timeout 6 ./arsy-cli --version | grep -ci arsy >/dev/null; then
+            echo "FAIL: arsy-cli --version did not print a version on ${{ matrix.distro }}"
             fail=1
           fi
           exit $fail
 
   # arm64 ABI/loader guard (#70 extended to aarch64). The published
-  # dockpanel-*-linux-arm64 assets come from the same musl target but were never
+  # arsy-*-linux-arm64 assets come from the same musl target but were never
   # exec-proven. Runs on the host (NOT in a container) so docker/setup-qemu-action
   # can register arm64 binfmt, then execs the arm64 binaries under QEMU emulation.
   # One arm64 env is sufficient: static musl has zero distro-specific libc deps.
@@ -284,25 +284,25 @@ jobs:
           for b in agent api cli; do
             n=0
             until curl -fsSL --connect-timeout 20 --max-time 300 \
-                       "${BASE}/dockpanel-${b}-linux-arm64" -o "dockpanel-${b}"; do
+                       "${BASE}/arsy-${b}-linux-arm64" -o "arsy-${b}"; do
               n=$((n+1))
               if [ "$n" -ge 5 ]; then
-                echo "FAIL: could not download dockpanel-${b}-linux-arm64 after ${n} attempts."
+                echo "FAIL: could not download arsy-${b}-linux-arm64 after ${n} attempts."
                 exit 1
               fi
-              echo "::warning::download of dockpanel-${b}-linux-arm64 failed (attempt ${n}) - retrying"
+              echo "::warning::download of arsy-${b}-linux-arm64 failed (attempt ${n}) - retrying"
               sleep $((n * 3))
             done
-            chmod +x "dockpanel-${b}"
+            chmod +x "arsy-${b}"
           done
 
       - name: Assert static linkage (primary #70 guard, arm64)
         run: |
           set -eux
           for b in agent api cli; do
-            file "dockpanel-${b}"
-            if ! file "dockpanel-${b}" | grep -c "statically linked" >/dev/null; then
-              echo "FAIL: dockpanel-${b} (arm64) is NOT statically linked — would reintroduce the #70 glibc break."
+            file "arsy-${b}"
+            if ! file "arsy-${b}" | grep -c "statically linked" >/dev/null; then
+              echo "FAIL: arsy-${b} (arm64) is NOT statically linked — would reintroduce the #70 glibc break."
               exit 1
             fi
           done
@@ -319,17 +319,17 @@ jobs:
           fail=0
           run_arm64() { docker run --rm --platform linux/arm64 -v "$PWD:/w" -w /w debian:12 "$@"; }
           for b in cli api agent; do
-            out="$(run_arm64 timeout 30 ./dockpanel-$b --version 2>&1)"; rc=$?
-            echo "--- dockpanel-$b (arm64, rc=$rc) ---"
+            out="$(run_arm64 timeout 30 ./arsy-$b --version 2>&1)"; rc=$?
+            echo "--- arsy-$b (arm64, rc=$rc) ---"
             printf '%s\n' "$out" | head -4
             if printf '%s' "$out" | grep -ciE "GLIBC_|not a dynamic executable|cannot execute binary|Exec format error" >/dev/null; then
-              echo "FAIL: loader/ABI error for dockpanel-$b (arm64) — the #70 break."
+              echo "FAIL: loader/ABI error for arsy-$b (arm64) — the #70 break."
               fail=1
             fi
           done
           # Positive proof the arm64 CLI reaches main(): --version prints and exits 0.
-          if ! run_arm64 timeout 30 ./dockpanel-cli --version | grep -ci dockpanel >/dev/null; then
-            echo "FAIL: dockpanel-cli --version (arm64) did not print a version"
+          if ! run_arm64 timeout 30 ./arsy-cli --version | grep -ci arsy >/dev/null; then
+            echo "FAIL: arsy-cli --version (arm64) did not print a version"
             fail=1
           fi
           exit $fail

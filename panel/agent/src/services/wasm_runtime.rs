@@ -1,4 +1,4 @@
-// Wasm Component Model Runtime for DockPanel
+// Wasm Component Model Runtime for ARSY
 // Provides sandboxed execution of WebAssembly components with WASI 0.2
 // Used for: webhook handlers, edge functions, user-provided code
 
@@ -17,8 +17,8 @@ use wasmtime_wasi::preview2::{
 use crate::safe_cmd::safe_command;
 use std::collections::HashMap;
 
-const WASM_COMPONENTS_DIR: &str = "/var/lib/dockpanel/wasm-components";
-const WASM_CACHE_DIR: &str = "/var/lib/dockpanel/wasm-cache";
+const WASM_COMPONENTS_DIR: &str = "/var/lib/arsy/wasm-components";
+const WASM_CACHE_DIR: &str = "/var/lib/arsy/wasm-cache";
 
 /// Resource limits for a Wasm component
 #[derive(Debug, Clone, Serialize, Deserialize)]

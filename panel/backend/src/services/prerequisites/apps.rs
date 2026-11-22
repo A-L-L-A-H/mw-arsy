@@ -58,7 +58,7 @@ pub struct PortHolder {
 #[derive(Debug, Clone, Default)]
 pub struct HostFacts {
     pub used_ports: Vec<PortHolder>,
-    /// Names of containers DockPanel already manages.
+    /// Names of containers ARSY already manages.
     pub taken_names: Vec<String>,
     pub mem_total_mb: Option<u64>,
     pub mem_used_mb: Option<u64>,
@@ -156,7 +156,7 @@ pub fn check_required_env(intent: &AppDeployIntent, specs: &[AppEnvSpec]) -> Pre
 /// equivalent, so a collision surfaces as a Docker error after the pull.
 ///
 /// Three sources, in order of authority: the host's own bind probe, then the
-/// containers DockPanel manages, then the sites it proxies.
+/// containers ARSY manages, then the sites it proxies.
 pub fn check_port_available(intent: &AppDeployIntent, facts: &HostFacts) -> PrereqResult {
     let port = intent.port;
 
@@ -172,7 +172,7 @@ pub fn check_port_available(intent: &AppDeployIntent, facts: &HostFacts) -> Prer
         secret: false,
     });
 
-    // Something DockPanel knows about holds it — we can name what.
+    // Something ARSY knows about holds it — we can name what.
     if let Some(holder) = facts.holder_of(port) {
         let mut r = APPS_PORT_CHECK
             .result(
@@ -190,7 +190,7 @@ pub fn check_port_available(intent: &AppDeployIntent, facts: &HostFacts) -> Prer
         Some(true) => APPS_PORT_CHECK.result(&APPS_PORT_FREE, &[("port", port_str.as_str())]),
         Some(false) => {
             // Nothing of ours holds it, yet the bind failed — so something outside
-            // DockPanel does. We can't name it, but the consequence is identical.
+            // ARSY does. We can't name it, but the consequence is identical.
             let mut r = APPS_PORT_CHECK
                 .result(&APPS_PORT_HELD_BY_UNKNOWN, &[("port", port_str.as_str())]);
             if let Some(s) = suggestion {
@@ -372,7 +372,7 @@ mod tests {
         let facts = HostFacts { port_probe_free: Some(false), ..Default::default() };
         let r = check_port_available(&intent(), &facts);
         assert!(r.blocks());
-        assert!(r.detail.contains("managed by DockPanel"));
+        assert!(r.detail.contains("managed by ARSY"));
         assert!(r.observed.is_empty(), "we cannot name a holder we don't manage");
     }
 
@@ -444,7 +444,7 @@ mod tests {
     /// `taken_names` must hold the names the USER types, not the container names
     /// the agent reports.
     ///
-    /// The agent lists containers as `dockpanel-app-<name>`; the form submits
+    /// The agent lists containers as `arsy-app-<name>`; the form submits
     /// `<name>`. Feeding the prefixed form in here compares two things that can
     /// never be equal, and the check reports every colliding name as available —
     /// which is what a fresh box caught v2.29.0 doing. The stripping lives in
@@ -453,7 +453,7 @@ mod tests {
     #[test]
     fn taken_names_are_user_facing_names_not_container_names() {
         let prefixed = HostFacts {
-            taken_names: vec!["dockpanel-app-postgres".into()],
+            taken_names: vec!["arsy-app-postgres".into()],
             ..Default::default()
         };
         assert!(

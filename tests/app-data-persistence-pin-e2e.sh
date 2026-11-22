@@ -272,8 +272,8 @@ if S=$(subj "$AGENT_SVC"); then
   # A6 — only OUR containers. The migration writes to the host and must never
   # touch a container the operator built themselves.
   udv=$(fnbody "$S" "unmounted_declared_volumes")
-  if [ -n "$udv" ] && grep -q 'dockpanel.managed' <<< "$udv" && grep -q 'dockpanel.app.template' <<< "$udv"; then
-    ok "A6 unmounted_declared_volumes acts only on dockpanel-managed template apps"
+  if [ -n "$udv" ] && grep -q 'arsy.managed' <<< "$udv" && grep -q 'arsy.app.template' <<< "$udv"; then
+    ok "A6 unmounted_declared_volumes acts only on arsy-managed template apps"
   else
     bad "A6 unmounted_declared_volumes does not confine itself to managed template apps"
   fi

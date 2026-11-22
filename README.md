@@ -1,8 +1,8 @@
 <p align="center">
-  <img src=".github/screenshots/dp-dashboard.png" alt="DockPanel Dashboard" width="800">
+  <img src=".github/screenshots/dp-dashboard.png" alt="ARSY Dashboard" width="800">
 </p>
 
-<h1 align="center">DockPanel</h1>
+<h1 align="center">ARSY</h1>
 
 <p align="center">
   <strong>The most feature-packed free server panel ever built.</strong><br>
@@ -10,20 +10,20 @@
 </p>
 
 <p align="center">
-  <sub>Not the WPF/WinForms <code>DockPanel</code> docking control — this is a self-hosted Linux server panel.</sub>
+  <sub>Not the WPF/WinForms <code>ARSY</code> docking control — this is a self-hosted Linux server panel.</sub>
 </p>
 
 <p align="center">
-  <a href="https://github.com/ovexro/dockpanel/releases"><img src="https://img.shields.io/github/v/release/ovexro/dockpanel" alt="Release"></a>
-  <a href="https://github.com/ovexro/dockpanel/actions"><img src="https://img.shields.io/github/actions/workflow/status/ovexro/dockpanel/ci.yml?label=CI" alt="CI"></a>
+  <a href="https://github.com/A-L-L-A-H/mw-arsy/releases"><img src="https://img.shields.io/github/v/release/A-L-L-A-H/mw-arsy" alt="Release"></a>
+  <a href="https://github.com/A-L-L-A-H/mw-arsy/actions"><img src="https://img.shields.io/github/actions/workflow/status/A-L-L-A-H/mw-arsy/ci.yml?label=CI" alt="CI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-AGPL_v3-blue.svg" alt="License: AGPL v3"></a>
 </p>
 
 <p align="center">
-  <a href="https://dockpanel.dev">Website</a> &bull;
-  <a href="https://docs.dockpanel.dev">Docs</a> &bull;
+  <a href="https://moonwitness.dev">Website</a> &bull;
+  <a href="https://docs.moonwitness.dev">Docs</a> &bull;
   <a href="CHANGELOG.md">Changelog</a> &bull;
-  <a href="https://github.com/ovexro/dockpanel/discussions">Discussions</a>
+  <a href="https://github.com/A-L-L-A-H/mw-arsy/discussions">Discussions</a>
 </p>
 
 ---
@@ -31,7 +31,7 @@
 ## Install
 
 ```bash
-curl -sL https://dockpanel.dev/install.sh | sudo bash
+curl -sL https://moonwitness.dev/install.sh | sudo bash
 ```
 
 Open `https://YOUR_SERVER_IP:8443`, create your admin account, done. Without a domain the
@@ -44,11 +44,11 @@ On the RHEL family the optional-service installers (Redis, Node.js, PowerDNS, WA
 Tunnel) work from the panel as of v2.40.0; the mail server still refuses there, and UFW refuses
 on any firewalld box by design. See [getting started](docs/getting-started.md#requirements).
 
-## Why DockPanel?
+## Why ARSY?
 
-No other free panel gives you Git push-to-deploy with blue-green zero-downtime updates, 147 one-click Docker app templates, per-image CVE scanning with deploy gating, a WAF, passkey login, GPU passthrough, multi-server management, reseller accounts, a developer CLI, and Infrastructure as Code — all while the panel services themselves use under 20MB of RAM. DockPanel does.
+No other free panel gives you Git push-to-deploy with blue-green zero-downtime updates, 147 one-click Docker app templates, per-image CVE scanning with deploy gating, a WAF, passkey login, GPU passthrough, multi-server management, reseller accounts, a developer CLI, and Infrastructure as Code — all while the panel services themselves use under 20MB of RAM. ARSY does.
 
-| | DockPanel | HestiaCP | CloudPanel | RunCloud |
+| | ARSY | HestiaCP | CloudPanel | RunCloud |
 |---|---|---|---|---|
 | **Price** | **Free** | Free | Free | $8/mo+ |
 | **Stack** | **Rust + React** | PHP | PHP | PHP (SaaS) |
@@ -62,12 +62,12 @@ No other free panel gives you Git push-to-deploy with blue-green zero-downtime u
 | **Self-hosted** | **Yes** | Yes | Yes | No |
 
 A feature table is easy to write, so here is the harder claim: before each
-release DockPanel is installed on a throwaway VPS with a real domain and a real
+release ARSY is installed on a throwaway VPS with a real domain and a real
 Let's Encrypt certificate, and each journey is driven to the point where a user
 would get value from it — mail is not "installed", a message is sent to another
 server and its DKIM signature checked on arrival. That has repeatedly found
 features whose setup half worked and whose payoff half had never once run.
-[How DockPanel is tested](https://docs.dockpanel.dev/testing.html) lists what it
+[How ARSY is tested](https://docs.moonwitness.dev/testing.html) lists what it
 found, including what is still broken.
 
 ## Screenshots
@@ -196,7 +196,7 @@ found, including what is still broken.
 - **Container Management** — Auto-sleep (stop idle containers), auto-update detection, per-user isolation policies.
 - **Mail** — Postfix + Dovecot + OpenDKIM. Webmail (Roundcube), spam filter (Rspamd), SMTP relay.
 - **Monitoring** — HTTP/TCP/ping uptime checks, SLA tracking, PagerDuty integration.
-- **Prometheus + Grafana** — Token-gated `/api/metrics` scrape endpoint (off by default) plus a drop-in [fleet dashboard](dashboards/dockpanel-grafana.json) covering CPU/memory/disk, GPU utilization/VRAM/temp/power, sites, and alerts. See [docs/guides/prometheus.md](docs/guides/prometheus.md).
+- **Prometheus + Grafana** — Token-gated `/api/metrics` scrape endpoint (off by default) plus a drop-in [fleet dashboard](dashboards/arsy-grafana.json) covering CPU/memory/disk, GPU utilization/VRAM/temp/power, sites, and alerts. See [docs/guides/prometheus.md](docs/guides/prometheus.md).
 - **Incident Management** — Full lifecycle (investigating, identified, monitoring, resolved, postmortem), severity levels, timeline, affected components.
 - **Public Status Page** — Standalone dark-themed page at `/status`, component groups, email subscribers, overall status auto-computed from checks.
 - **Terminal** — Full SSH with tabs, themes, sharing, session recording.
@@ -209,14 +209,14 @@ found, including what is still broken.
 - **Fail2Ban** — View/ban/unban IPs, panel-specific jail.
 - **SSH Hardening** — Disable password/root login, change port — one click.
 - **Vulnerability Scanning** — File integrity, security headers, full-server audits.
-- **Per-Image CVE Scanning** — Scan every running Docker app's image with Anchore grype. Severity badge per app row on the Apps page. Scheduled background rescans (configurable interval). Soft deploy gate refuses images exceeding a critical/high/medium threshold — on template deploys, image changes, compose deploys and stacks alike. Grype installs self-contained into `/var/lib/dockpanel/scanners/` from the Settings UI. **Defaults to off** — opt in from Settings → Services → Image Vulnerability Scanning.
+- **Per-Image CVE Scanning** — Scan every running Docker app's image with Anchore grype. Severity badge per app row on the Apps page. Scheduled background rescans (configurable interval). Soft deploy gate refuses images exceeding a critical/high/medium threshold — on template deploys, image changes, compose deploys and stacks alike. Grype installs self-contained into `/var/lib/arsy/scanners/` from the Settings UI. **Defaults to off** — opt in from Settings → Services → Image Vulnerability Scanning.
 - **Signed Releases + SBOM** — Every release binary and its SPDX SBOM is signed in CI with cosign keyless via Sigstore (no long-lived signing key, recorded in the public Rekor transparency log). Verification snippet in [SECURITY.md](SECURITY.md#verifying-release-signatures).
-- **Per-Image SBOM Generation** — Generate an SPDX 2.3 JSON SBOM for any deployed Docker app's image on demand (syft). Click "Download SBOM" in any app's scan drawer. Self-contained install at `/var/lib/dockpanel/scanners/syft`. **Defaults to off** — opt in from Settings → Services → SBOM Generation. Companion to image CVE scanning: composition vs. risk.
+- **Per-Image SBOM Generation** — Generate an SPDX 2.3 JSON SBOM for any deployed Docker app's image on demand (syft). Click "Download SBOM" in any app's scan drawer. Self-contained install at `/var/lib/arsy/scanners/syft`. **Defaults to off** — opt in from Settings → Services → SBOM Generation. Companion to image CVE scanning: composition vs. risk.
 - **Auto-Healing** — Restart crashed services, clean disk, renew expiring SSL, auto-sleep idle containers.
 
 ### Developer Experience
-- **CLI** — `dockpanel status`, `sites`, `apps`, `diagnose`, `export`, `apply`
-- **MCP Server** — Read-only fleet introspection (~40 tools: sites, apps, databases, logs, security, monitors, alerts, and more) for AI agents over the Model Context Protocol. Opt-in, off by default, zero mutating tools. See [docs.dockpanel.dev](https://docs.dockpanel.dev).
+- **CLI** — `arsy status`, `sites`, `apps`, `diagnose`, `export`, `apply`
+- **MCP Server** — Read-only fleet introspection (~40 tools: sites, apps, databases, logs, security, monitors, alerts, and more) for AI agents over the Model Context Protocol. Opt-in, off by default, zero mutating tools. See [docs.moonwitness.dev](https://docs.moonwitness.dev).
 - **Infrastructure as Code** — Export/import server config as YAML. A Terraform/Pulumi-shaped provider API also exists for reading site/database inventory (see [FEATURES.md](FEATURES.md#withdrawn-claims) — its tokens don't yet authenticate).
 - **Smart Diagnostics** — 6 check categories with one-click fixes. Auto-optimization recommendations.
 - **File Manager** — Browse, edit, upload files from the browser.
@@ -258,16 +258,16 @@ Browser → React 19 SPA → Nginx
 
 ## Security
 
-DockPanel has undergone seven rounds of security auditing (280+ vulnerabilities found and fixed). Credentials are encrypted at rest with AES-256-GCM. All child processes run with sanitized environments. Per-image CVE scanning (grype) with optional deploy gating catches vulnerable images before they ship. See [SECURITY.md](SECURITY.md) for details.
+ARSY has undergone seven rounds of security auditing (280+ vulnerabilities found and fixed). Credentials are encrypted at rest with AES-256-GCM. All child processes run with sanitized environments. Per-image CVE scanning (grype) with optional deploy gating catches vulnerable images before they ship. See [SECURITY.md](SECURITY.md) for details.
 
 ## Development
 
 ```bash
-git clone https://github.com/ovexro/dockpanel.git && cd dockpanel
+git clone https://github.com/A-L-L-A-H/mw-arsy.git && cd arsy
 
 # Start database
-docker run -d --name dockpanel-postgres \
-  -e POSTGRES_USER=dockpanel -e POSTGRES_PASSWORD=dockpanel -e POSTGRES_DB=dockpanel \
+docker run -d --name arsy-postgres \
+  -e POSTGRES_USER=arsy -e POSTGRES_PASSWORD=arsy -e POSTGRES_DB=arsy \
   -p 5450:5432 postgres:16
 
 # Build
@@ -282,25 +282,25 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for full development setup.
 ## CLI
 
 ```bash
-dockpanel status              # Server status (CPU, RAM, disk)
-dockpanel sites               # List all sites
-dockpanel apps                # List Docker apps
-dockpanel diagnose            # Run smart diagnostics
-dockpanel export -o config.yml  # Export server config as YAML
-dockpanel apply config.yml    # Apply config (Infrastructure as Code)
+arsy status              # Server status (CPU, RAM, disk)
+arsy sites               # List all sites
+arsy apps                # List Docker apps
+arsy diagnose            # Run smart diagnostics
+arsy export -o config.yml  # Export server config as YAML
+arsy apply config.yml    # Apply config (Infrastructure as Code)
 ```
 
 ## Update / Uninstall
 
 ```bash
-sudo bash /opt/dockpanel/scripts/update.sh     # Update
-sudo bash /opt/dockpanel/scripts/uninstall.sh   # Remove
+sudo bash /opt/arsy/scripts/update.sh     # Update
+sudo bash /opt/arsy/scripts/uninstall.sh   # Remove
 ```
 
 ## Documentation
 
-- [Live Docs](https://docs.dockpanel.dev) — Getting started, guides, configuration
-- [How DockPanel is tested](https://docs.dockpanel.dev/testing.html) — The fresh-VPS drills, what they found, and what is still broken
+- [Live Docs](https://docs.moonwitness.dev) — Getting started, guides, configuration
+- [How ARSY is tested](https://docs.moonwitness.dev/testing.html) — The fresh-VPS drills, what they found, and what is still broken
 - [FEATURES.md](FEATURES.md) — Complete feature manifest (60+ features, ~280 capabilities)
 - [CHANGELOG.md](CHANGELOG.md) — Version history
 - [SECURITY.md](SECURITY.md) — Security model and vulnerability reporting
@@ -308,28 +308,28 @@ sudo bash /opt/dockpanel/scripts/uninstall.sh   # Remove
 
 ## License
 
-**GNU Affero General Public License v3.0.** DockPanel is free software — run it, read it,
+**GNU Affero General Public License v3.0.** ARSY is free software — run it, read it,
 change it, and redistribute it, on as many servers as you like, commercially included.
 There is no premium tier and nothing is held back.
 
-The one obligation the AGPL adds over the GPL: if you modify DockPanel and offer it to
+The one obligation the AGPL adds over the GPL: if you modify ARSY and offer it to
 other people *as a service over a network*, you have to make your modified source
 available to those users. Running an unmodified copy, or running a modified copy for
 yourself or your own company, obliges you nothing. See [LICENSE](LICENSE) for the full text.
 
-Copyright © 2026 DockPanel.
+Copyright © 2026 ARSY.
 
-## Supporting DockPanel
+## Supporting ARSY
 
-DockPanel is built and maintained by one developer. It has no company behind it, no
+ARSY is built and maintained by one developer. It has no company behind it, no
 investors to answer to, no telemetry, and nothing gated — which is why the roadmap is
 decided by what actually helps people running servers rather than by what converts.
 
 If it saved you the cost of a control-panel licence, you can put some of that back:
 
-- **[GitHub Sponsors](https://github.com/sponsors/ovexro)** — recurring, and it shows up
+- **[GitHub Sponsors](https://github.com/sponsors/A-L-L-A-H)** — recurring, and it shows up
   on the repo
-- **[PayPal](https://www.paypal.com/paypalme/ovexro)** — one-off, no account needed
+- **[PayPal](https://www.paypal.com/paypalme/A-L-L-A-H)** — one-off, no account needed
 
 What that funds, concretely: a wider fleet of test VPSes so releases are verified on more
 distributions before they ship, faster turnaround on security fixes, and time for the

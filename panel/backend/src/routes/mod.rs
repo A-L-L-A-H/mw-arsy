@@ -113,8 +113,8 @@ pub fn is_valid_domain(domain: &str) -> bool {
 /// guard and cannot drift.
 ///
 /// The list is derived from THIS install, not from the vendor. Until v2.31.0 it
-/// was the hardcoded triple `["dockpanel.dev","panel.example.com",
-/// "docs.dockpanel.dev"]` — our own marketing domains plus a documentation
+/// was the hardcoded triple `["moonwitness.dev","panel.example.com",
+/// "docs.moonwitness.dev"]` — our own marketing domains plus a documentation
 /// placeholder, compiled into every customer's build, where they protect
 /// nothing and merely refuse three arbitrary names (s252 F9).
 ///
@@ -171,7 +171,7 @@ fn panel_host_from_base_url(base: &str) -> Option<String> {
 ///
 /// **`BASE_URL` is not a reliable statement of the panel's hostname.** It is
 /// routinely empty on a box whose panel nginx serves a real domain — observed on
-/// demo.dockpanel.dev and on a fresh install, because `setup.sh` only writes it
+/// demo.moonwitness.dev and on a fresh install, because `setup.sh` only writes it
 /// when `PANEL_DOMAIN` was supplied. s256 shipped a guard that trusted it alone,
 /// and on the demo box that made this check inert: creating a site for the
 /// panel's own domain wrote a vhost that took over its `server_name`, and the
@@ -268,7 +268,7 @@ pub fn is_safe_relative_path(path: &str) -> bool {
 /// `r'm' -rf /` and `w\get` contain no "rm -rf /"/"wget" substring, but the
 /// real shell this command eventually runs through (`sh -c` in
 /// `git_build.rs::run_hook` on the agent side) strips the quotes/backslashes
-/// before exec. Mirrors `dockpanel-agent`'s `command_filter::normalize_for_blocklist`,
+/// before exec. Mirrors `arsy-agent`'s `command_filter::normalize_for_blocklist`,
 /// which this crate has no dependency path to reuse directly.
 fn normalize_for_blocklist(cmd: &str) -> String {
     let mut out = String::with_capacity(cmd.len());
@@ -666,7 +666,7 @@ mod tests {
 
     // ── is_safe_shell_command (cron / pre_build_cmd / post_deploy_cmd save-time gate) ──
 
-    /// `dockpanel-fanout` s429: a bare `;`/`|` (no trailing space, no "sh"/
+    /// `arsy-fanout` s429: a bare `;`/`|` (no trailing space, no "sh"/
     /// "bash" suffix) passed straight through the old verb-anchored dangerous
     /// list — `is_safe_shell_command("id;whoami")` returned `Ok(())`. This is
     /// the SAME gap as the agent-side `is_safe_cron_command` fix (both share
@@ -697,7 +697,7 @@ mod tests {
         assert!(is_safe_shell_command("a && b && c").is_ok());
     }
 
-    /// `dockpanel-fanout` s454 completeness critic: this function had no
+    /// `arsy-fanout` s454 completeness critic: this function had no
     /// quote/backslash normalization at all, so `r'm' -rf /` and `w\get`
     /// contain no "rm -rf /"/"wget" substring and pass every dangerous-
     /// pattern list below — the same gap the agent-side
@@ -843,7 +843,7 @@ mod tests {
         assert!(!reserved_match("notinternal.corp", None, &zones));
     }
 
-    /// The regression that shipped in v2.31.0 and took demo.dockpanel.dev down.
+    /// The regression that shipped in v2.31.0 and took demo.moonwitness.dev down.
     ///
     /// `BASE_URL` is empty on a box whose panel nginx serves a real domain, so a
     /// guard that trusts it alone reserves nothing and a tenant can claim the

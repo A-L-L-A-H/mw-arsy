@@ -3,7 +3,7 @@
 #
 # An unattended service must name the host it acts on.
 #
-# DockPanel's multi-server migration reached every HTTP route and NOT ONE
+# ARSY's multi-server migration reached every HTTP route and NOT ONE
 # background service. `AppState` carries both handles — `agents: AgentRegistry`
 # ("dispatches to local or remote agents by server_id") and `agent: AgentClient`
 # ("Legacy single-agent accessor") — and all twelve background services were
@@ -1432,7 +1432,7 @@ fi
 
 # ── §J the panel stops lying (s304) ────────────────────────────────────────
 #
-# Five places where DockPanel told the operator something untrue. The unifying
+# Five places where ARSY told the operator something untrue. The unifying
 # shape is a SECOND READER that disagrees with the first, or a first reader that
 # never existed at all.
 

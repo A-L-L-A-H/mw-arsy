@@ -1,13 +1,13 @@
 # Image Vulnerability Scanning
 
-DockPanel can scan every Docker app's image against Anchore's [grype](https://github.com/anchore/grype) vulnerability database, surface a severity badge next to each app, and optionally refuse deploys on images that exceed a CVE threshold.
+ARSY can scan every Docker app's image against Anchore's [grype](https://github.com/anchore/grype) vulnerability database, surface a severity badge next to each app, and optionally refuse deploys on images that exceed a CVE threshold.
 
 Scanning is **disabled by default**. Existing installs see no behaviour change after upgrade — admins opt in from the Settings UI.
 
 ## Enable
 
 1. Go to **Settings → Services → Image Vulnerability Scanning**.
-2. Click **Install Scanner**. DockPanel downloads grype (~70 MB) into `/var/lib/dockpanel/scanners/`, primes the CVE database, and registers it with the agent. This is self-contained — nothing is written to `/usr/local/bin`, and the database lives inside the agent's sandbox.
+2. Click **Install Scanner**. ARSY downloads grype (~70 MB) into `/var/lib/arsy/scanners/`, primes the CVE database, and registers it with the agent. This is self-contained — nothing is written to `/usr/local/bin`, and the database lives inside the agent's sandbox.
 3. *(Optional)* Toggle **Enable scheduled scans** to let the background sweeper rescan every running app's image at the configured interval (default 24 h, range 1 – 720).
 4. *(Optional)* Toggle **Scan on deploy** and pick a **Deploy-gate threshold** — `critical`, `high`, or `medium`. Leave at `none` to observe without blocking.
 
@@ -54,7 +54,7 @@ A critical or high-severity finding fires an `image_scan` alert to every adminis
 
 Scan results are stored in the `image_scan_findings` table. Per image, only the most recent 30 scans are retained; older rows are trimmed after each scan to keep the table lean.
 
-The grype binary lives at `/var/lib/dockpanel/scanners/grype` and its vulnerability database at `/var/lib/dockpanel/scanners/grype-db`. Uninstalling from the UI removes both.
+The grype binary lives at `/var/lib/arsy/scanners/grype` and its vulnerability database at `/var/lib/arsy/scanners/grype-db`. Uninstalling from the UI removes both.
 
 ## Relationship to the full-server security scan
 

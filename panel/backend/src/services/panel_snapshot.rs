@@ -2,11 +2,11 @@
 //!
 //! Builds tar.gz triplets containing:
 //!   binaries/   — agent + api + cli binary copies
-//!   db/         — gzipped pg_dump of the DockPanel database
-//!   etc/        — copy of /etc/dockpanel
+//!   db/         — gzipped pg_dump of the ARSY database
+//!   etc/        — copy of /etc/arsy
 //!   metadata.json — provenance (from_version, trigger, operator)
 //!
-//! Stored in `/var/backups/dockpanel/snapshots/`. The orchestrator creates
+//! Stored in `/var/backups/arsy/snapshots/`. The orchestrator creates
 //! one BEFORE invoking `update.sh`; the resulting file outlives the
 //! `.bak` triplet that `update.sh:432-499` deletes on successful health
 //! check, giving operators an after-the-fact rollback path.
@@ -25,8 +25,8 @@ use uuid::Uuid;
 
 use crate::models::PanelSnapshot;
 
-const SNAPSHOT_DIR: &str = "/var/backups/dockpanel/snapshots";
-const STAGING_DIR_PARENT: &str = "/var/backups/dockpanel/.snapshot-staging";
+const SNAPSHOT_DIR: &str = "/var/backups/arsy/snapshots";
+const STAGING_DIR_PARENT: &str = "/var/backups/arsy/.snapshot-staging";
 /// Refuse to create a snapshot if the target partition has less than this
 /// many bytes free. A typical snapshot is ~150-300 MB; 2 GiB keeps the
 /// partition healthy even if a sweep is lagging.
@@ -215,7 +215,7 @@ async fn build_snapshot_inner(
 
     // Copy binaries. cp is fine; size + perms aren't security-critical
     // inside the tar (extraction restores from the tar entries).
-    for bin in &["dockpanel-agent", "dockpanel-api", "dockpanel"] {
+    for bin in &["arsy-agent", "arsy-api", "arsy"] {
         let src = format!("/usr/local/bin/{bin}");
         let dst = staging_dir.join("binaries").join(bin);
         if Path::new(&src).exists() {
@@ -240,7 +240,7 @@ async fn build_snapshot_inner(
     let dump_status = Command::new("bash")
         .arg("-c")
         .arg(format!(
-            "set -o pipefail; docker exec dockpanel-postgres pg_dump -U dockpanel --clean --if-exists dockpanel | gzip > {}",
+            "set -o pipefail; docker exec arsy-postgres pg_dump -U arsy --clean --if-exists arsy | gzip > {}",
             shell_escape(&dump_path.to_string_lossy())
         ))
         .status()
@@ -277,13 +277,13 @@ async fn build_snapshot_inner(
         });
     }
 
-    // Copy /etc/dockpanel into staging. The tree is small (api.env, ssl/,
+    // Copy /etc/arsy into staging. The tree is small (api.env, ssl/,
     // a handful of small text files) — recursive cp via tar piped is
     // simplest and preserves permissions cleanly.
     let etc_status = Command::new("sh")
         .arg("-c")
         .arg(format!(
-            "cp -a /etc/dockpanel/. {}",
+            "cp -a /etc/arsy/. {}",
             shell_escape(&staging_dir.join("etc").to_string_lossy())
         ))
         .status()
@@ -352,15 +352,15 @@ async fn build_snapshot_inner(
 /// The restore procedure, embedded at compile time.
 ///
 /// Kept as a real file under `scripts/` so it is reviewable and testable, but
-/// compiled in rather than read from disk: `/opt/dockpanel` is not guaranteed to
+/// compiled in rather than read from disk: `/opt/arsy` is not guaranteed to
 /// exist (hand-built layouts have no repo at all), and a repo-side script that
 /// the running binary merely *hopes* is in sync is the drift trap of lesson #35.
 const RESTORE_SCRIPT: &str = include_str!("../../../../scripts/restore-snapshot.sh");
 
 /// Where the restore writes its verdict. Read back by `last_restore_result`
 /// after the api has been restarted by the restore itself.
-pub const RESTORE_RESULT_PATH: &str = "/var/lib/dockpanel/last-restore.json";
-const RESTORE_SCRIPT_PATH: &str = "/var/lib/dockpanel/restore-snapshot.sh";
+pub const RESTORE_RESULT_PATH: &str = "/var/lib/arsy/last-restore.json";
+const RESTORE_SCRIPT_PATH: &str = "/var/lib/arsy/restore-snapshot.sh";
 
 /// Validate a snapshot and hand the restore to a detached, PID1-owned process.
 ///
@@ -407,7 +407,7 @@ pub async fn spawn_restore(pool: &PgPool, snapshot_id: Uuid) -> Result<(), Snaps
     // came back empty), and this process no longer exists afterwards to write
     // one. The restore records it itself, into the database it just restored.
 
-    tokio::fs::create_dir_all("/var/lib/dockpanel").await?;
+    tokio::fs::create_dir_all("/var/lib/arsy").await?;
     tokio::fs::write(RESTORE_SCRIPT_PATH, RESTORE_SCRIPT).await?;
     #[cfg(unix)]
     {
@@ -416,7 +416,7 @@ pub async fn spawn_restore(pool: &PgPool, snapshot_id: Uuid) -> Result<(), Snaps
     }
 
     // A PID1-owned transient SERVICE, not a scope and not a bare child: this
-    // process is about to stop dockpanel-api.service, and dockpanel-api.service
+    // process is about to stop arsy-api.service, and arsy-api.service
     // is KillMode=control-group, so anything still inside that cgroup dies with
     // it. `--scope` is not a substitute — it is created in the caller's context
     // and dies with the invoking session (lesson #47).
@@ -424,14 +424,14 @@ pub async fn spawn_restore(pool: &PgPool, snapshot_id: Uuid) -> Result<(), Snaps
         .args([
             "--quiet",
             "--collect",
-            &format!("--unit=dockpanel-snapshot-restore-{snapshot_id}"),
-            "--setenv=DOCKPANEL_RESTORE_DETACHED=1",
-            &format!("--setenv=DOCKPANEL_SNAPSHOT_ID={snapshot_id}"),
+            &format!("--unit=arsy-snapshot-restore-{snapshot_id}"),
+            "--setenv=ARSY_RESTORE_DETACHED=1",
+            &format!("--setenv=ARSY_SNAPSHOT_ID={snapshot_id}"),
             &format!(
-                "--setenv=DOCKPANEL_SNAPSHOT_TARBALL={}",
+                "--setenv=ARSY_SNAPSHOT_TARBALL={}",
                 file_path.to_string_lossy()
             ),
-            &format!("--setenv=DOCKPANEL_SNAPSHOT_SHA256={}", snapshot.sha256),
+            &format!("--setenv=ARSY_SNAPSHOT_SHA256={}", snapshot.sha256),
             "bash",
             RESTORE_SCRIPT_PATH,
         ])
@@ -449,7 +449,7 @@ pub async fn spawn_restore(pool: &PgPool, snapshot_id: Uuid) -> Result<(), Snaps
 
     tracing::info!(
         "Snapshot restore {snapshot_id} handed to transient unit \
-         dockpanel-snapshot-restore-{snapshot_id}; this process will be stopped by it"
+         arsy-snapshot-restore-{snapshot_id}; this process will be stopped by it"
     );
     Ok(())
 }
@@ -544,7 +544,7 @@ async fn ensure_dirs() -> Result<(), SnapshotError> {
         .await
         .map_err(|e| SnapshotError::DirInit(format!("{STAGING_DIR_PARENT}: {e}")))?;
 
-    // A panel snapshot bundles /etc/dockpanel: api.env (JWT_SECRET + the
+    // A panel snapshot bundles /etc/arsy: api.env (JWT_SECRET + the
     // Postgres password), agent.token, and the agent's TLS private key. The
     // directories defaulted to 0755 and the tarballs to 0644, so on a box with
     // any untrusted local user — the normal case for a hosting panel — the
@@ -885,7 +885,7 @@ mod tests {
     ///
     /// `database-verify` and `record-rollback` both run AFTER the restore
     /// transaction has committed and BEFORE the binaries are swapped back. The
-    /// exit trap restarted `dockpanel-api` unconditionally, so a failure in
+    /// exit trap restarted `arsy-api` unconditionally, so a failure in
     /// either one restarted the still-installed NEWER api against a database
     /// that had just been reverted — and that api migrated it forward again,
     /// quietly undoing the rollback while the result file said FAILED.
@@ -913,7 +913,7 @@ mod tests {
         let restarts_api = trap
             .lines()
             .filter(|l| !l.trim_start().starts_with('#'))
-            .filter(|l| l.contains("systemctl start dockpanel-api"))
+            .filter(|l| l.contains("systemctl start arsy-api"))
             .count();
         assert_eq!(
             restarts_api, 1,

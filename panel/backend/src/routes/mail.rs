@@ -357,7 +357,7 @@ pub async fn create_domain(
 
     // Generate DKIM keys via agent
     let dkim_result = agent
-        .post("/mail/dkim/generate", Some(serde_json::json!({ "domain": domain, "selector": "dockpanel" })))
+        .post("/mail/dkim/generate", Some(serde_json::json!({ "domain": domain, "selector": "arsy" })))
         .await;
 
     let (private_key, public_key) = match dkim_result {
@@ -564,7 +564,7 @@ pub async fn delete_domain(
     .await
     .ok()
     .flatten();
-    let dkim_selector = dkim_info.map(|d| d.0).unwrap_or_else(|| "dockpanel".to_string());
+    let dkim_selector = dkim_info.map(|d| d.0).unwrap_or_else(|| "arsy".to_string());
 
     // Remove from Postfix/Dovecot via agent
     let _ = agent
@@ -1175,7 +1175,7 @@ fn cf_headers(token: &str, email: Option<&str>) -> reqwest::header::HeaderMap {
 /// address for a domain on a fleet member, which is a record that resolves,
 /// answers, and points mail at a machine that never sees it.
 /// Whether a mail host's certificate may be issued over what is already at
-/// `/etc/dockpanel/ssl/{domain}/fullchain.pem`.
+/// `/etc/arsy/ssl/{domain}/fullchain.pem`.
 ///
 /// Separated from every lookup so it can be exercised without a pool, an agent
 /// or a mail domain — the reason the decision underneath had never been tested.
@@ -1190,9 +1190,9 @@ pub enum MailCertVerdict {
 /// What occupies the certificate file, in the words the operator is shown.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MailCertBlocker {
-    /// A DockPanel-issued DNS-01 certificate that also covers subdomains.
+    /// A ARSY-issued DNS-01 certificate that also covers subdomains.
     Wildcard,
-    /// A certificate DockPanel did not issue (uploaded, commercial, Origin CA).
+    /// A certificate ARSY did not issue (uploaded, commercial, Origin CA).
     Foreign,
 }
 
@@ -1373,7 +1373,7 @@ async fn announce_mail_cert_conflict(
              start serving a certificate that does not cover it"
         ),
         MailCertBlocker::Foreign => format!(
-            "the certificate installed for {domain} was not issued by DockPanel. \
+            "the certificate installed for {domain} was not issued by ARSY. \
              Issuing over it would destroy a certificate somebody installed \
              deliberately"
         ),
@@ -1389,7 +1389,7 @@ async fn announce_mail_cert_conflict(
          where the consequences are shown before anything is replaced."
     } else {
         "If the mail host needs one of its own, replace the certificate deliberately at its \
-         source (the Compose stack or template that manages it) — DockPanel will not do it \
+         source (the Compose stack or template that manages it) — ARSY will not do it \
          automatically."
     };
 
@@ -1403,7 +1403,7 @@ async fn announce_mail_cert_conflict(
         "warning",
         &format!("Mail certificate not issued: {domain}"),
         &format!(
-            "DockPanel did not issue a certificate for the mail host {domain}, because \
+            "ARSY did not issue a certificate for the mail host {domain}, because \
              {because}. Mail for this domain will use the certificate already installed. \
              {remedy}"
         ),
@@ -1472,7 +1472,7 @@ async fn auto_create_mail_dns(
     // had drifted apart: this path published `A <domain>` with `MX → <domain>` and
     // `v=spf1 ip4:… -all`, while the tab described `A mail.<domain>` with
     // `MX → mail.<domain>` and `v=spf1 a mx ip4:… ~all`, under a DKIM selector this
-    // path hardcoded to `dockpanel` regardless of the stored column. Two different
+    // path hardcoded to `arsy` regardless of the stored column. Two different
     // mail topologies from one product. Now there is one.
     let selector = crate::services::prerequisites::mail::DEFAULT_DKIM_SELECTOR;
     let records =

@@ -69,7 +69,7 @@ pub async fn cmd_backup_list(token: &str, domain: &str, output: &str) -> Result<
 
 pub async fn cmd_backup_restore(token: &str, domain: &str, filename: &str) -> Result<(), String> {
     // Prefer the panel API when a key is configured (Settings → API Keys, saved
-    // to /etc/dockpanel/backend.token): it holds the site's database
+    // to /etc/arsy/backend.token): it holds the site's database
     // credentials and can restore a backup's database dumps as well as its
     // files, which the agent alone structurally cannot. Falls back to the
     // agent-direct path below (files only) when no key is configured — same
@@ -95,7 +95,7 @@ pub async fn cmd_backup_restore(token: &str, domain: &str, filename: &str) -> Re
                 "{e}\n\nThis backup contains database dumps, and the CLI cannot restore them — it \
                  talks to the agent directly and has no access to the site's database credentials. \
                  Mint an API key from the panel (Settings → API Keys), save it to \
-                 /etc/dockpanel/backend.token, and retry — or restore this backup from the panel instead."
+                 /etc/arsy/backend.token, and retry — or restore this backup from the panel instead."
             )
         } else {
             e
@@ -368,7 +368,7 @@ pub async fn cmd_backup_verify(
     Ok(())
 }
 
-// `/var/backups/dockpanel`'s top level is not exclusively site-backup domain
+// `/var/backups/arsy`'s top level is not exclusively site-backup domain
 // directories — the agent also writes `databases/`, `volumes/`, `wp-snapshots/`,
 // `snapshots/`, `.staging/` and `.snapshot-staging/` there, and ops tooling
 // outside this codebase drops the panel's own DB dumps in a `db/` subdirectory
@@ -384,7 +384,7 @@ fn is_site_backup_dir(name: &str) -> bool {
 
 pub async fn cmd_backup_health(token: &str) -> Result<(), String> {
     // This calls the API, not the agent. For CLI simplicity, show local backup counts.
-    let site_dirs = std::fs::read_dir("/var/backups/dockpanel")
+    let site_dirs = std::fs::read_dir("/var/backups/arsy")
         .map(|d| {
             d.filter_map(|e| e.ok())
                 .filter(|e| e.path().is_dir())
@@ -392,10 +392,10 @@ pub async fn cmd_backup_health(token: &str) -> Result<(), String> {
                 .count()
         })
         .unwrap_or(0);
-    let db_dirs = std::fs::read_dir("/var/backups/dockpanel/databases")
+    let db_dirs = std::fs::read_dir("/var/backups/arsy/databases")
         .map(|d| d.filter_map(|e| e.ok()).filter(|e| e.path().is_dir()).count())
         .unwrap_or(0);
-    let vol_dirs = std::fs::read_dir("/var/backups/dockpanel/volumes")
+    let vol_dirs = std::fs::read_dir("/var/backups/arsy/volumes")
         .map(|d| d.filter_map(|e| e.ok()).filter(|e| e.path().is_dir()).count())
         .unwrap_or(0);
 
@@ -428,9 +428,9 @@ pub async fn cmd_backup_health(token: &str) -> Result<(), String> {
         (count, size)
     };
 
-    let (site_count, site_size) = count_files("/var/backups/dockpanel", true);
-    let (db_count, db_size) = count_files("/var/backups/dockpanel/databases", false);
-    let (vol_count, vol_size) = count_files("/var/backups/dockpanel/volumes", false);
+    let (site_count, site_size) = count_files("/var/backups/arsy", true);
+    let (db_count, db_size) = count_files("/var/backups/arsy/databases", false);
+    let (vol_count, vol_size) = count_files("/var/backups/arsy/volumes", false);
 
     let total_size = site_size + db_size + vol_size;
     let total_count = site_count + db_count + vol_count;

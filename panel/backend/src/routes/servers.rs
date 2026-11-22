@@ -565,7 +565,7 @@ pub async fn rotate_token(
             state.agents.local().update_token(new_token.to_string()).await;
 
             // Update api.env on disk for persistence across API restarts
-            let env_path = "/etc/dockpanel/api.env";
+            let env_path = "/etc/arsy/api.env";
             if let Ok(contents) = std::fs::read_to_string(env_path) {
                 let updated = contents
                     .lines()

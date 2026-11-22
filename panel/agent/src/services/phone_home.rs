@@ -18,9 +18,9 @@ pub struct PhoneHomeConfig {
 impl PhoneHomeConfig {
     /// Read from environment variables. Returns None if not configured.
     pub fn from_env() -> Option<Self> {
-        let url = std::env::var("DOCKPANEL_CENTRAL_URL").ok()?;
-        let token = std::env::var("DOCKPANEL_SERVER_TOKEN").ok()?;
-        let id = std::env::var("DOCKPANEL_SERVER_ID").ok()?;
+        let url = std::env::var("ARSY_CENTRAL_URL").ok()?;
+        let token = std::env::var("ARSY_SERVER_TOKEN").ok()?;
+        let id = std::env::var("ARSY_SERVER_ID").ok()?;
 
         if url.is_empty() || token.is_empty() || id.is_empty() {
             return None;

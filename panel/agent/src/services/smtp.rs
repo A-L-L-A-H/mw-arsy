@@ -12,10 +12,10 @@ use crate::safe_cmd::{safe_command, safe_command_sync, safe_command_sync_unsandb
 /// and v2.123.0's permission hardening below was hardening a path that never ran.
 ///
 /// This is the same shape as `/etc/opendkim.conf`, and takes the same cure the
-/// mail installer already took (`routes/mail.rs`): write into `/etc/dockpanel/`,
+/// mail installer already took (`routes/mail.rs`): write into `/etc/arsy/`,
 /// which IS in `ReadWritePaths`, and point every reader at it explicitly. Widening
 /// the sandbox to a bare `/etc` file was rejected there for the same reason.
-const MSMTP_CONFIG: &str = "/etc/dockpanel/msmtprc";
+const MSMTP_CONFIG: &str = "/etc/arsy/msmtprc";
 
 /// Named so the route can answer it as a precondition rather than a fault.
 ///
@@ -113,7 +113,7 @@ pub fn configure(
     };
 
     let config = format!(
-        r#"# DockPanel SMTP configuration — managed automatically
+        r#"# ARSY SMTP configuration — managed automatically
 defaults
 auth           on
 tls            {tls}
@@ -246,14 +246,14 @@ pub async fn send_test(to: &str, from: &str, from_name: &str) -> Result<String, 
             return Err(format!("{label} must not contain newlines or null bytes"));
         }
     }
-    let subject = "DockPanel SMTP Test";
+    let subject = "ARSY SMTP Test";
     let body = format!(
         "From: {from_name} <{from}>\r\n\
          To: {to}\r\n\
          Subject: {subject}\r\n\
          Content-Type: text/plain; charset=utf-8\r\n\
          \r\n\
-         This is a test email from DockPanel.\r\n\
+         This is a test email from ARSY.\r\n\
          If you received this, your SMTP configuration is working correctly.\r\n"
     );
 

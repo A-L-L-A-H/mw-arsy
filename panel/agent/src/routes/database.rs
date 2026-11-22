@@ -16,7 +16,7 @@ struct CreateDbRequest {
     password: String,
     port: Option<u16>,
     /// GH #64 (standalone DB provisioning): when set, the container joins this
-    /// stack's own private network instead of the shared `dockpanel-db` bridge.
+    /// stack's own private network instead of the shared `arsy-db` bridge.
     /// See `database::create_database`'s doc comment for the full rationale.
     stack_id: Option<String>,
 }
@@ -178,13 +178,13 @@ async fn query_db(
             Json(serde_json::json!({ "error": "Query is empty" })),
         ));
     }
-    if !body.container.starts_with("dockpanel-db-") {
+    if !body.container.starts_with("arsy-db-") {
         return Err((
             StatusCode::BAD_REQUEST,
             Json(serde_json::json!({ "error": "Invalid container name" })),
         ));
     }
-    let suffix = &body.container["dockpanel-db-".len()..];
+    let suffix = &body.container["arsy-db-".len()..];
     if !is_valid_name(suffix) {
         return Err((
             StatusCode::BAD_REQUEST,
@@ -260,13 +260,13 @@ async fn reset_password(
     Json(body): Json<ResetPasswordRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
     // Validate container name
-    if !body.container.starts_with("dockpanel-db-") {
+    if !body.container.starts_with("arsy-db-") {
         return Err((
             StatusCode::BAD_REQUEST,
             Json(serde_json::json!({ "error": "Invalid container name" })),
         ));
     }
-    let suffix = &body.container["dockpanel-db-".len()..];
+    let suffix = &body.container["arsy-db-".len()..];
     if !is_valid_name(suffix) {
         return Err((
             StatusCode::BAD_REQUEST,
@@ -338,7 +338,7 @@ async fn wal_g_fetch(
         archive_command: "wal-g wal-push %p".to_string(),
     };
 
-    let container_name = format!("dockpanel-db-{}", body.database_name);
+    let container_name = format!("arsy-db-{}", body.database_name);
 
     match backup_fetch(&config, &container_name, Some(&body.target_time)).await {
         Ok(output) => Ok(Json(serde_json::json!({

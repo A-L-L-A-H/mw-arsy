@@ -142,7 +142,7 @@ pub struct Site {
     /// disable. Cleared by a manual re-enable, a quota raise/removal, or a new
     /// calendar month.
     pub bandwidth_suspended_at: Option<DateTime<Utc>>,
-    /// Opt-in per site. Enabling it is the one moment DockPanel restructures an
+    /// Opt-in per site. Enabling it is the one moment ARSY restructures an
     /// existing site's docroot (content moves under a writable subdirectory so
     /// the OpenSSH chroot boundary can stay root-owned) — see
     /// `services::sftp_accounts` on the agent.
@@ -153,7 +153,7 @@ pub struct Site {
     pub updated_at: DateTime<Utc>,
 }
 
-/// Phase 4 W4: persistent panel snapshot (binaries + DB dump + /etc/dockpanel).
+/// Phase 4 W4: persistent panel snapshot (binaries + DB dump + /etc/arsy).
 /// Survives past update.sh's `.bak` files (deleted on success at
 /// `scripts/update.sh:499`) so an operator can roll back hours later.
 #[allow(dead_code)]

@@ -1,5 +1,5 @@
 [package]
-name = "dockpanel-agent"
+name = "arsy-agent"
 version = "2.242.1"
 license = "AGPL-3.0-only"
 edition = "2024"

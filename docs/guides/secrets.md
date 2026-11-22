@@ -19,7 +19,7 @@ The Secrets Manager provides encrypted storage for sensitive configuration value
 4. Click **Create**
 
 > **Note:** vaults and secrets are managed from the panel or the HTTP API.
-> The `dockpanel` CLI has no `secrets` subcommand.
+> The `arsy` CLI has no `secrets` subcommand.
 
 ## Add Secrets
 

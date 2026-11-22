@@ -946,8 +946,8 @@ pub async fn create_db_backup(
     // Decrypt the database password (handles both encrypted and legacy plaintext)
     let password = crate::services::secrets_crypto::decrypt_credential_or_legacy(&password_enc, &state.config.jwt_secret);
 
-    // Container name follows convention: dockpanel-db-{name}
-    let container_name = format!("dockpanel-db-{db_name}");
+    // Container name follows convention: arsy-db-{name}
+    let container_name = format!("arsy-db-{db_name}");
 
     // Manual (ad-hoc) DB backups are not encrypted: there is no manual-encryption toggle —
     // only policy-driven backups encrypt (via backup_policy_executor). The previous read of
@@ -1095,7 +1095,7 @@ pub async fn restore_db_backup(
     let backup = backup.ok_or_else(|| err(StatusCode::NOT_FOUND, "Backup not found"))?;
 
     // One host governs BOTH directions here, and it is the archive's: the agent reads
-    // the dump off its own disk and pipes it into its own `dockpanel-db-{name}`
+    // the dump off its own disk and pipes it into its own `arsy-db-{name}`
     // container, so source and destination are the same machine by construction. That
     // is precisely why taking it from the caller's scope was destructive rather than
     // merely wrong — a container of that name answers on every host that runs this
@@ -1123,7 +1123,7 @@ pub async fn restore_db_backup(
     // Decrypt the database password (handles both encrypted and legacy plaintext)
     let password = crate::services::secrets_crypto::decrypt_credential_or_legacy(&password_enc, &state.config.jwt_secret);
 
-    let container_name = format!("dockpanel-db-{}", backup.db_name);
+    let container_name = format!("arsy-db-{}", backup.db_name);
 
     // Get encryption key if backup is encrypted. Policy-encrypted DB backups are encrypted by
     // backup_policy_executor with a key derived from the process JWT secret; the restore MUST
@@ -2135,7 +2135,7 @@ pub async fn chain_report_json(
 
 /// GET /api/backup-orchestrator/chain-report/{kind}/{id}/pdf — Chain-of-trust
 /// PDF rendered via typst. First call lazy-installs typst into
-/// /var/lib/dockpanel/typst (~30MB, one-time). 503 if install/compile fails.
+/// /var/lib/arsy/typst (~30MB, one-time). 503 if install/compile fails.
 pub async fn chain_report_pdf(
     State(state): State<AppState>,
     AdminUser(claims): AdminUser,

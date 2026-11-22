@@ -128,7 +128,7 @@ const TERMINAL_BLOCKED_PATTERNS: &[&str] = &[
 /// (unobfuscated) already runs in `bash --restricted --norc --noprofile`
 /// today; the ANSI-C form above just avoids the *literal* "curl" substring
 /// the plain form would still trip. Recorded as an open, unfixed item in
-/// `project_dockpanel_tech_debt_p184` rather than patched here: blocking
+/// `project_arsy_tech_debt_p184` rather than patched here: blocking
 /// bare shell-assignment syntax would have real false-positive cost
 /// (`FOO=bar wp cache flush` is a legitimate one-liner) for a mitigation
 /// that still doesn't touch aliases/functions/`source`/`read`, so this is
@@ -146,7 +146,7 @@ const _SITE_SHELL_IS_NOT_A_SANDBOX: () = ();
 /// `lower.contains("curl")` waved them through — but `bash --restricted
 /// --norc --noprofile` (the exact invocation `routes/terminal.rs` spawns)
 /// removes the quotes/backslash before exec, and runs the real binary.
-/// `dockpanel-fanout` s445 reproduced this live against that exact
+/// `arsy-fanout` s445 reproduced this live against that exact
 /// invocation, and independently against `is_safe_cron_command`'s target
 /// (`bash -c`).
 ///
@@ -159,7 +159,7 @@ const _SITE_SHELL_IS_NOT_A_SANDBOX: () = ();
 /// per-line check cannot see) all still construct `curl` without ever
 /// spelling it as an adjacent literal substring. See
 /// `_SITE_SHELL_IS_NOT_A_SANDBOX` below and
-/// `project_dockpanel_tech_debt_p184` for why that residual class is a
+/// `project_arsy_tech_debt_p184` for why that residual class is a
 /// different, architectural change, not a blocklist patch.
 fn normalize_for_blocklist(cmd: &str) -> String {
     let mut out = String::with_capacity(cmd.len());
@@ -407,7 +407,7 @@ mod tests {
         assert!(!is_safe_cron_command(""));
     }
 
-    /// `dockpanel-fanout` s429: a bare `;`/`|` (no trailing space, no "sh"/
+    /// `arsy-fanout` s429: a bare `;`/`|` (no trailing space, no "sh"/
     /// "bash" suffix) passed straight through the old space/verb-anchored
     /// checks — `is_safe_cron_command("id;whoami")` returned `true`, and the
     /// command reaches `crontab -u root -` and `bash -c` on the host as root.
@@ -441,7 +441,7 @@ mod tests {
         assert!(is_safe_cron_command("a && b && c"));
     }
 
-    /// `dockpanel-fanout` s445 (finder + skeptic, live-reproduced against the
+    /// `arsy-fanout` s445 (finder + skeptic, live-reproduced against the
     /// exact `bash --restricted --norc --noprofile` invocation
     /// `routes/terminal.rs` spawns): `cu''rl`/`w\get` contain no `curl`/
     /// `wget` SUBSTRING, so the raw-string blocklist waved them through while

@@ -43,7 +43,7 @@ PASS=0 FAIL=0
 ok()  { PASS=$((PASS+1)); printf '  \033[0;32m✓\033[0m %s\n' "$1"; }
 bad() { FAIL=$((FAIL+1)); printf '  \033[0;31m✗\033[0m %s\n' "$1"; }
 
-UNIT=panel/agent/dockpanel-agent.service
+UNIT=panel/agent/arsy-agent.service
 AGENT_SRC=panel/agent/src
 [ -f "$UNIT" ] || { echo "missing $UNIT"; exit 1; }
 
@@ -51,7 +51,7 @@ AGENT_SRC=panel/agent/src
 is_exempt() {
   case "$1" in
     # A path the security scanner LOOKS FOR; it is never created by us.
-    /etc/.dockpanel-canary) return 0 ;;
+    /etc/.arsy-canary) return 0 ;;
     # Read-only lookups.
     /var/lib/unbound/root.key|/usr/share/*) return 0 ;;
     # READ (routes/security.rs read_to_string) and a member of command_filter's
@@ -59,7 +59,7 @@ is_exempt() {
     # ReadWritePaths would grant write access to the account database in order to
     # satisfy a check about a path the agent exists to keep commands away from.
     /etc/passwd|/etc/shadow|/etc/sudoers) return 0 ;;
-    # `/var/run` bare: the agent writes /var/run/dockpanel, which IS listed. The
+    # `/var/run` bare: the agent writes /var/run/arsy, which IS listed. The
     # bare prefix appears in log/format strings.
     /var/run) return 0 ;;
     *) return 1 ;;
@@ -97,7 +97,7 @@ fi
 echo
 echo "§2 optional paths carry systemd's '-' prefix (an absent one must not brick the unit)"
 
-# /etc/nginx, /etc/dockpanel and the /var/{run,lib,log,www} family are created by
+# /etc/nginx, /etc/arsy and the /var/{run,lib,log,www} family are created by
 # the installer on every distro. Everything distro- or service-conditional needs
 # the prefix, or a box without it fails namespace setup and the agent never starts.
 MISSING_DASH=0

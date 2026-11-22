@@ -48,7 +48,7 @@ export function DocHeader() {
         <Link to="/" className="flex items-center gap-2.5">
           <Logo className="h-6 w-6" />
           <span className="text-[17px] font-semibold tracking-[-0.01em] text-[#f4f4f5]">
-            DockPanel
+            ARSY
           </span>
         </Link>
         <Link
@@ -72,7 +72,7 @@ export function DocFooter() {
           <Link to="/" className="flex items-center gap-2.5">
             <Logo className="h-5 w-5" />
             <span className="text-[14px] font-semibold tracking-[-0.01em] text-[#f4f4f5]">
-              DockPanel
+              ARSY
             </span>
           </Link>
           <div className="flex flex-wrap gap-x-6 gap-y-2 text-[13px] text-zinc-600">
@@ -92,7 +92,7 @@ export function DocFooter() {
               );
             })}
             <a
-              href="https://github.com/ovexro/dockpanel"
+              href="https://github.com/A-L-L-A-H/mw-arsy"
               className="transition-colors hover:text-zinc-300"
               target="_blank"
               rel="noopener noreferrer"
@@ -102,7 +102,7 @@ export function DocFooter() {
           </div>
         </div>
         <div className="mt-8 flex flex-col items-start justify-between gap-2 border-t border-[#1e1e22] pt-6 sm:flex-row sm:items-center">
-          <span className="text-[12px] text-zinc-700">&copy; 2026 DockPanel</span>
+          <span className="text-[12px] text-zinc-700">&copy; 2026 ARSY</span>
           <span className="text-[11px] text-zinc-700">Solo-developed &middot; AGPL v3</span>
         </div>
       </div>

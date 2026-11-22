@@ -15,7 +15,7 @@ use tracing::{debug, warn};
 use crate::backend_client;
 
 #[allow(dead_code)]
-const MCP_ENV_PATH: &str = "/etc/dockpanel/mcp.env";
+const MCP_ENV_PATH: &str = "/etc/arsy/mcp.env";
 
 /// Token introspection response from panel's OAuth server
 #[derive(Debug, Deserialize)]
@@ -31,12 +31,12 @@ struct IntrospectResponse {
 
 /// Load the panel API base URL from the same env file the API uses
 fn panel_api_base_url() -> Result<String, String> {
-    let env = std::fs::read_to_string("/etc/dockpanel/api.env")
-        .map_err(|e| format!("Cannot read /etc/dockpanel/api.env: {e}"))?;
+    let env = std::fs::read_to_string("/etc/arsy/api.env")
+        .map_err(|e| format!("Cannot read /etc/arsy/api.env: {e}"))?;
     let addr = env
         .lines()
         .find_map(|l| l.trim().strip_prefix("LISTEN_ADDR="))
-        .ok_or_else(|| "/etc/dockpanel/api.env has no LISTEN_ADDR".to_string())?
+        .ok_or_else(|| "/etc/arsy/api.env has no LISTEN_ADDR".to_string())?
         .trim();
     Ok(format!("http://{addr}"))
 }

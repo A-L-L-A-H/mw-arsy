@@ -6,7 +6,7 @@
 #
 #   A. v2.88.0 hardened the pre-upgrade dump by setting `umask 077` — but set it
 #      at TOP-LEVEL scope in an 1100-line script, so it governed every `mkdir`
-#      and `>` for the rest of the upgrade. `/opt/dockpanel/frontend` (nginx
+#      and `>` for the rest of the upgrade. `/opt/arsy/frontend` (nginx
 #      serves the SPA from it as www-data) and `/var/www/acme/.well-known/
 #      acme-challenge` (HTTP-01) would be created 0700 on any install that
 #      creates them fresh: panel assets 403, certificates stop renewing.
@@ -160,7 +160,7 @@ if S=$(subj shcode "$UPD"); then
 
   # B2 — and it must specifically harden the INLINE form, keyed on the operation
   # rather than on a comment about it.
-  if has "$S" 'umask 077; docker exec dockpanel-postgres pg_dump'; then
+  if has "$S" 'umask 077; docker exec arsy-postgres pg_dump'; then
     ok "update.sh rewrites the legacy inline dump line to run under umask 077"
   else
     bad "update.sh does not harden the legacy inline dump line"
@@ -177,7 +177,7 @@ if S=$(subj shcode "$SET"); then
   INSTALL=$(awk '/crontab -l/{inside=1} inside{print} inside && /\| crontab -/{exit}' <<< "$S")
   if [ -z "$INSTALL" ]; then
     bad "no crontab install line in setup.sh — B3 is measuring nothing"
-  elif has "$INSTALL" 'pg_dump -U dockpanel'; then
+  elif has "$INSTALL" 'pg_dump -U arsy'; then
     ok "setup.sh's cron dedupe also removes the legacy inline dump line"
   else
     bad "setup.sh dedupes only on the script path — re-running it leaves TWO daily dumps"

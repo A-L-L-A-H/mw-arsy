@@ -38,7 +38,7 @@ bad() { printf '\033[31m✗\033[0m %s — %s\n' "$1" "$2"; FAIL=$((FAIL+1)); }
 eq()  { [ "$2" = "$3" ] && ok "$1" || bad "$1" "expected '$3', got '$2'"; }
 
 # ugrep's --ignore-files shim honours .gitignore, so every count below uses the
-# real binary explicitly (dockpanel-ops-p2, s357).
+# real binary explicitly (arsy-ops-p2, s357).
 G=/usr/bin/grep
 
 PANEL=panel/backend/src/routes/files.rs

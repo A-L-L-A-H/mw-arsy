@@ -3,7 +3,7 @@ use std::time::Instant;
 use crate::safe_cmd::{safe_command, safe_command_sync};
 
 const WEBROOT: &str = "/var/www";
-const DEPLOY_KEYS_DIR: &str = "/etc/dockpanel/deploy-keys";
+const DEPLOY_KEYS_DIR: &str = "/etc/arsy/deploy-keys";
 
 pub struct DeployResult {
     pub success: bool,
@@ -42,7 +42,7 @@ pub(crate) fn ssh_command(key_path: &str) -> Result<String, String> {
 
     let canon_str = canon.to_string_lossy();
     Ok(format!(
-        "ssh -i {canon_str} -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=/etc/dockpanel/known_hosts"
+        "ssh -i {canon_str} -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=/etc/arsy/known_hosts"
     ))
 }
 
@@ -131,7 +131,7 @@ fn merge_into(from: &Path, to: &Path) -> Result<Vec<String>, String> {
 /// "no hooks" rather than an error.
 const GIT_NO_EXEC: [&str; 4] = [
     "-c",
-    "core.hooksPath=/var/empty/dockpanel-no-hooks",
+    "core.hooksPath=/var/empty/arsy-no-hooks",
     "-c",
     "core.fsmonitor=",
 ];
@@ -441,7 +441,7 @@ pub async fn clone_or_pull(
 
 /// Run a deploy script file from the site directory.
 /// The `script` parameter is treated as a relative path within the site dir
-/// (e.g., ".dockpanel/deploy.sh"), NOT as arbitrary bash code.
+/// (e.g., ".arsy/deploy.sh"), NOT as arbitrary bash code.
 pub async fn run_script(domain: &str, script: &str) -> Result<(bool, String), String> {
     if script.trim().is_empty() {
         return Ok((true, String::new()));
@@ -908,7 +908,7 @@ pub fn generate_deploy_key(domain: &str) -> Result<(String, String), String> {
             "-t", "ed25519",
             "-f", &key_path,
             "-N", "",
-            "-C", &format!("dockpanel-deploy@{domain}"),
+            "-C", &format!("arsy-deploy@{domain}"),
         ])
         .output()
         .map_err(|e| format!("ssh-keygen failed: {e}"))?;
@@ -939,7 +939,7 @@ mod first_deploy_tests {
     use std::path::PathBuf;
 
     fn scratch(name: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join("dockpanel-first-deploy-tests").join(name);
+        let dir = std::env::temp_dir().join("arsy-first-deploy-tests").join(name);
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).expect("scratch dir");
         dir
@@ -1131,7 +1131,7 @@ mod ownership_tests {
     /// nothing and must be re-derived rather than trusted.
     #[test]
     fn the_exception_v2_64_1_shipped_really_did_run_the_sites_code_as_root() {
-        let Some((dir, proof)) = a_repo_owned_by_someone_else("dockpanel-escalation-control")
+        let Some((dir, proof)) = a_repo_owned_by_someone_else("arsy-escalation-control")
         else {
             return;
         };
@@ -1191,7 +1191,7 @@ mod ownership_tests {
     /// this project keeps finding in its own arms.
     #[test]
     fn the_suppression_pair_neutralises_a_planted_payload_by_itself() {
-        let dir = std::env::temp_dir().join("dockpanel-escalation-closed");
+        let dir = std::env::temp_dir().join("arsy-escalation-closed");
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
 
@@ -1256,7 +1256,7 @@ mod ownership_tests {
     /// A repository root does not own is discarded, not adopted.
     #[test]
     fn a_foreign_repository_is_discarded_rather_than_repaired() {
-        let Some((dir, _proof)) = a_repo_owned_by_someone_else("dockpanel-escalation-discard")
+        let Some((dir, _proof)) = a_repo_owned_by_someone_else("arsy-escalation-discard")
         else {
             return;
         };
@@ -1292,7 +1292,7 @@ mod ownership_tests {
             eprintln!("skipped: needs root to chown");
             return;
         }
-        let dir = std::env::temp_dir().join("dockpanel-tree-split");
+        let dir = std::env::temp_dir().join("arsy-tree-split");
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(dir.join(".git")).unwrap();
         std::fs::create_dir_all(dir.join("public")).unwrap();

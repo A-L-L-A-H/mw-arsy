@@ -259,7 +259,7 @@ async fn upload_cert(
         }
     };
 
-    let ssl_dir = format!("/etc/dockpanel/ssl/{}", body.domain);
+    let ssl_dir = format!("/etc/arsy/ssl/{}", body.domain);
     tokio::fs::create_dir_all(&ssl_dir).await
         .map_err(|e| (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -387,7 +387,7 @@ async fn renew(
     // Read the existing cert (if any) so we can send it as the ARI replaces
     // hint. Missing or unreadable is fine — the renewal just becomes a
     // fresh issuance from the CA's perspective.
-    let cert_path = format!("/etc/dockpanel/ssl/{domain}/fullchain.pem");
+    let cert_path = format!("/etc/arsy/ssl/{domain}/fullchain.pem");
     let replaces_pem = tokio::fs::read_to_string(&cert_path).await.ok();
 
     let opts = ssl::ProvisionOpts {
@@ -430,7 +430,7 @@ async fn renew(
     // re-read what is already on disk.
     //
     // The renewal itself never needs the rebuild: `provision_cert` overwrites
-    // fullchain.pem and privkey.pem inside the same `/etc/dockpanel/ssl/{domain}`
+    // fullchain.pem and privkey.pem inside the same `/etc/arsy/ssl/{domain}`
     // the existing vhost already names, so the paths did not move. The rebuild
     // exists to pick up config changes made since the original provision — which
     // is only meaningful for a domain the panel holds a config FOR.
@@ -547,7 +547,7 @@ async fn renewal_info(
         )
     })?;
 
-    let cert_path = format!("/etc/dockpanel/ssl/{domain}/fullchain.pem");
+    let cert_path = format!("/etc/arsy/ssl/{domain}/fullchain.pem");
     let suggestion = ssl::fetch_ari(&account, &cert_path).await;
     Ok(Json(serde_json::json!({ "suggestion": suggestion })))
 }
@@ -573,7 +573,7 @@ async fn revoke(
     // A DNS-01 wildcard is provisioned once under the zone apex and every site
     // in the zone points its `ssl_certificate` at that one directory, so this
     // path is not necessarily this domain's alone to delete.
-    let ssl_dir = format!("/etc/dockpanel/ssl/{domain}");
+    let ssl_dir = format!("/etc/arsy/ssl/{domain}");
     if std::path::Path::new(&ssl_dir).exists() {
         if crate::services::ownership::cert_dir_in_use_elsewhere(&domain) {
             tracing::warn!(
@@ -596,7 +596,7 @@ async fn revoke(
     // migrated from v2.7.x".
     //
     // Neither tree issues through certbot at HEAD — provisioning is instant_acme
-    // into /etc/dockpanel/ssl, above — so on any install newer than v2.7.x every
+    // into /etc/arsy/ssl, above — so on any install newer than v2.7.x every
     // lineage this could name was created by the OPERATOR, out of band, and
     // nothing distinguished the two cases. A certbot lineage also carries all
     // its SANs, so deleting the one named `example.com` took `www.` and `mail.`
@@ -746,7 +746,7 @@ pub fn router() -> Router<AppState> {
 //
 // At the END of the file on purpose: a `#[cfg(test)]` module in the middle of a
 // source file truncates every pin arm that reads the production body below it
-// (dockpanel-ops-p7), and this file is a subject of four suites.
+// (arsy-ops-p7), and this file is a subject of four suites.
 #[cfg(test)]
 mod renew_request_tests {
     use super::*;

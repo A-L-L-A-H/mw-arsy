@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 #
-# DockPanel — restore a panel snapshot (binaries + /etc/dockpanel + database).
+# ARSY — restore a panel snapshot (binaries + /etc/arsy + database).
 #
 # This script is the ONLY thing that mutates state during a rollback. It is
-# compiled into dockpanel-api (`include_str!`) and written to
-# /var/lib/dockpanel/restore-snapshot.sh at rollback time, so it cannot drift
-# from the binary that invokes it and does not depend on /opt/dockpanel being
+# compiled into arsy-api (`include_str!`) and written to
+# /var/lib/arsy/restore-snapshot.sh at rollback time, so it cannot drift
+# from the binary that invokes it and does not depend on /opt/arsy being
 # present (see lesson #35/#38 — a repo-side config that no installer deploys is
 # dev fiction; embedding it removes the deployment step entirely).
 #
 # WHY A SEPARATE, DETACHED PROCESS (the whole point):
-#   The restore used to run INLINE inside the dockpanel-api HTTP handler. A
+#   The restore used to run INLINE inside the arsy-api HTTP handler. A
 #   restore takes longer than the panel's own 300s request timeout
 #   (TimeoutLayer, backend main.rs; nginx proxy_read_timeout 300s) — measured at
 #   394.9s on a lab box. At 300s axum dropped the request future, which broke the
@@ -25,7 +25,7 @@
 #   status-checked (lesson #45).
 #
 # WHAT A ROLLBACK DOES AND DOES NOT DO (verified on a lab box, not assumed):
-#   It restores what the snapshot CONTAINS — the three binaries, /etc/dockpanel,
+#   It restores what the snapshot CONTAINS — the three binaries, /etc/arsy,
 #   and the database. The database is a true point-in-time revert: the `public`
 #   schema is dropped and rebuilt from the dump inside one transaction, so an
 #   object created after the snapshot does NOT survive.
@@ -44,12 +44,12 @@
 #   panel back", not "put the machine back".
 #
 # Env (all set by the caller):
-#   DOCKPANEL_SNAPSHOT_ID        uuid of the snapshot row
-#   DOCKPANEL_SNAPSHOT_TARBALL   absolute path to the .tar.gz
-#   DOCKPANEL_SNAPSHOT_SHA256    expected sha256 of that tarball
-# Optional overrides: DOCKPANEL_PG_CONTAINER / _PG_USER / _PG_DB
+#   ARSY_SNAPSHOT_ID        uuid of the snapshot row
+#   ARSY_SNAPSHOT_TARBALL   absolute path to the .tar.gz
+#   ARSY_SNAPSHOT_SHA256    expected sha256 of that tarball
+# Optional overrides: ARSY_PG_CONTAINER / _PG_USER / _PG_DB
 #
-# Result is always written to /var/lib/dockpanel/last-restore.json.
+# Result is always written to /var/lib/arsy/last-restore.json.
 #
 # READING THE VERDICT (the exit status alone is not enough):
 #   exit 0, ok=true            restored, everything verified.
@@ -59,7 +59,7 @@
 #   non-zero, before the DB    nothing changed and nothing was lost.
 #     commit
 #   non-zero, after it         the database is back on the snapshot but the
-#                              binaries are not. dockpanel-api is left STOPPED
+#                              binaries are not. arsy-api is left STOPPED
 #                              on purpose (see rollback_would_be_undone below)
 #                              and the box needs an operator.
 #
@@ -69,14 +69,14 @@
 
 set -euo pipefail
 
-SNAP_ID="${DOCKPANEL_SNAPSHOT_ID:?DOCKPANEL_SNAPSHOT_ID is required}"
-TARBALL="${DOCKPANEL_SNAPSHOT_TARBALL:?DOCKPANEL_SNAPSHOT_TARBALL is required}"
-EXPECT_SHA="${DOCKPANEL_SNAPSHOT_SHA256:?DOCKPANEL_SNAPSHOT_SHA256 is required}"
-PG_CONTAINER="${DOCKPANEL_PG_CONTAINER:-dockpanel-postgres}"
+SNAP_ID="${ARSY_SNAPSHOT_ID:?ARSY_SNAPSHOT_ID is required}"
+TARBALL="${ARSY_SNAPSHOT_TARBALL:?ARSY_SNAPSHOT_TARBALL is required}"
+EXPECT_SHA="${ARSY_SNAPSHOT_SHA256:?ARSY_SNAPSHOT_SHA256 is required}"
+PG_CONTAINER="${ARSY_PG_CONTAINER:-arsy-postgres}"
 # Deliberately mirrors the pg_dump invocation that CREATED the snapshot
 # (panel_snapshot.rs build_snapshot_inner) — restore must be symmetric with dump.
-PG_USER="${DOCKPANEL_PG_USER:-dockpanel}"
-PG_DB="${DOCKPANEL_PG_DB:-dockpanel}"
+PG_USER="${ARSY_PG_USER:-arsy}"
+PG_DB="${ARSY_PG_DB:-arsy}"
 
 # Locations. Overridable ONLY so this script can be driven end to end by
 # tests/update-rollback-pin-e2e.sh against a scratch tree: the guard below
@@ -84,19 +84,19 @@ PG_DB="${DOCKPANEL_PG_DB:-dockpanel}"
 # executed is a comment. The defaults are the real paths and the api sets none
 # of these, so nothing in the product changes. `:-` (not `-`) so an empty value
 # falls back rather than resolving to "".
-STATE_DIR="${DOCKPANEL_STATE_DIR:-/var/lib/dockpanel}"
-BIN_DIR="${DOCKPANEL_BIN_DIR:-/usr/local/bin}"
-ETC_DIR="${DOCKPANEL_ETC_DIR:-/etc/dockpanel}"
-HEALTH_URL="${DOCKPANEL_HEALTH_URL:-http://127.0.0.1:3080/api/health}"
+STATE_DIR="${ARSY_STATE_DIR:-/var/lib/arsy}"
+BIN_DIR="${ARSY_BIN_DIR:-/usr/local/bin}"
+ETC_DIR="${ARSY_ETC_DIR:-/etc/arsy}"
+HEALTH_URL="${ARSY_HEALTH_URL:-http://127.0.0.1:3080/api/health}"
 RESULT="$STATE_DIR/last-restore.json"
 WORK="$STATE_DIR/restore-$SNAP_ID"
-LOG_TAG=dockpanel-restore
-# dockpanel-api FIRST, deliberately. It is the only one of the three that runs
+LOG_TAG=arsy-restore
+# arsy-api FIRST, deliberately. It is the only one of the three that runs
 # migrations against the database, so the window in which the database has been
 # reverted while a NEWER api is still installed is exactly the span between the
 # database commit and this binary being replaced. Restoring it first makes that
 # window as short as the script can make it.
-BINS=(dockpanel-api dockpanel-agent dockpanel)
+BINS=(arsy-api arsy-agent arsy)
 
 mkdir -p "$STATE_DIR"
 chmod 0700 "$STATE_DIR" 2>/dev/null || true
@@ -107,7 +107,7 @@ services_stopped=0
 # Set the instant the restore transaction commits: from here on the database is
 # the SNAPSHOT's, and any api older or newer than it is a mismatch.
 db_committed=0
-# Set when /usr/local/bin/dockpanel-api has actually been replaced from the
+# Set when /usr/local/bin/arsy-api has actually been replaced from the
 # snapshot, which is what makes the running code agree with that database again.
 api_reverted=0
 # Non-fatal problems, collected rather than raised — see `degrade`.
@@ -173,13 +173,13 @@ rollback_would_be_undone() {
 # Appended to whatever verdict gets written while that window is open, so the
 # operator reading last-restore.json is told the panel is down on purpose and
 # where the way back is. Recovery, once the version mismatch is understood:
-#     gunzip -c /var/lib/dockpanel/pre-rollback-<id>.sql.gz > /tmp/recover.sql
-#     docker exec -i dockpanel-postgres psql -U dockpanel -d dockpanel \
+#     gunzip -c /var/lib/arsy/pre-rollback-<id>.sql.gz > /tmp/recover.sql
+#     docker exec -i arsy-postgres psql -U arsy -d arsy \
 #         -v ON_ERROR_STOP=1 < /tmp/recover.sql
-#     systemctl start dockpanel-api
+#     systemctl start arsy-api
 hazard_note() {
     if rollback_would_be_undone; then
-        printf '%s' " — dockpanel-api was deliberately LEFT STOPPED: the database is back on the snapshot but the binaries are not, and starting the installed api would migrate it forward and undo this rollback. The pre-rollback database is at ${PRE_DUMP:-$STATE_DIR/pre-rollback-$SNAP_ID.sql.gz}."
+        printf '%s' " — arsy-api was deliberately LEFT STOPPED: the database is back on the snapshot but the binaries are not, and starting the installed api would migrate it forward and undo this rollback. The pre-rollback database is at ${PRE_DUMP:-$STATE_DIR/pre-rollback-$SNAP_ID.sql.gz}."
     fi
 }
 
@@ -195,14 +195,14 @@ on_exit() {
     local code=$?
     if [ "$services_stopped" = "1" ]; then
         if rollback_would_be_undone; then
-            log "NOT starting dockpanel-api: the database was restored but the binaries were not"
+            log "NOT starting arsy-api: the database was restored but the binaries were not"
             log "starting it would migrate the reverted database forward and undo this rollback"
             log "the pre-rollback database is at ${PRE_DUMP:-$STATE_DIR/pre-rollback-$SNAP_ID.sql.gz}"
-            systemctl start dockpanel-agent 2>/dev/null || true
+            systemctl start arsy-agent 2>/dev/null || true
         else
             log "restarting services from exit trap"
-            systemctl start dockpanel-agent 2>/dev/null || true
-            systemctl start dockpanel-api 2>/dev/null || true
+            systemctl start arsy-agent 2>/dev/null || true
+            systemctl start arsy-api 2>/dev/null || true
         fi
     fi
     if [ "$finished" != "1" ]; then
@@ -214,23 +214,23 @@ trap on_exit EXIT INT TERM
 
 # Belt-and-braces: if invoked by hand from inside the panel's own cgroup, escape
 # it first. The normal path already arrives here under systemd-run.
-if [ -z "${DOCKPANEL_RESTORE_DETACHED:-}" ] && command -v systemd-run >/dev/null 2>&1; then
-    if grep -qE 'dockpanel-(api|agent)\.service' /proc/self/cgroup 2>/dev/null; then
+if [ -z "${ARSY_RESTORE_DETACHED:-}" ] && command -v systemd-run >/dev/null 2>&1; then
+    if grep -qE 'arsy-(api|agent)\.service' /proc/self/cgroup 2>/dev/null; then
         log "re-executing outside the panel's service cgroup"
         trap - EXIT INT TERM
         exec systemd-run --quiet --collect \
-            --unit="dockpanel-snapshot-restore-$SNAP_ID" \
-            --setenv=DOCKPANEL_RESTORE_DETACHED=1 \
-            --setenv=DOCKPANEL_SNAPSHOT_ID="$SNAP_ID" \
-            --setenv=DOCKPANEL_SNAPSHOT_TARBALL="$TARBALL" \
-            --setenv=DOCKPANEL_SNAPSHOT_SHA256="$EXPECT_SHA" \
-            --setenv=DOCKPANEL_PG_CONTAINER="$PG_CONTAINER" \
-            --setenv=DOCKPANEL_PG_USER="$PG_USER" \
-            --setenv=DOCKPANEL_PG_DB="$PG_DB" \
-            --setenv=DOCKPANEL_STATE_DIR="$STATE_DIR" \
-            --setenv=DOCKPANEL_BIN_DIR="$BIN_DIR" \
-            --setenv=DOCKPANEL_ETC_DIR="$ETC_DIR" \
-            --setenv=DOCKPANEL_HEALTH_URL="$HEALTH_URL" \
+            --unit="arsy-snapshot-restore-$SNAP_ID" \
+            --setenv=ARSY_RESTORE_DETACHED=1 \
+            --setenv=ARSY_SNAPSHOT_ID="$SNAP_ID" \
+            --setenv=ARSY_SNAPSHOT_TARBALL="$TARBALL" \
+            --setenv=ARSY_SNAPSHOT_SHA256="$EXPECT_SHA" \
+            --setenv=ARSY_PG_CONTAINER="$PG_CONTAINER" \
+            --setenv=ARSY_PG_USER="$PG_USER" \
+            --setenv=ARSY_PG_DB="$PG_DB" \
+            --setenv=ARSY_STATE_DIR="$STATE_DIR" \
+            --setenv=ARSY_BIN_DIR="$BIN_DIR" \
+            --setenv=ARSY_ETC_DIR="$ETC_DIR" \
+            --setenv=ARSY_HEALTH_URL="$HEALTH_URL" \
             bash "$0"
     fi
 fi
@@ -286,10 +286,10 @@ fi
 # makes the binary swap safe (lesson #48: you cannot write over a running
 # executable; rename works, but not running at all is better still).
 stage="stop-services"
-log "stopping dockpanel-api and dockpanel-agent"
+log "stopping arsy-api and arsy-agent"
 services_stopped=1
-systemctl stop dockpanel-api 2>/dev/null || true
-systemctl stop dockpanel-agent 2>/dev/null || true
+systemctl stop arsy-api 2>/dev/null || true
+systemctl stop arsy-agent 2>/dev/null || true
 
 # ── 5. Database (the destructive stage; atomic) ──────────────────────────────
 # ON_ERROR_STOP=1 + --single-transaction is the difference between a restore that
@@ -486,13 +486,13 @@ for bin in "${BINS[@]}"; do
     # returns non-zero for every binary that is not the api, and a bare failing
     # list is an errexit abort — it would have killed the restore on the first
     # loop iteration, inside the very window this flag exists to protect.
-    if [ "$bin" = "dockpanel-api" ]; then
+    if [ "$bin" = "arsy-api" ]; then
         api_reverted=1
     fi
     log "restored $dst"
 done
 
-# ── 7. /etc/dockpanel ────────────────────────────────────────────────────────
+# ── 7. /etc/arsy ────────────────────────────────────────────────────────
 # Treated as fatal, not best-effort: api.env carries JWT_SECRET and the database
 # password, so a half-applied /etc against a fully-restored database is a broken
 # panel, not a warning.
@@ -506,25 +506,25 @@ fi
 # ── 8. Start + prove it came back ────────────────────────────────────────────
 stage="start-services"
 systemctl daemon-reload 2>/dev/null || true
-systemctl start dockpanel-agent || fail "dockpanel-agent failed to start after restore"
+systemctl start arsy-agent || fail "arsy-agent failed to start after restore"
 sleep 1
 
 # The same guard as the exit trap, on the SUCCESS path — because this window can
 # be reached without anything having failed at all. If the snapshot carried no
-# dockpanel-api binary, the loop above skipped it with a note and fell through to
+# arsy-api binary, the loop above skipped it with a note and fell through to
 # here with the database reverted and the newer api still installed: starting it
 # would migrate the database forward as the last act of a restore reporting
 # success. Refusing is the same answer as in the trap, for the same reason.
 if rollback_would_be_undone; then
     services_stopped=0
-    degrade "the snapshot contains no dockpanel-api binary, so the database was reverted while the installed api was not; dockpanel-api has been left stopped"
-    log "NOT starting dockpanel-api: $degraded"
+    degrade "the snapshot contains no arsy-api binary, so the database was reverted while the installed api was not; arsy-api has been left stopped"
+    log "NOT starting arsy-api: $degraded"
     write_result false "$stage" "$degraded$(hazard_note)"
     finished=1
     exit 1
 fi
 
-systemctl start dockpanel-api || fail "dockpanel-api failed to start after restore"
+systemctl start arsy-api || fail "arsy-api failed to start after restore"
 services_stopped=0
 
 stage="health"

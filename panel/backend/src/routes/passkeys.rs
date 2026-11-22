@@ -442,7 +442,7 @@ pub async fn register_begin(
 
     let options = PublicKeyCredentialCreationOptions {
         rp: RelyingParty {
-            name: "DockPanel".to_string(),
+            name: "ARSY".to_string(),
             id: rp_id,
         },
         user: PublicKeyUser {

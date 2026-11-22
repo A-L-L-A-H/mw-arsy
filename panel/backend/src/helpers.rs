@@ -1466,7 +1466,7 @@ pub async fn renewal_plan(
 }
 
 /// The issuer of the certificate installed for `domain`, but ONLY when that
-/// issuer proves DockPanel did not put it there.
+/// issuer proves ARSY did not put it there.
 ///
 /// The agent's ACME client is pinned to `LetsEncrypt::Production`
 /// (`panel/agent/src/services/ssl.rs`, the only directory URL in the crate), so
@@ -1490,7 +1490,7 @@ pub async fn foreign_cert_issuer(
     let status = agent.get(&format!("/ssl/status/{domain}")).await.ok()?;
     match cert_provenance(&status) {
         CertProvenance::Foreign(issuer) => Some(issuer),
-        CertProvenance::DockPanelIssued | CertProvenance::Unknown => None,
+        CertProvenance::ArsyIssued | CertProvenance::Unknown => None,
     }
 }
 
@@ -1504,7 +1504,7 @@ pub async fn foreign_cert_issuer(
 /// For RENEWAL, `Unknown` must read as "ours": an unreachable agent or an
 /// unreadable certificate is not evidence of a foreign one, and refusing on
 /// doubt ends in a real Let's Encrypt certificate lapsing on a dark site. That
-/// is why `foreign_cert_issuer` maps both `Unknown` and `DockPanelIssued` to
+/// is why `foreign_cert_issuer` maps both `Unknown` and `ArsyIssued` to
 /// `None`, and why every renewal caller may keep treating `None` as PERMISSION
 /// TO PROCEED — this split changes none of their behaviour.
 ///
@@ -1522,7 +1522,7 @@ pub enum CertProvenance {
     Foreign(String),
     /// A Let's Encrypt issuer, which the agent's pinned directory URL makes a
     /// proof that this product issued it.
-    DockPanelIssued,
+    ArsyIssued,
     /// No answer to act on — the agent did not reply, reported `has_cert:false`
     /// (which a zone-WILDCARD child does for its own name, while holding a
     /// perfectly good certificate under the zone's), or produced no issuer.
@@ -1547,7 +1547,7 @@ pub fn cert_provenance(status: &serde_json::Value) -> CertProvenance {
     // Both spellings: the apostrophe is a typographic hazard, not a fact about
     // the CA, and an issuer string that lost it must not read as foreign.
     if lowered.contains("let's encrypt") || lowered.contains("lets encrypt") {
-        return CertProvenance::DockPanelIssued;
+        return CertProvenance::ArsyIssued;
     }
     CertProvenance::Foreign(issuer.to_string())
 }
@@ -1613,8 +1613,8 @@ mod cert_provenance_tests {
         ] {
             assert_eq!(
                 cert_provenance(&json!({ "has_cert": true, "issuer": issuer })),
-                CertProvenance::DockPanelIssued,
-                "issuer {issuer:?} must read as DockPanel-issued"
+                CertProvenance::ArsyIssued,
+                "issuer {issuer:?} must read as ARSY-issued"
             );
         }
     }
@@ -1680,7 +1680,7 @@ mod cert_provenance_tests {
     fn the_renewal_collapse_treats_unknown_as_permission_to_proceed() {
         let as_renewal_sees_it = |v: serde_json::Value| match cert_provenance(&v) {
             CertProvenance::Foreign(i) => Some(i),
-            CertProvenance::DockPanelIssued | CertProvenance::Unknown => None,
+            CertProvenance::ArsyIssued | CertProvenance::Unknown => None,
         };
         assert_eq!(as_renewal_sees_it(json!({ "has_cert": false })), None);
         assert_eq!(

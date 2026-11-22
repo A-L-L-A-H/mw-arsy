@@ -336,8 +336,8 @@ async fn create_policy_engine_from_settings(state: &AppState) -> Result<PolicyEn
 
     let enabled = get("policy_engine_enabled") == "true";
     let opa_url = if get("policy_engine_opa_url").is_empty() { None } else { Some(get("policy_engine_opa_url")) };
-    let bundled_policies_path = get("policy_engine_bundled_policies_path").unwrap_or_else(|| "/etc/dockpanel/policies/bundled".to_string());
-    let custom_policies_path = get("policy_engine_custom_policies_path").unwrap_or_else(|| "/etc/dockpanel/policies/custom".to_string());
+    let bundled_policies_path = get("policy_engine_bundled_policies_path").unwrap_or_else(|| "/etc/arsy/policies/bundled".to_string());
+    let custom_policies_path = get("policy_engine_custom_policies_path").unwrap_or_else(|| "/etc/arsy/policies/custom".to_string());
     let default_decision = match get("policy_engine_default_decision").as_str() {
         "deny" => PolicyDecision::Deny,
         "warn" => PolicyDecision::Warn,

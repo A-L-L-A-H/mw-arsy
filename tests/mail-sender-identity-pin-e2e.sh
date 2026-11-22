@@ -376,7 +376,7 @@ fi
 
 # The keys must NOT be added to the appended config block: that block is written
 # once and skipped for ever after, so a template edit reaches new installs only.
-block=$(perl -0777 -ne 'print $1 if /(# DockPanel mail configuration.*?"#\))/s' <<< "$AGENT_RAW")
+block=$(perl -0777 -ne 'print $1 if /(# ARSY mail configuration.*?"#\))/s' <<< "$AGENT_RAW")
 if [ -z "$block" ]; then
   bad "could not extract the main.cf template block — this arm cannot fire"
 elif grep -qF 'smtpd_sender_restrictions' <<< "$block"; then

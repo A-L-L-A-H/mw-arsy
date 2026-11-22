@@ -86,13 +86,13 @@ const POSTFIX_VIRTUAL_ALIAS: &str = "/etc/postfix/virtual_alias_maps";
 /// key, because the signing table is keyed on the sender domain alone.
 const POSTFIX_SENDER_LOGIN: &str = "/etc/postfix/sender_login_maps";
 const DOVECOT_USERS: &str = "/etc/dovecot/users";
-const DKIM_KEYS_DIR: &str = "/etc/dockpanel/dkim";
-/// OpenDKIM's own config lives under the DockPanel data dir, not at the
+const DKIM_KEYS_DIR: &str = "/etc/arsy/dkim";
+/// OpenDKIM's own config lives under the ARSY data dir, not at the
 /// distro's `/etc/opendkim.conf`, so it can be written under the hardened
 /// agent sandbox (ProtectSystem=strict) — the unit's ReadWritePaths covers
-/// /etc/dockpanel but not bare files in /etc. Same reasoning as the scanner
+/// /etc/arsy but not bare files in /etc. Same reasoning as the scanner
 /// dir in services/image_scanner.rs. A systemd drop-in points the daemon here.
-const OPENDKIM_CONF: &str = "/etc/dockpanel/opendkim.conf";
+const OPENDKIM_CONF: &str = "/etc/arsy/opendkim.conf";
 const OPENDKIM_DROPIN_DIR: &str = "/etc/systemd/system/opendkim.service.d";
 /// OpenDKIM's milter endpoint, in OpenDKIM's own `Socket` syntax, and the
 /// matching Postfix `smtpd_milters` value. A loopback port rather than a Unix
@@ -105,8 +105,8 @@ const OPENDKIM_MILTER: &str = "inet:127.0.0.1:8891";
 /// on purpose: these two are the only values `smtpd_milters` ever holds, and
 /// keeping them together is what stops one moving without the other.
 const RSPAMD_MILTER: &str = "inet:127.0.0.1:11332";
-const KEY_TABLE: &str = "/etc/dockpanel/dkim/key.table";
-const SIGNING_TABLE: &str = "/etc/dockpanel/dkim/signing.table";
+const KEY_TABLE: &str = "/etc/arsy/dkim/key.table";
+const SIGNING_TABLE: &str = "/etc/arsy/dkim/signing.table";
 /// Ports the mail stack listens on once installed. Opened in the firewall by
 /// the installer — starting a listener the firewall drops is not an install.
 const MAIL_PORTS: &[&str] = &["25", "587", "465", "143", "993", "110", "995"];
@@ -178,7 +178,7 @@ async fn mail_status() -> Result<Json<serde_json::Value>, ApiErr> {
     let configured = Path::new(OPENDKIM_CONF).exists()
         && Path::new(&format!("{DKIM_KEYS_DIR}/trusted.hosts")).exists()
         && tokio::fs::read_to_string("/etc/postfix/main.cf").await
-            .map(|c| c.contains("DockPanel mail configuration"))
+            .map(|c| c.contains("ARSY mail configuration"))
             .unwrap_or(false);
 
     // OpenDKIM counts. It used to be reported in its own sub-object and
@@ -284,12 +284,12 @@ async fn mail_install() -> Result<Json<serde_json::Value>, ApiErr> {
     // 3. Create config directories
     tokio::fs::create_dir_all(DKIM_KEYS_DIR).await
         .map_err(|e| err(StatusCode::INTERNAL_SERVER_ERROR, &format!("Failed to create DKIM dir: {e}")))?;
-    tokio::fs::create_dir_all("/etc/dockpanel/mail").await
+    tokio::fs::create_dir_all("/etc/arsy/mail").await
         .map_err(|e| err(StatusCode::INTERNAL_SERVER_ERROR, &format!("Failed to create mail config dir: {e}")))?;
 
     // 4. Write Postfix main.cf additions for virtual mailbox hosting
     let postfix_config = format!(r#"
-# DockPanel mail configuration
+# ARSY mail configuration
 virtual_mailbox_domains = /etc/postfix/virtual_domains
 virtual_mailbox_maps = hash:/etc/postfix/virtual_mailbox_maps
 # Nothing is delivered by the local transport. mydestination defaults to
@@ -329,7 +329,7 @@ non_smtpd_milters = {OPENDKIM_MILTER}
 
     // Append to main.cf if not already configured
     let main_cf = tokio::fs::read_to_string("/etc/postfix/main.cf").await.unwrap_or_default();
-    if !main_cf.contains("DockPanel mail configuration") {
+    if !main_cf.contains("ARSY mail configuration") {
         let new_content = format!("{main_cf}\n{postfix_config}");
         write_file_atomic("/etc/postfix/main.cf", &new_content).await
             .map_err(|e| err(StatusCode::INTERNAL_SERVER_ERROR, &format!("Failed to write main.cf: {e}")))?;
@@ -482,7 +482,7 @@ userdb {
 "#
     };
     let dovecot_base = format!(
-        r#"# DockPanel Dovecot configuration
+        r#"# ARSY Dovecot configuration
 protocols = imap pop3 lmtp
 
 {dovecot_mail_and_auth}
@@ -509,7 +509,7 @@ service auth {{
     );
     let dovecot_config = format!("{dovecot_base}{dovecot_tls}");
 
-    write_file_atomic("/etc/dovecot/conf.d/99-dockpanel.conf", &dovecot_config).await
+    write_file_atomic("/etc/dovecot/conf.d/99-arsy.conf", &dovecot_config).await
         .map_err(|e| err(StatusCode::INTERNAL_SERVER_ERROR, &format!("Failed to write dovecot config: {e}")))?;
 
     // 7. Create the map files if they do not exist yet.
@@ -626,9 +626,9 @@ async fn mail_uninstall() -> Result<Json<serde_json::Value>, ApiErr> {
     .await
     .map_err(|e| err(StatusCode::INTERNAL_SERVER_ERROR, &format!("Package removal failed: {e}")))?;
 
-    // 4. Remove DockPanel mail config dirs (NOT /var/vmail — user mail data)
-    let _ = tokio::fs::remove_dir_all("/etc/dockpanel/mail").await;
-    let _ = tokio::fs::remove_dir_all("/etc/dockpanel/dkim").await;
+    // 4. Remove ARSY mail config dirs (NOT /var/vmail — user mail data)
+    let _ = tokio::fs::remove_dir_all("/etc/arsy/mail").await;
+    let _ = tokio::fs::remove_dir_all("/etc/arsy/dkim").await;
 
     tracing::info!("Mail server uninstalled (user mail data preserved in /var/vmail)");
 
@@ -788,7 +788,7 @@ async fn is_installed(package: &str) -> bool {
 // ── OpenDKIM wiring ─────────────────────────────────────────────────────
 
 /// Render OpenDKIM's config and the systemd drop-in that makes the daemon read
-/// it from the DockPanel data dir instead of the distro path.
+/// it from the ARSY data dir instead of the distro path.
 ///
 /// Both targets are inside the agent's ReadWritePaths; the distro path is not,
 /// which is why writing it aborted the whole installer before anything below
@@ -846,7 +846,7 @@ async fn write_opendkim_config() -> Result<(), String> {
     let dropin = format!(
         "[Service]\nType=simple\nExecStart=\nExecStart=/usr/sbin/opendkim -f -x {OPENDKIM_CONF}\n"
     );
-    write_file_atomic(&format!("{OPENDKIM_DROPIN_DIR}/dockpanel.conf"), &dropin).await?;
+    write_file_atomic(&format!("{OPENDKIM_DROPIN_DIR}/arsy.conf"), &dropin).await?;
     let _ = safe_command("systemctl").arg("daemon-reload").output().await;
     Ok(())
 }
@@ -865,15 +865,15 @@ async fn rebuild_dkim_tables() -> Result<(), String> {
 
     // Make the key tree reachable and owned by the daemon before listing it.
     // Two things bite here and both are silent:
-    //   * /etc/dockpanel is 0700 root:root, so opendkim cannot even traverse to
+    //   * /etc/arsy is 0700 root:root, so opendkim cannot even traverse to
     //     a key whose own mode is perfect. 0710 with the group grants traverse
     //     without making the directory listable or exposing api.env.
     //   * dkim_generate's chown is best-effort and runs while `apt` may still
     //     be creating the opendkim user, so keys can be left root-owned.
     // Re-applying both here means every caller of this helper converges on a
     // readable tree, instead of each one having to remember.
-    let _ = safe_command("chgrp").args(["opendkim", "/etc/dockpanel"]).output().await;
-    let _ = safe_command("chmod").args(["0710", "/etc/dockpanel"]).output().await;
+    let _ = safe_command("chgrp").args(["opendkim", "/etc/arsy"]).output().await;
+    let _ = safe_command("chmod").args(["0710", "/etc/arsy"]).output().await;
     let _ = safe_command("chown").args(["-R", "opendkim:opendkim", DKIM_KEYS_DIR]).output().await;
     let _ = safe_command("chmod").args(["0750", DKIM_KEYS_DIR]).output().await;
 
@@ -1565,15 +1565,15 @@ async fn rspamd_toggle(Json(body): Json<serde_json::Value>) -> Result<Json<serde
 
 // ── Webmail (Roundcube) ─────────────────────────────────────────────────
 
-const WEBMAIL_NGINX_CONF: &str = "/etc/nginx/conf.d/dockpanel-panel.locations/webmail.conf";
-const WEBMAIL_NGINX_DIR: &str = "/etc/nginx/conf.d/dockpanel-panel.locations";
+const WEBMAIL_NGINX_CONF: &str = "/etc/nginx/conf.d/arsy-panel.locations/webmail.conf";
+const WEBMAIL_NGINX_DIR: &str = "/etc/nginx/conf.d/arsy-panel.locations";
 
 /// Read the panel vhost's `server_name` directive. Returns `None` for
 /// `_` (IP-based installs) or if no panel vhost exists yet.
 fn panel_server_name() -> Option<String> {
     for conf in &[
-        "/etc/nginx/sites-enabled/dockpanel-panel.conf",
-        "/etc/nginx/conf.d/dockpanel-panel.conf",
+        "/etc/nginx/sites-enabled/arsy-panel.conf",
+        "/etc/nginx/conf.d/arsy-panel.conf",
     ] {
         if let Ok(content) = std::fs::read_to_string(conf) {
             for line in content.lines() {
@@ -1608,7 +1608,7 @@ fn webmail_nginx_block(port: u16) -> String {
     // to /?_task=login. proxy_redirect handles 30x Location: headers from
     // Roundcube; sub_filter rewrites embedded URLs in HTML/JSON bodies.
     format!(
-        "# DockPanel webmail (Roundcube) reverse-proxy — managed by agent, do not edit\n\
+        "# ARSY webmail (Roundcube) reverse-proxy — managed by agent, do not edit\n\
          # v2.10.1: sub_filter rewrites Roundcube's root-anchored URLs (form action,\n\
          # comm_path) under /webmail/ so navigation doesn't land on the panel root.\n\
          location /webmail/ {{\n\
@@ -1732,7 +1732,7 @@ async fn remove_webmail_nginx() {
 
 /// POST /mail/webmail/install — Deploy Roundcube webmail via Docker.
 ///
-/// Idempotent: tears down any prior `dockpanel-roundcube` container before
+/// Idempotent: tears down any prior `arsy-roundcube` container before
 /// recreating, so env-var additions across releases apply on next Install
 /// click. Also writes the panel-vhost reverse-proxy fragment so the Open
 /// button at `${panel}/webmail/` works on both HTTP-on-IP and HTTPS-domain
@@ -1743,7 +1743,7 @@ async fn webmail_install(Json(body): Json<serde_json::Value>) -> Result<Json<ser
 
     tracing::info!("Installing Roundcube webmail on port {port}...");
 
-    let _ = safe_command("docker").args(["rm", "-f", "dockpanel-roundcube"]).output().await;
+    let _ = safe_command("docker").args(["rm", "-f", "arsy-roundcube"]).output().await;
 
     // Webmail keeps its accounts, identities, contacts and preferences in a SQLite
     // database, which its image places under this path whenever no external database is
@@ -1764,7 +1764,7 @@ async fn webmail_install(Json(body): Json<serde_json::Value>) -> Result<Json<ser
     let panel_host = panel_server_name();
     let mut args: Vec<String> = vec![
         "run".into(), "-d".into(),
-        "--name".into(), "dockpanel-roundcube".into(),
+        "--name".into(), "arsy-roundcube".into(),
         "--restart".into(), "unless-stopped".into(),
         "-p".into(), format!("127.0.0.1:{port}:80"),
         "-v".into(), format!("{webmail_db}:/var/roundcube/db"),
@@ -1782,15 +1782,15 @@ async fn webmail_install(Json(body): Json<serde_json::Value>) -> Result<Json<ser
         args.push("ROUNDCUBEMAIL_FORWARDED_PROTO=https".into());
     }
     args.extend([
-        "-l".into(), "dockpanel.managed=true".into(),
-        "-l".into(), "dockpanel.app.template=roundcube".into(),
-        "-l".into(), "dockpanel.app.name=roundcube".into(),
+        "-l".into(), "arsy.managed=true".into(),
+        "-l".into(), "arsy.app.template=roundcube".into(),
+        "-l".into(), "arsy.app.name=roundcube".into(),
         // Pinned off `:latest`, which let a MAJOR Roundcube upgrade land on a
         // user's mail stack with no warning and no way back — the panel warns
         // users about exactly this in docker_apps.rs while floating itself.
         //
         // `1.7.x` rather than an exact `1.7.2`: this is a web-facing PHP app and
-        // nothing in DockPanel would ever bump a frozen patch tag, so an exact
+        // nothing in ARSY would ever bump a frozen patch tag, so an exact
         // pin would quietly stop receiving CVE fixes. The `.x` line still gets
         // upstream's security rebuilds while ruling out the surprise major.
         //
@@ -1821,13 +1821,13 @@ async fn webmail_install(Json(body): Json<serde_json::Value>) -> Result<Json<ser
 /// GET /mail/webmail/status — Check if Roundcube is running.
 async fn webmail_status() -> Json<serde_json::Value> {
     let output = safe_command("docker")
-        .args(["inspect", "--format", "{{.State.Running}}", "dockpanel-roundcube"])
+        .args(["inspect", "--format", "{{.State.Running}}", "arsy-roundcube"])
         .output().await;
     let running = output.map(|o| String::from_utf8_lossy(&o.stdout).trim() == "true").unwrap_or(false);
 
     // Get port
     let port_output = safe_command("docker")
-        .args(["inspect", "--format", "{{range .NetworkSettings.Ports}}{{range .}}{{.HostPort}}{{end}}{{end}}", "dockpanel-roundcube"])
+        .args(["inspect", "--format", "{{range .NetworkSettings.Ports}}{{range .}}{{.HostPort}}{{end}}{{end}}", "arsy-roundcube"])
         .output().await;
     let port = port_output.ok().and_then(|o| String::from_utf8_lossy(&o.stdout).trim().parse::<u16>().ok()).unwrap_or(0);
 
@@ -1836,7 +1836,7 @@ async fn webmail_status() -> Json<serde_json::Value> {
 
 /// POST /mail/webmail/remove — Remove Roundcube container + panel-vhost fragment.
 async fn webmail_remove() -> Result<Json<serde_json::Value>, ApiErr> {
-    let _ = safe_command("docker").args(["rm", "-f", "dockpanel-roundcube"]).output().await;
+    let _ = safe_command("docker").args(["rm", "-f", "arsy-roundcube"]).output().await;
     remove_webmail_nginx().await;
     Ok(ok("Roundcube removed"))
 }
@@ -1875,11 +1875,11 @@ async fn relay_configure(Json(body): Json<RelayConfig>) -> Result<Json<serde_jso
 
     // Remove existing relay config lines
     let cleaned: String = main_cf.lines()
-        .filter(|l| !l.starts_with("relayhost") && !l.starts_with("smtp_sasl_") && !l.starts_with("smtp_tls_") && !l.contains("# DockPanel relay"))
+        .filter(|l| !l.starts_with("relayhost") && !l.starts_with("smtp_sasl_") && !l.starts_with("smtp_tls_") && !l.contains("# ARSY relay"))
         .collect::<Vec<_>>().join("\n");
 
     let relay_config = format!(
-        "\n# DockPanel relay configuration\nrelayhost = [{}]:{}\nsmtp_sasl_auth_enable = yes\nsmtp_sasl_password_maps = hash:/etc/postfix/sasl_passwd\nsmtp_sasl_security_options = noanonymous\nsmtp_tls_security_level = encrypt\nsmtp_tls_CAfile = /etc/ssl/certs/ca-certificates.crt\n",
+        "\n# ARSY relay configuration\nrelayhost = [{}]:{}\nsmtp_sasl_auth_enable = yes\nsmtp_sasl_password_maps = hash:/etc/postfix/sasl_passwd\nsmtp_sasl_security_options = noanonymous\nsmtp_tls_security_level = encrypt\nsmtp_tls_CAfile = /etc/ssl/certs/ca-certificates.crt\n",
         body.host, body.port
     );
 
@@ -1909,7 +1909,7 @@ async fn relay_status() -> Json<serde_json::Value> {
 async fn relay_remove() -> Result<Json<serde_json::Value>, ApiErr> {
     let main_cf = tokio::fs::read_to_string("/etc/postfix/main.cf").await.unwrap_or_default();
     let cleaned: String = main_cf.lines()
-        .filter(|l| !l.starts_with("relayhost") && !l.starts_with("smtp_sasl_") && !l.starts_with("smtp_tls_") && !l.contains("# DockPanel relay"))
+        .filter(|l| !l.starts_with("relayhost") && !l.starts_with("smtp_sasl_") && !l.starts_with("smtp_tls_") && !l.contains("# ARSY relay"))
         .collect::<Vec<_>>().join("\n");
 
     write_file_atomic("/etc/postfix/main.cf", &cleaned).await
@@ -2055,10 +2055,10 @@ async fn rate_limit_set(Json(body): Json<RateLimitRequest>) -> Result<Json<serde
     // Update Postfix config
     let main_cf = tokio::fs::read_to_string("/etc/postfix/main.cf").await.unwrap_or_default();
     let cleaned: String = main_cf.lines()
-        .filter(|l| !l.starts_with("smtp_destination_rate_delay") && !l.starts_with("smtp_extra_recipient_limit") && !l.contains("# DockPanel rate limit"))
+        .filter(|l| !l.starts_with("smtp_destination_rate_delay") && !l.starts_with("smtp_extra_recipient_limit") && !l.contains("# ARSY rate limit"))
         .collect::<Vec<_>>().join("\n");
 
-    let rate_config = format!("\n# DockPanel rate limit: {}\nsmtp_destination_rate_delay = {}s\nsmtp_extra_recipient_limit = {}\n", body.rate, delay, count.min(50));
+    let rate_config = format!("\n# ARSY rate limit: {}\nsmtp_destination_rate_delay = {}s\nsmtp_extra_recipient_limit = {}\n", body.rate, delay, count.min(50));
 
     write_file_atomic("/etc/postfix/main.cf", &format!("{cleaned}{rate_config}")).await
         .map_err(|e| err(StatusCode::INTERNAL_SERVER_ERROR, &format!("Config write failed: {e}")))?;
@@ -2072,7 +2072,7 @@ async fn rate_limit_set(Json(body): Json<RateLimitRequest>) -> Result<Json<serde
 /// GET /mail/rate-limit/status — Get current rate limit.
 async fn rate_limit_status() -> Json<serde_json::Value> {
     let main_cf = tokio::fs::read_to_string("/etc/postfix/main.cf").await.unwrap_or_default();
-    let rate_line = main_cf.lines().find(|l| l.contains("# DockPanel rate limit:"));
+    let rate_line = main_cf.lines().find(|l| l.contains("# ARSY rate limit:"));
     let configured = rate_line.is_some();
     let rate = rate_line.and_then(|l| l.split(':').nth(1)).unwrap_or("").trim().to_string();
     Json(serde_json::json!({ "configured": configured, "rate": rate }))
@@ -2082,7 +2082,7 @@ async fn rate_limit_status() -> Json<serde_json::Value> {
 async fn rate_limit_remove() -> Result<Json<serde_json::Value>, ApiErr> {
     let main_cf = tokio::fs::read_to_string("/etc/postfix/main.cf").await.unwrap_or_default();
     let cleaned: String = main_cf.lines()
-        .filter(|l| !l.starts_with("smtp_destination_rate_delay") && !l.starts_with("smtp_extra_recipient_limit") && !l.contains("# DockPanel rate limit"))
+        .filter(|l| !l.starts_with("smtp_destination_rate_delay") && !l.starts_with("smtp_extra_recipient_limit") && !l.contains("# ARSY rate limit"))
         .collect::<Vec<_>>().join("\n");
     write_file_atomic("/etc/postfix/main.cf", &cleaned).await
         .map_err(|e| err(StatusCode::INTERNAL_SERVER_ERROR, &format!("Config write failed: {e}")))?;
@@ -2111,7 +2111,7 @@ async fn mailbox_backup(Json(body): Json<MailboxBackupRequest>) -> Result<Json<s
         return Err(err(StatusCode::NOT_FOUND, "Mailbox directory not found"));
     }
 
-    let backup_dir = "/var/lib/dockpanel/mail-backups";
+    let backup_dir = "/var/lib/arsy/mail-backups";
     tokio::fs::create_dir_all(backup_dir).await.ok();
     // The tarballs contain plaintext mail — keep the directory owner-only (0700).
     #[cfg(unix)]
@@ -2158,7 +2158,7 @@ async fn mailbox_restore(Json(body): Json<serde_json::Value>) -> Result<Json<ser
     let backup_file = body.get("file").and_then(|v| v.as_str()).unwrap_or("");
 
     if email.is_empty() || !email.contains('@') { return Err(err(StatusCode::BAD_REQUEST, "Invalid email")); }
-    if backup_file.is_empty() || !backup_file.starts_with("/var/lib/dockpanel/mail-backups/") {
+    if backup_file.is_empty() || !backup_file.starts_with("/var/lib/arsy/mail-backups/") {
         return Err(err(StatusCode::BAD_REQUEST, "Invalid backup file path"));
     }
     if backup_file.contains("..") { return Err(err(StatusCode::BAD_REQUEST, "Path traversal not allowed")); }
@@ -2201,7 +2201,7 @@ async fn mailbox_restore(Json(body): Json<serde_json::Value>) -> Result<Json<ser
 
 /// GET /mail/backups — List available mailbox backups.
 async fn mailbox_backups() -> Result<Json<serde_json::Value>, ApiErr> {
-    let backup_dir = "/var/lib/dockpanel/mail-backups";
+    let backup_dir = "/var/lib/arsy/mail-backups";
     let mut backups = Vec::new();
 
     let mut entries = match tokio::fs::read_dir(backup_dir).await {
@@ -2231,7 +2231,7 @@ async fn mailbox_backups() -> Result<Json<serde_json::Value>, ApiErr> {
 /// POST /mail/backups/delete — Delete a backup file.
 async fn mailbox_backup_delete(Json(body): Json<serde_json::Value>) -> Result<Json<serde_json::Value>, ApiErr> {
     let file = body.get("file").and_then(|v| v.as_str()).unwrap_or("");
-    if file.is_empty() || !file.starts_with("/var/lib/dockpanel/mail-backups/") || file.contains("..") {
+    if file.is_empty() || !file.starts_with("/var/lib/arsy/mail-backups/") || file.contains("..") {
         return Err(err(StatusCode::BAD_REQUEST, "Invalid backup file"));
     }
     tokio::fs::remove_file(file).await.map_err(|e| err(StatusCode::INTERNAL_SERVER_ERROR, &format!("Delete failed: {e}")))?;
@@ -2250,7 +2250,7 @@ async fn tls_status() -> Json<serde_json::Value> {
         .and_then(|l| l.split('=').nth(1)).unwrap_or("").trim().to_string();
 
     // Check Dovecot SSL
-    let dovecot_conf = tokio::fs::read_to_string("/etc/dovecot/conf.d/99-dockpanel.conf").await.unwrap_or_default();
+    let dovecot_conf = tokio::fs::read_to_string("/etc/dovecot/conf.d/99-arsy.conf").await.unwrap_or_default();
     let dovecot_ssl = dovecot_conf.lines().find(|l| l.starts_with("ssl"))
         .and_then(|l| l.split('=').nth(1)).unwrap_or("").trim().to_string();
 
@@ -2267,7 +2267,7 @@ async fn tls_status() -> Json<serde_json::Value> {
 /// that holds no mailbox. Every login on this box is a full address (Dovecot's
 /// passwd-file key is the address itself), so a token with no `@` is
 /// unmatchable by construction rather than by convention.
-const NO_AUTHORISED_SENDER: &str = "dockpanel-no-authorised-sender";
+const NO_AUTHORISED_SENDER: &str = "arsy-no-authorised-sender";
 
 /// Build the Postfix `smtpd_sender_login_maps` table: which SASL login may use
 /// which envelope sender.

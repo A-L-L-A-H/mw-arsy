@@ -354,10 +354,10 @@ pub async fn preview(
     Ok(Json(serde_json::json!({
         "system": system_info,
         "installation_id": installation_id.map(|r| r.0).unwrap_or_else(|| "not yet generated".to_string()),
-        "dockpanel_version": env!("CARGO_PKG_VERSION"),
+        "arsy_version": env!("CARGO_PKG_VERSION"),
         "events": batch,
         "event_count": batch.len(),
-        "note": "The events below are exactly what would be sent, PII stripped. The \"system\" block above is local diagnostic context for your review — the actual outbound payload's system info is only { dockpanel_version, installation_id }, never host details.",
+        "note": "The events below are exactly what would be sent, PII stripped. The \"system\" block above is local diagnostic context for your review — the actual outbound payload's system info is only { arsy_version, installation_id }, never host details.",
     })))
 }
 
@@ -454,7 +454,7 @@ pub async fn export_report(
         .collect();
 
     Ok(Json(serde_json::json!({
-        "dockpanel_version": env!("CARGO_PKG_VERSION"),
+        "arsy_version": env!("CARGO_PKG_VERSION"),
         "export_date": chrono::Utc::now().to_rfc3339(),
         "system": sys,
         "events": batch,
@@ -504,7 +504,7 @@ pub async fn clear_events(
 
 // ── Update Status ──────────────────────────────────────────────────────
 
-/// GET /api/telemetry/update-status — Check if a DockPanel update is available (admin only).
+/// GET /api/telemetry/update-status — Check if a ARSY update is available (admin only).
 pub async fn update_status(
     State(state): State<AppState>,
     AdminUser(_claims): AdminUser,

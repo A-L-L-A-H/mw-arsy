@@ -2,14 +2,14 @@
 
 ## Environment Variables
 
-### API Server (`dockpanel-api`)
+### API Server (`arsy-api`)
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `DATABASE_URL` | Yes | — | PostgreSQL connection string (e.g., `postgresql://user:pass@host:5432/dbname`) |
 | `JWT_SECRET` | Yes | — | Secret for signing JWT tokens. Must be at least 32 characters. Generate with: `openssl rand -hex 32` |
 | `AGENT_TOKEN` | Yes | — | Shared secret for authenticating with the agent. Must match the agent's token file. |
-| `AGENT_SOCKET` | No | `/var/run/dockpanel/agent.sock` | Path to the agent's Unix socket |
+| `AGENT_SOCKET` | No | `/var/run/arsy/agent.sock` | Path to the agent's Unix socket |
 | `LISTEN_ADDR` | No | `0.0.0.0:3000` | Address and port the API listens on |
 | `DB_MAX_CONNECTIONS` | No | `20` | Maximum PostgreSQL connection pool size |
 | `BASE_URL` | No | `https://panel.example.com` | Panel base URL (used for links in emails, webhooks) |
@@ -49,7 +49,7 @@ It governs two stores:
 **Adding it to an existing install (v2.112.0+):**
 
 1. Generate a key: `openssl rand -hex 32`
-2. Add `SECRETS_ENCRYPTION_KEY=...` to `/etc/dockpanel/api.env` and restart the API.
+2. Add `SECRETS_ENCRYPTION_KEY=...` to `/etc/arsy/api.env` and restart the API.
    Existing data keeps working — it is read through the previous derivation.
 3. Rewrite everything under the new key:
    `POST /api/settings/credentials/reencrypt` (admin only).
@@ -75,14 +75,14 @@ encrypted values cannot be recovered.
 | `PANEL_JWT_SECRET` | JWT signing secret (passed to API container) |
 | `AGENT_TOKEN` | Agent authentication token |
 
-### Agent (`dockpanel-agent`)
+### Agent (`arsy-agent`)
 
 The agent reads its configuration from files, not environment variables:
 
 | File | Description |
 |------|-------------|
-| `/etc/dockpanel/agent.token` | Authentication token (auto-generated on first run) |
-| `/etc/dockpanel/ssl/` | SSL certificates and ACME account |
+| `/etc/arsy/agent.token` | Authentication token (auto-generated on first run) |
+| `/etc/arsy/ssl/` | SSL certificates and ACME account |
 
 | Environment Variable | Default | Description |
 |---------------------|---------|-------------|
@@ -93,13 +93,13 @@ The agent reads its configuration from files, not environment variables:
 
 | Path | Purpose |
 |------|---------|
-| `/etc/dockpanel/` | Configuration directory |
-| `/etc/dockpanel/agent.token` | Agent authentication token |
-| `/etc/dockpanel/api.env` | API environment file (systemd deployments) |
-| `/etc/dockpanel/ssl/` | SSL certificates per domain |
-| `/etc/dockpanel/ssl/acme-account.json` | Let's Encrypt ACME account credentials |
-| `/var/run/dockpanel/agent.sock` | Agent Unix socket |
-| `/var/backups/dockpanel/` | Site backups (compressed tarballs) |
+| `/etc/arsy/` | Configuration directory |
+| `/etc/arsy/agent.token` | Agent authentication token |
+| `/etc/arsy/api.env` | API environment file (systemd deployments) |
+| `/etc/arsy/ssl/` | SSL certificates per domain |
+| `/etc/arsy/ssl/acme-account.json` | Let's Encrypt ACME account credentials |
+| `/var/run/arsy/agent.sock` | Agent Unix socket |
+| `/var/backups/arsy/` | Site backups (compressed tarballs) |
 | `/var/www/acme/` | ACME HTTP-01 challenge webroot |
 | `/var/www/{domain}/` | Site document roots |
 
@@ -128,20 +128,20 @@ openssl rand -hex 16
 
 ## Systemd Deployments
 
-For non-Docker API deployments, create `/etc/dockpanel/api.env`:
+For non-Docker API deployments, create `/etc/arsy/api.env`:
 
 ```bash
-DATABASE_URL=postgresql://user:password@127.0.0.1:5432/dockpanel
+DATABASE_URL=postgresql://user:password@127.0.0.1:5432/arsy
 JWT_SECRET=your_64_char_hex_secret_here
-AGENT_SOCKET=/var/run/dockpanel/agent.sock
+AGENT_SOCKET=/var/run/arsy/agent.sock
 AGENT_TOKEN=your_agent_token_here
 LISTEN_ADDR=127.0.0.1:3080
 ```
 
-Set permissions: `chmod 600 /etc/dockpanel/api.env`
+Set permissions: `chmod 600 /etc/arsy/api.env`
 
 Reference it in the systemd service:
 ```ini
 [Service]
-EnvironmentFile=/etc/dockpanel/api.env
+EnvironmentFile=/etc/arsy/api.env
 ```

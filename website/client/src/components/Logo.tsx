@@ -1,5 +1,5 @@
 /**
- * The DockPanel mark.
+ * The ARSY mark.
  *
  * There were two marks before this, which is one too many: the header used a
  * lucide `Server` glyph inside a white rounded square — a stock icon in the
@@ -23,7 +23,7 @@ export function Logo({ className = 'h-6 w-6' }: { className?: string }) {
       viewBox="0 0 24 24"
       className={className}
       role="img"
-      aria-label="DockPanel"
+      aria-label="ARSY"
       fill="none"
     >
       {/* The block. One solid form — the product is one file. */}

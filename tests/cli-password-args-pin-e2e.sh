@@ -4,7 +4,7 @@
 # ONE PROPERTY: an operator-chosen database password never has to be typed
 # as a bare CLI argument.
 #
-# `dockpanel db create` and `dockpanel backup db-create` took a required
+# `arsy db create` and `arsy backup db-create` took a required
 # clap `--password <VALUE>` flag (CWE-214): the value lands in shell history
 # and stays visible to any local user via `ps`/`/proc/<pid>/cmdline` for the
 # life of the process. `iac.rs`'s own password print is a DIFFERENT case

@@ -1,4 +1,4 @@
-// Policy-as-Code Admission Controller for DockPanel
+// Policy-as-Code Admission Controller for ARSY
 // Uses OPA/Rego for deploy-time policy evaluation
 // Provides flexible, composable security and compliance policies
 
@@ -8,7 +8,9 @@ use crate::AppState;
 use axum::extract::{Path, State};
 use axum::Json;
 use chrono::{DateTime, Utc};
+use regorus::{Engine, Value};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -171,7 +173,7 @@ impl PolicyEngine {
                 PolicyCategory::Security,
                 PolicySeverity::Critical,
                 r#"
-package dockpanel.security
+package arsy.security
 
 deny[msg] {
     input.resource.kind == "app"
@@ -194,7 +196,7 @@ deny[msg] {
                 PolicyCategory::Security,
                 PolicySeverity::High,
                 r#"
-package dockpanel.security
+package arsy.security
 
 deny[msg] {
     input.resource.kind == "app"
@@ -217,7 +219,7 @@ deny[msg] {
                 PolicyCategory::Security,
                 PolicySeverity::High,
                 r#"
-package dockpanel.security
+package arsy.security
 
 deny[msg] {
     input.resource.kind == "app"
@@ -253,7 +255,7 @@ deny[msg] {
                 PolicyCategory::Security,
                 PolicySeverity::Critical,
                 r#"
-package dockpanel.security
+package arsy.security
 
 dangerous_capabilities := {"SYS_ADMIN", "SYS_PTRACE", "NET_ADMIN", "ALL", "NET_RAW", "SYS_RAWIO", "SYS_MODULE", "DAC_OVERRIDE"}
 
@@ -280,7 +282,7 @@ deny[msg] {
                 PolicyCategory::Security,
                 PolicySeverity::Critical,
                 r#"
-package dockpanel.security
+package arsy.security
 
 sensitive_paths := {"/etc", "/root", "/home", "/var/run/docker.sock", "/var/run", "/proc", "/sys", "/dev"}
 
@@ -309,7 +311,7 @@ deny[msg] {
                 PolicyCategory::ResourceManagement,
                 PolicySeverity::Medium,
                 r#"
-package dockpanel.resource
+package arsy.resource
 
 deny[msg] {
     input.resource.kind == "app"
@@ -345,7 +347,7 @@ deny[msg] {
                 PolicyCategory::Compliance,
                 PolicySeverity::High,
                 r#"
-package dockpanel.compliance
+package arsy.compliance
 
 deny[msg] {
     input.resource.kind == "app"
@@ -368,7 +370,7 @@ deny[msg] {
                 PolicyCategory::Compliance,
                 PolicySeverity::High,
                 r#"
-package dockpanel.compliance
+package arsy.compliance
 
 allowed_base_images := {
     "docker.io/library/nginx:",
@@ -404,7 +406,7 @@ deny[msg] {
                 PolicyCategory::CostOptimization,
                 PolicySeverity::Medium,
                 r#"
-package dockpanel.cost
+package arsy.cost
 
 deny[msg] {
     input.resource.kind == "app"
@@ -533,19 +535,95 @@ deny[msg] {
     }
 
     async fn evaluate_policy(&self, policy: &Policy, input: &PolicyInput) -> Result<Option<PolicyDecision>, String> {
-        // This is a simplified evaluator - in production, use OPA's Rego evaluator
-        // For now, we do simple pattern matching on the rego code
-        // In production, this would use opa-go or call external OPA
-        
-        // This is a placeholder - real implementation would use opa-go library
-        // or call external OPA server
+        // Create a new engine
+        let mut engine = Engine::new();
+
+        // Add the policy module
+        engine
+            .add_policy(policy.rego)
+            .map_err(|e| format!("Failed to add policy {}: {}", policy.id, e))?;
+
+        // Add the query module for decision extraction
+        let query_rego = r#"
+package dockpanel.query
+
+decision = "allow" {
+    not deny[_]
+    not warn[_]
+}
+
+decision = "warn" {
+    warn[_]
+    not deny[_]
+}
+
+decision = "deny" {
+    deny[_]
+}
+"#;
+        engine
+            .add_policy(query_rego)
+            .map_err(|e| format!("Failed to add query module: {}", e))?;
+
+        // Prepare the input for evaluation
+        let input_json = serde_json::to_value(input).map_err(|e| format!("Failed to serialize input: {}", e))?;
+
+        // Convert serde_json::Value to regorus::Value
+        let input_value = json_value_to_regorus(input_json)?;
+
+        // Evaluate the query
+        let results = engine
+            .eval_query("data.dockpanel.query.decision", input_value)
+            .map_err(|e| format!("Query evaluation failed: {}", e))?;
+
+        // Extract the decision from the results
+        for result in results {
+            if let Some(Value::String(decision)) = result.get("decision") {
+                return Ok(Some(match decision.as_str() {
+                    "deny" => PolicyDecision::Deny,
+                    "warn" => PolicyDecision::Warn,
+                    _ => PolicyDecision::Allow,
+                }));
+            }
+        }
+
         Ok(None)
+    }
+
+fn json_value_to_regorus(v: serde_json::Value) -> Result<Value, String> {
+    match v {
+        serde_json::Value::Null => Ok(Value::Null),
+        serde_json::Value::Bool(b) => Ok(Value::Bool(b)),
+        serde_json::Value::Number(n) => {
+            if let Some(i) = n.as_i64() {
+                Ok(Value::Int(i))
+            } else if let Some(f) = n.as_f64() {
+                Ok(Value::Float(f))
+            } else {
+                Ok(Value::Null)
+            }
+        }
+        serde_json::Value::String(s) => Ok(Value::String(s)),
+        serde_json::Value::Array(arr) => {
+            let mut vec = Vec::new();
+            for v in arr {
+                vec.push(json_value_to_regorus(v)?);
+            }
+            Ok(Value::Array(vec))
+        }
+        serde_json::Value::Object(obj) => {
+            let mut map = std::collections::BTreeMap::new();
+            for (k, v) in obj {
+                map.insert(k, json_value_to_regorus(v)?);
+            }
+            Ok(Value::Object(map))
+        }
     }
 
     async fn evaluate_external(&self, opa_url: &str, input: &PolicyInput) -> Result<PolicyResult, String> {
         if let Some(client) = &self.opa_client {
             let response = client
-                .post(&format!("{}/v1/data/dockpanel/authz", opa_url.trim_end_matches('/')))
+                .post(&format!("{}/v1/data/arsy/authz", opa_url.trim_end_matches('/')))
                 .json(&serde_json::json!({"input": input}))
                 .send()
                 .await
@@ -633,8 +711,8 @@ pub async fn create_policy_engine_from_settings(state: &crate::AppState) -> Resu
 
     let enabled = get("policy_engine_enabled") == "true";
     let opa_url = if get("policy_engine_opa_url").is_empty() { None } else { Some(get("policy_engine_opa_url")) };
-    let bundled_policies_path = get("policy_engine_bundled_policies_path").unwrap_or_else(|| "/etc/dockpanel/policies/bundled".to_string());
-    let custom_policies_path = get("policy_engine_custom_policies_path").unwrap_or_else(|| "/etc/dockpanel/policies/custom".to_string());
+    let bundled_policies_path = get("policy_engine_bundled_policies_path").unwrap_or_else(|| "/etc/arsy/policies/bundled".to_string());
+    let custom_policies_path = get("policy_engine_custom_policies_path").unwrap_or_else(|| "/etc/arsy/policies/custom".to_string());
     let default_decision = match get("policy_engine_default_decision").as_str() {
         "deny" => PolicyDecision::Deny,
         "warn" => PolicyDecision::Warn,

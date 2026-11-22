@@ -2,7 +2,7 @@
 
 ## Overview
 
-DockPanel lets you manage unlimited remote servers from a single panel. One server runs the full panel (API + frontend + database), and remote servers run only the lightweight agent binary (~22MB, ~35MB RAM). All communication between the panel and remote agents uses HTTPS with token-based authentication.
+ARSY lets you manage unlimited remote servers from a single panel. One server runs the full panel (API + frontend + database), and remote servers run only the lightweight agent binary (~22MB, ~35MB RAM). All communication between the panel and remote agents uses HTTPS with token-based authentication.
 
 ## Architecture
 
@@ -35,8 +35,8 @@ curl -sSL https://your-panel.example.com/install-agent.sh | sudo bash -s -- \
 ```
 
 Where:
-- `--panel-url` -- The URL of your main DockPanel instance
-- `--token` -- The agent authentication token (found in Settings > API or `/etc/dockpanel/api.env` on the panel server)
+- `--panel-url` -- The URL of your main ARSY instance
+- `--token` -- The agent authentication token (found in Settings > API or `/etc/arsy/api.env` on the panel server)
 - `--server-id` -- The server UUID (generated when you add the server in the panel)
 
 The install script:
@@ -44,7 +44,7 @@ The install script:
 1. Detects the OS and architecture (x86_64 or ARM64)
 2. Downloads the pre-built agent binary from GitHub Releases
 3. Installs Docker if not present
-4. Writes the agent config to `/etc/dockpanel/api.env`
+4. Writes the agent config to `/etc/arsy/api.env`
 5. Creates a systemd service and starts the agent
 6. Opens port 9443 in the firewall
 
@@ -131,7 +131,7 @@ a fleet member. Select the panel server to use them:
 
 - **The web terminal.** Ticket-based, and the browser reaches the agent through
   the panel's own address, so a member's shell is not reachable from the panel UI.
-  Use SSH for a member. DockPanel says so when you try, naming the server you
+  Use SSH for a member. ARSY says so when you try, naming the server you
   have selected, rather than appearing to fail.
 - **Live log streaming** (the "Stream" toggle on the Logs page), for the same
   reason. Reading, searching and downloading a member's logs works normally --

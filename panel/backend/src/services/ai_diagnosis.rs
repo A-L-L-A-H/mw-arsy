@@ -334,9 +334,9 @@ mod tests {
 
     #[test]
     fn redacts_connection_string_passwords() {
-        let out = redact("postgres://dockpanel:S3cretPass!@127.0.0.1:5432/dockpanel");
+        let out = redact("postgres://arsy:S3cretPass!@127.0.0.1:5432/arsy");
         assert!(!out.contains("S3cretPass!"));
-        assert!(out.contains("postgres://dockpanel:[REDACTED]@127.0.0.1:5432/dockpanel"));
+        assert!(out.contains("postgres://arsy:[REDACTED]@127.0.0.1:5432/arsy"));
     }
 
     #[test]

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Regression pins for s263 — the documentation-truth pass.
 #
-# DockPanel publishes the same facts on three surfaces: the .md files GitHub
-# renders, docs.dockpanel.dev (mdBook, built from docs/), and the dockpanel.dev
+# ARSY publishes the same facts on three surfaces: the .md files GitHub
+# renders, docs.moonwitness.dev (mdBook, built from docs/), and the moonwitness.dev
 # marketing site (website/client). Every number on them was maintained by hand
 # in a dozen places at once.
 #
@@ -263,7 +263,7 @@ fi
 # The mail sandbox fix (s262): OpenDKIM's config was RELOCATED into a permitted
 # path. "Fixing" it by widening ReadWritePaths would pass every functional test
 # while removing the reason the bug was survivable.
-UNIT=$(find . -name 'dockpanel-agent.service' -not -path './panel/*/target/*' | head -1)
+UNIT=$(find . -name 'arsy-agent.service' -not -path './panel/*/target/*' | head -1)
 if [ -n "$UNIT" ] && grep -qE '^ReadWritePaths=.*/etc/opendkim\.conf' "$UNIT"; then
   bad "the agent unit was widened to /etc/opendkim.conf instead of relocating the config (see docs/testing.md)"
 else
@@ -395,7 +395,7 @@ echo
 echo "── 6. Every published figure is quoted from the measurement register ──"
 
 # FEATURES.md §"Verified Metrics" is the register: the one place a number about
-# DockPanel is written down.
+# ARSY is written down.
 #
 # s271 audited every figure on the marketing page by hand and corrected six of
 # them. s272 found three still wrong in the same file — two of them entries of
@@ -588,7 +588,7 @@ declare -A SURFACES=(
   # s354: the two agent metrics had NO row here at all, so `docs/guides` — the
   # only surface that publishes them — could not have been checked even if it had
   # been listed. It published ~20MB/~30MB against a register reading 21/~35 for
-  # 146 days, live on docs.dockpanel.dev, and no arm could see it.
+  # 146 days, live on docs.moonwitness.dev, and no arm could see it.
   # s377: `App templates` was mapped to README alone while THREE more surfaces
   # publish it. Same shape as the s354 agent-metric gap and the s376
   # api-reference gap — the third recurrence of "the map is a hand list, and
@@ -718,14 +718,14 @@ declare -A SUPERSEDED=(
   ["776 API endpoints"]="a count whose own decomposition matched source on neither side; it is 809 routes"
   ["454 E2E tests"]="a total nothing derived; the derived figure is 302 regression assertions"
   ["11 background services"]="there are 15 supervised background services"
-  ["~20MB, ~30MB RAM"]="the agent's size and footprint, published on docs.dockpanel.dev for 146 days against a register reading 21 MB / ~35 MB"
+  ["~20MB, ~30MB RAM"]="the agent's size and footprint, published on docs.moonwitness.dev for 146 days against a register reading 21 MB / ~35 MB"
   ["22 MB on disk"]="binaries on disk in the site's meta tags; the register totals 46 MB, and the tags matched no register row in either figure"
   ["~52 MB of memory"]="the panel's footprint in the site's meta tags; the two services measure ~49 MB"
   ["API (~22MB)"]="the API binary in README's own 'Under the hood' line; the published asset is 23.2 MB and the register says 23"
 )
 
 # s354 added the last two. `index.html` was the sharpest gap in this list: it is
-# served on EVERY request to dockpanel.dev and is what a search engine and a
+# served on EVERY request to moonwitness.dev and is what a search engine and a
 # social preview render, it hardcodes figures instead of quoting
 # `measurements.ts` like the rest of the site, and it sat in neither this list
 # nor the surface map above while both of its neighbours were in both.
@@ -828,12 +828,12 @@ else
   fi
 fi
 
-# The reader-facing half. Scoped to DockPanel's OWN column so a comparison table
+# The reader-facing half. Scoped to ARSY's OWN column so a comparison table
 # may still say a competitor is MIT — the defect was a row asserting it about us.
 if grep -qE '^\|[^|]*[Oo]pen source[^|]*\|[[:space:]]*MIT' COMPARISON.md; then
-  bad "COMPARISON.md still tells readers DockPanel is MIT"
+  bad "COMPARISON.md still tells readers ARSY is MIT"
 else
-  ok "COMPARISON.md does not claim MIT for DockPanel"
+  ok "COMPARISON.md does not claim MIT for ARSY"
 fi
 
 # --- 9. FEATURES.md's Source columns must name files that exist ------------

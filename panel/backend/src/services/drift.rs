@@ -1,7 +1,7 @@
 //! Phase 4 W5: fleet configuration-drift detection.
 //!
 //! A read-only report answering "is my fleet's operational posture
-//! consistent?". DockPanel is a single hub DB + thin agents, so every
+//! consistent?". ARSY is a single hub DB + thin agents, so every
 //! server's declared config already lives centrally keyed by `server_id`
 //! (`20260319000000_multi_server.sql`). Drift is therefore a LOCAL
 //! cross-`server_id` diff — no remote agent pull, offline-tolerant, and

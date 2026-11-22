@@ -231,7 +231,7 @@ export default function Servers() {
 
           {installScript && (
             <div className="mt-4 space-y-2">
-              <p className="text-sm text-dark-200">Run this command on the remote server to install the DockPanel agent:</p>
+              <p className="text-sm text-dark-200">Run this command on the remote server to install the ARSY agent:</p>
               <div className="relative">
                 <pre className="bg-dark-950 border border-dark-600 rounded-lg p-4 text-sm text-rust-400 font-mono overflow-x-auto whitespace-pre-wrap">{installScript}</pre>
                 <button

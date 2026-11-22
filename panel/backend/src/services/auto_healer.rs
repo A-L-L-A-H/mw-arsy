@@ -11,11 +11,11 @@ use crate::services::notifications;
 
 /// Cumulative count of auto-healer SSL renewal attempts that succeeded.
 /// Read by the Prometheus exporter and published as
-/// `dockpanel_cert_renewals_total{result="success"}`. In-process atomic
+/// `arsy_cert_renewals_total{result="success"}`. In-process atomic
 /// (resets across restart — Prometheus `increase()` handles the reset).
 pub static SSL_RENEWALS_SUCCESS: AtomicU64 = AtomicU64::new(0);
 /// Cumulative count of auto-healer SSL renewal attempts that failed.
-/// Published as `dockpanel_cert_renewals_total{result="failure"}`.
+/// Published as `arsy_cert_renewals_total{result="failure"}`.
 pub static SSL_RENEWALS_FAILURE: AtomicU64 = AtomicU64::new(0);
 
 /// Background task: auto-heals common issues when detected.
@@ -635,7 +635,7 @@ async fn auto_clean_disk(pool: &PgPool, agents: &AgentRegistry) {
             .await;
 
         // The reclaim is opt-in and scoped; see `docker-reclaim` in the agent's
-        // diagnostics. It never removes anything DockPanel manages, and never
+        // diagnostics. It never removes anything ARSY manages, and never
         // anything a tenant is only sleeping.
         if reclaim_enabled(pool).await {
             tracing::info!("Auto-heal: reclaiming unmanaged Docker resources on {server_name}");
@@ -742,7 +742,7 @@ async fn ssl_renewal_blocked(
         "critical",
         &format!("SSL renewal blocked: {domain}"),
         &format!(
-            "DockPanel cannot renew the certificate for {domain}: {reason}. \
+            "ARSY cannot renew the certificate for {domain}: {reason}. \
              Until this is fixed the certificate will expire and the site will \
              stop loading. Set a contact address under Settings → SSL, or on the \
              site owner's account."
@@ -811,7 +811,7 @@ async fn ssl_dns01_downgraded_alert(
         &format!("SSL certificate downgraded: {domain}"),
         &format!(
             "The certificate for {domain} covered {losing} and could not be re-ordered over \
-             DNS-01 before it expired, so DockPanel issued a single-name certificate for \
+             DNS-01 before it expired, so ARSY issued a single-name certificate for \
              {domain} instead. Any other name it covered is no longer covered. Add the \
              Cloudflare zone and API token under DNS management, then re-issue from the \
              site's SSL tab."
@@ -889,14 +889,14 @@ async fn auto_renew_ssl(pool: &PgPool, agents: &AgentRegistry) {
         // ⛔ A renewal is a REPLACEMENT — see the same guard in `security_scanner`.
         // The agent writes the new certificate over `fullchain.pem`, which is the
         // file an uploaded certificate occupies too, so aiming ACME at a
-        // certificate DockPanel did not issue destroys a paid asset. Asked before
+        // certificate ARSY did not issue destroys a paid asset. Asked before
         // the ARI dance and before any order, so the wasted work is skipped with
         // it. `None` means "not proven foreign" and must still renew: refusing on
         // doubt lets a real certificate lapse.
         if let Some(issuer) = crate::helpers::foreign_cert_issuer(&agent, domain).await {
             tracing::info!(
                 "Auto-heal: NOT renewing {domain} — the installed certificate was issued \
-                 by {issuer}, not by DockPanel. Renewing would replace it."
+                 by {issuer}, not by ARSY. Renewing would replace it."
             );
             continue;
         }
@@ -1112,7 +1112,7 @@ async fn auto_renew_ssl(pool: &PgPool, agents: &AgentRegistry) {
         // `uuid::Uuid::nil()`, `fk_activity_logs_user` rejected the insert, and
         // `log_activity` swallowed the error into a warn. `COUNT(*)` was therefore
         // permanently 0, the `if recent > 0 { continue }` above never fired, and a
-        // certificate DockPanel cannot renew was re-ordered from the CA on every
+        // certificate ARSY cannot renew was re-ordered from the CA on every
         // 120-second tick, for ever — by the cooldown whose own comment says it
         // exists "to prevent hammering the CA if renewal keeps failing". The agent
         // does not cheaply refuse these: it validates the domain's shape and then
@@ -1334,7 +1334,7 @@ async fn send_weekly_digest(pool: &PgPool) {
 
     let body_html = format!(
         r#"<div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #4f46e5;">DockPanel Weekly Summary</h2>
+            <h2 style="color: #4f46e5;">ARSY Weekly Summary</h2>
             <p>Here's what happened in the last 7 days:</p>
             <table style="border-collapse: collapse; width: 100%; margin: 16px 0;">
                 <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb; font-weight: 600;">Alerts</td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">{}</td></tr>
@@ -1343,7 +1343,7 @@ async fn send_weekly_digest(pool: &PgPool) {
                 <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb; font-weight: 600;">Deploys</td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">{}</td></tr>
                 <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb; font-weight: 600;">Security Scans</td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">{}</td></tr>
             </table>
-            <p style="color: #6b7280; font-size: 14px;">Log in to your DockPanel dashboard for full details.</p>
+            <p style="color: #6b7280; font-size: 14px;">Log in to your ARSY dashboard for full details.</p>
         </div>"#,
         alerts_7d.0, backups_7d.0, incidents_7d.0, deploys_7d.0, security_scans_7d.0,
     );
@@ -1360,7 +1360,7 @@ async fn send_weekly_digest(pool: &PgPool) {
         if let Err(e) = crate::services::email::send_email(
             pool,
             email,
-            "DockPanel Weekly Summary",
+            "ARSY Weekly Summary",
             &body_html,
         )
         .await
@@ -1632,7 +1632,7 @@ async fn run_retention_cleanup(pool: &PgPool) {
         .fetch_all(pool).await.unwrap_or_default();
 
         for (backup_id, filename) in &excess {
-            let filepath = format!("/var/backups/dockpanel/{domain}/{filename}");
+            let filepath = format!("/var/backups/arsy/{domain}/{filename}");
             if prune_policy_backup(
                 pool,
                 "backups",
@@ -1676,7 +1676,7 @@ async fn run_retention_cleanup(pool: &PgPool) {
             // omitted `{db_name}`, so the unlink could never match a real file
             // while the DELETE below ran anyway — every dump was orphaned on
             // disk and its only record destroyed.
-            let filepath = format!("/var/backups/dockpanel/databases/{db_name}/{filename}");
+            let filepath = format!("/var/backups/arsy/databases/{db_name}/{filename}");
             if prune_policy_backup(pool, "database_backups", *id, &filepath, *server_id, local_server_id).await {
                 total_pruned += 1;
             }
@@ -1694,7 +1694,7 @@ async fn run_retention_cleanup(pool: &PgPool) {
         .fetch_all(pool).await.unwrap_or_default();
 
         for (id, filename, container_name, server_id) in &excess_vol {
-            let filepath = format!("/var/backups/dockpanel/volumes/{container_name}/{filename}");
+            let filepath = format!("/var/backups/arsy/volumes/{container_name}/{filename}");
             if prune_policy_backup(pool, "volume_backups", *id, &filepath, *server_id, local_server_id).await {
                 total_pruned += 1;
             }
@@ -1715,7 +1715,7 @@ async fn run_retention_cleanup(pool: &PgPool) {
     }
 
     // Clean old session recordings (>30 days)
-    let rec_dir = "/var/lib/dockpanel/recordings";
+    let rec_dir = "/var/lib/arsy/recordings";
     if let Ok(entries) = std::fs::read_dir(rec_dir) {
         let mut rec_deleted = 0u64;
         let cutoff = std::time::SystemTime::now() - std::time::Duration::from_secs(30 * 86400);
@@ -1749,7 +1749,7 @@ async fn run_retention_cleanup(pool: &PgPool) {
     // would have meant "never sweep anything" just as silently, so fall back to
     // `modified()`. For a daily append-only log the two are equivalent for this
     // purpose: the file is named for its day and is only ever appended to.
-    let audit_dir = "/var/lib/dockpanel/audit";
+    let audit_dir = "/var/lib/arsy/audit";
     if let Ok(entries) = std::fs::read_dir(audit_dir) {
         let cutoff = std::time::SystemTime::now() - std::time::Duration::from_secs(365 * 86400);
         let mut audit_deleted = 0u64;
@@ -1784,7 +1784,7 @@ async fn run_retention_cleanup(pool: &PgPool) {
 
     // DB auto-backup: done via direct pg_dump (doesn't need agent client)
     if super::security_hardening::get_setting_bool(pool, "security_db_backup_enabled", true).await {
-        tracing::info!("Triggering DockPanel DB auto-backup...");
+        tracing::info!("Triggering ARSY DB auto-backup...");
         // `bash` and `set -o pipefail` are both load-bearing (lesson #51). The exit
         // status of `pg_dump | gzip` is *gzip's*, and gzip compresses a truncated
         // stream and exits 0 — so under the previous `sh -c` (which is dash here,
@@ -1793,7 +1793,7 @@ async fn run_retention_cleanup(pool: &PgPool) {
         // backup that could never be restored. Sibling of the panel_snapshot.rs
         // dump fixed in v2.11.5; this call site was missed then.
         let backup_file = format!(
-            "/var/backups/dockpanel/dockpanel-db-{}.sql.gz",
+            "/var/backups/arsy/arsy-db-{}.sql.gz",
             chrono::Utc::now().format("%Y%m%d_%H%M%S")
         );
         // `umask 077` is load-bearing and is NOT tidiness: the `>` redirect
@@ -1802,7 +1802,7 @@ async fn run_retention_cleanup(pool: &PgPool) {
         // 0644 on a host that also runs other people's PHP as www-data.
         match safe_command("bash")
             .args(["-c", &format!(
-                "set -o pipefail; umask 077; docker exec dockpanel-postgres pg_dump -U dockpanel dockpanel | gzip > {backup_file}"
+                "set -o pipefail; umask 077; docker exec arsy-postgres pg_dump -U arsy arsy | gzip > {backup_file}"
             )])
             .output().await
         {
@@ -1827,12 +1827,12 @@ async fn run_retention_cleanup(pool: &PgPool) {
                     let _ = std::fs::remove_file(&backup_file);
                     return;
                 }
-                tracing::info!("DockPanel DB auto-backup completed");
+                tracing::info!("ARSY DB auto-backup completed");
                 // Cleanup old backups (keep 7)
-                if let Ok(entries) = std::fs::read_dir("/var/backups/dockpanel") {
+                if let Ok(entries) = std::fs::read_dir("/var/backups/arsy") {
                     let mut files: Vec<_> = entries
                         .filter_map(|e| e.ok())
-                        .filter(|e| e.file_name().to_string_lossy().starts_with("dockpanel-db-"))
+                        .filter(|e| e.file_name().to_string_lossy().starts_with("arsy-db-"))
                         .collect();
                     files.sort_by_key(|e| std::cmp::Reverse(e.file_name().to_string_lossy().to_string()));
                     for old in files.iter().skip(7) {
@@ -1849,10 +1849,10 @@ async fn run_retention_cleanup(pool: &PgPool) {
 // ── Security Hardening Background Tasks ─────────────────────────────
 
 /// Ingest suspicious events written by the agent (from JSONL file).
-/// Reads /var/lib/dockpanel/suspicious-events.jsonl, records each event,
+/// Reads /var/lib/arsy/suspicious-events.jsonl, records each event,
 /// then truncates the file. Runs every 2 minutes with auto-healer.
 async fn security_ingest_suspicious_events(pool: &PgPool) {
-    let path = "/var/lib/dockpanel/suspicious-events.jsonl";
+    let path = "/var/lib/arsy/suspicious-events.jsonl";
 
     let content = match std::fs::read_to_string(path) {
         Ok(c) if !c.is_empty() => c,
@@ -1945,18 +1945,18 @@ async fn security_ingest_suspicious_events(pool: &PgPool) {
 /// can actually write them and this process can actually read them; `/var/www`
 /// is in both generations and appears once.
 ///
-/// `/etc/.dockpanel-canary` is watchable but NOT plantable: `ProtectSystem=strict`
+/// `/etc/.arsy-canary` is watchable but NOT plantable: `ProtectSystem=strict`
 /// leaves bare `/etc` read-only for the agent, so it is carried for legacy boxes
 /// only. Do not add it to the plant set — measured under the shipped unit, that
 /// write fails EROFS.
 pub const CANARY_WATCH_PATHS: [&str; 7] = [
-    "/etc/dockpanel/.dockpanel-canary",
-    "/var/lib/dockpanel/.dockpanel-canary",
-    "/var/backups/dockpanel/.dockpanel-canary",
-    "/var/www/.dockpanel-canary",
-    "/etc/.dockpanel-canary",
-    "/root/.dockpanel-canary",
-    "/home/.dockpanel-canary",
+    "/etc/arsy/.arsy-canary",
+    "/var/lib/arsy/.arsy-canary",
+    "/var/backups/arsy/.arsy-canary",
+    "/var/www/.arsy-canary",
+    "/etc/.arsy-canary",
+    "/root/.arsy-canary",
+    "/home/.arsy-canary",
 ];
 
 /// The subset of `CANARY_WATCH_PATHS` the agent will actually plant.
@@ -1967,18 +1967,18 @@ pub const CANARY_WATCH_PATHS: [&str; 7] = [
 /// `ReadWritePaths=` — which is how the original set came to advertise three
 /// directories the agent could never write.
 ///
-/// `/etc/.dockpanel-canary` is watched but not listed here on purpose: bare
+/// `/etc/.arsy-canary` is watched but not listed here on purpose: bare
 /// `/etc` is read-only to the agent under `ProtectSystem=strict`.
 pub const CANARY_PLANTABLE: [&str; 4] = [
-    "/etc/dockpanel/.dockpanel-canary",
-    "/var/lib/dockpanel/.dockpanel-canary",
-    "/var/backups/dockpanel/.dockpanel-canary",
-    "/var/www/.dockpanel-canary",
+    "/etc/arsy/.arsy-canary",
+    "/var/lib/arsy/.arsy-canary",
+    "/var/backups/arsy/.arsy-canary",
+    "/var/www/.arsy-canary",
 ];
 
 /// Paths this process can never observe, whatever is on disk, because our own
 /// unit masks them. `ProtectHome=yes` (`scripts/setup.sh` for the api,
-/// `panel/agent/dockpanel-agent.service` for the agent) replaces `/home` and
+/// `panel/agent/arsy-agent.service` for the agent) replaces `/home` and
 /// `/root` with an empty read-only mount for both daemons.
 ///
 /// A masked path does NOT report `PermissionDenied` — the namespace simply has

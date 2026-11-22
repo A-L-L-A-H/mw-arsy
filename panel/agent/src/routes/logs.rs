@@ -414,7 +414,7 @@ async fn log_stats(
     })))
 }
 
-/// GET /logs/docker — List Docker containers with dockpanel.managed label.
+/// GET /logs/docker — List Docker containers with arsy.managed label.
 ///
 /// `-a` is load-bearing, not tidiness: without it this listed only *running*
 /// containers, so the crashed ones — the only containers anybody opens this
@@ -428,7 +428,7 @@ async fn docker_containers() -> Json<serde_json::Value> {
                 "ps",
                 "-a",
                 "--filter",
-                "label=dockpanel.managed=true",
+                "label=arsy.managed=true",
                 "--format",
                 "{{.Names}}",
             ])
@@ -499,8 +499,8 @@ async fn service_logs(
 ) -> Result<Json<serde_json::Value>, ApiErr> {
     // Whitelist of allowed services
     let allowed = [
-        "dockpanel-agent",
-        "dockpanel-api",
+        "arsy-agent",
+        "arsy-api",
         "nginx",
         "postfix",
         "dovecot",

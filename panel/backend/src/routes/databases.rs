@@ -318,7 +318,7 @@ pub async fn create(
     // Call agent to create container. `stack_id` tells the agent to join the
     // stack's own private bridge network (already used to give the stack's other
     // containers name-based reachability) instead of the shared, ICC-disabled
-    // `dockpanel-db` bridge every site-owned database uses — the stack network is
+    // `arsy-db` bridge every site-owned database uses — the stack network is
     // single-tenant by construction, so this introduces no new cross-tenant
     // exposure, and every panel-side query/backup/credential operation already
     // reaches the container via `docker exec`, which is unaffected by which
@@ -396,7 +396,7 @@ pub async fn credentials(
 
     let host = container_id
         .as_deref()
-        .map(|_| format!("dockpanel-db-{name}"))
+        .map(|_| format!("arsy-db-{name}"))
         .unwrap_or_else(|| "127.0.0.1".to_string());
     let port = port.unwrap_or(5432);
 
@@ -428,7 +428,7 @@ pub async fn remove(
     // host it also knows about was thrown away, and the agent came from the request
     // header instead. That is a destructive mismatch in both directions: the panel
     // row is deleted whether or not the container was, so dispatching to the wrong
-    // machine either destroys a same-named `dockpanel-db-{name}` container that
+    // machine either destroys a same-named `arsy-db-{name}` container that
     // belongs to somebody else's tenant, or fails to find one while the real
     // container is orphaned on its own host with its row already gone.
     // Admin-widened to match create()/list() — see the v2.216.0 audit note on list().
@@ -601,7 +601,7 @@ async fn get_db_info(
     let (name, engine, password_enc, port, container_id, site_server_id) =
         row.ok_or_else(|| err(StatusCode::NOT_FOUND, "Database not found"))?;
     // Security (H1, v2.19.0): every exec/reset path resolves the target container by
-    // the (per-site, NON-unique) name `dockpanel-db-{name}`. create() inserts the row
+    // the (per-site, NON-unique) name `arsy-db-{name}`. create() inserts the row
     // with an EMPTY container_id and only fills it after the agent confirms the
     // container was created; on a global Docker name collision the row is deleted, but
     // during the agent round-trip a tenant's transient colliding-name row is visible.
@@ -644,7 +644,7 @@ pub async fn tables(
         }
     };
 
-    let container = format!("dockpanel-db-{name}");
+    let container = format!("arsy-db-{name}");
     let agent_body = serde_json::json!({
         "container": container,
         "engine": engine,
@@ -717,7 +717,7 @@ pub async fn table_schema(
         ),
     };
 
-    let container = format!("dockpanel-db-{name}");
+    let container = format!("arsy-db-{name}");
     let agent_body = serde_json::json!({
         "container": container,
         "engine": engine,
@@ -766,7 +766,7 @@ pub async fn query(
     // "not found" that reads like an ordinary error.
     let agent = crate::helpers::agent_for_site_server(&state, site_server_id, &name).await?;
 
-    let container = format!("dockpanel-db-{name}");
+    let container = format!("arsy-db-{name}");
     let agent_body = serde_json::json!({
         "container": container,
         "engine": engine,
@@ -814,7 +814,7 @@ pub async fn table_indexes(
         ),
     };
 
-    let container = format!("dockpanel-db-{name}");
+    let container = format!("arsy-db-{name}");
     let agent_body = serde_json::json!({
         "container": container,
         "engine": engine,
@@ -863,7 +863,7 @@ pub async fn foreign_keys(
              ORDER BY tc.table_name, kcu.column_name".to_string(),
     };
 
-    let container = format!("dockpanel-db-{name}");
+    let container = format!("arsy-db-{name}");
     let agent_body = serde_json::json!({
         "container": container,
         "engine": engine,
@@ -889,7 +889,7 @@ pub async fn schema_overview(
     // site's own host — otherwise the two concurrent queries carry the decrypted
     // password to a foreign machine twice over.
     let agent = crate::helpers::agent_for_site_server(&state, site_server_id, &name).await?;
-    let container = format!("dockpanel-db-{name}");
+    let container = format!("arsy-db-{name}");
 
     // Execute all queries concurrently
     let tables_sql = match engine.as_str() {
@@ -1286,7 +1286,7 @@ pub async fn reset_password(
 
     // The host MUST come from the site's row here, and this is the handler where taking
     // it from the request header did the most damage. Container names are
-    // `dockpanel-db-{name}` and are unique only per host, so a request dispatched to the
+    // `arsy-db-{name}` and are unique only per host, so a request dispatched to the
     // wrong machine acts on ANY same-named container living there, for a tenant who has
     // nothing to do with the caller. `ServerScope` made that the DEFAULT rather than the
     // edge case: a non-admin owns no `servers` row, so their scope always fell back to
@@ -1305,7 +1305,7 @@ pub async fn reset_password(
     let new_password = uuid::Uuid::new_v4().to_string().replace('-', "");
 
     // Reset password in the actual database container via the agent
-    let container = format!("dockpanel-db-{name}");
+    let container = format!("arsy-db-{name}");
     let agent_body = serde_json::json!({
         "container": container,
         "engine": engine,
@@ -1509,13 +1509,13 @@ pub async fn import(
     }
 
     // Same rule as `reset_password` and for the same reason: the host comes from the
-    // site's row, never from the caller's scope. `dockpanel-db-{name}` is unique only per
+    // site's row, never from the caller's scope. `arsy-db-{name}` is unique only per
     // machine, and this call hands the tenant's decrypted password to whichever agent
     // answers.
     let agent = crate::helpers::agent_for_site_server(&state, site_server_id, &name).await?;
 
     let agent_body = serde_json::json!({
-        "container_name": format!("dockpanel-db-{name}"),
+        "container_name": format!("arsy-db-{name}"),
         "db_type": engine,
         "user": name,
         "password": password,

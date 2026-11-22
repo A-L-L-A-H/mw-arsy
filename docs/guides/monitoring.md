@@ -2,7 +2,7 @@
 
 ## Monitors
 
-Monitors check whether your services are reachable. DockPanel supports four active monitor types and a passive heartbeat type.
+Monitors check whether your services are reachable. ARSY supports four active monitor types and a passive heartbeat type.
 
 | Type | How it works |
 |------|-------------|
@@ -31,7 +31,7 @@ Monitors check whether your services are reachable. DockPanel supports four acti
 ### From the CLI
 
 ```bash
-dockpanel monitors create --name "My Site" --url https://example.com --interval 300
+arsy monitors create --name "My Site" --url https://example.com --interval 300
 ```
 
 ### Monitor Status
@@ -138,7 +138,7 @@ If an HTTP monitor returns a successful status but the response time exceeds 500
 
 ### Auto-Incidents
 
-When a monitor goes down, DockPanel automatically creates a managed incident for the public status page. When the monitor recovers, the incident is auto-resolved. Status page subscribers are notified of both transitions.
+When a monitor goes down, ARSY automatically creates a managed incident for the public status page. When the monitor recovers, the incident is auto-resolved. Status page subscribers are notified of both transitions.
 
 ### Disk-Full Forecast
 
@@ -177,7 +177,7 @@ browser disagreed, with `ERR_CERT_COMMON_NAME_INVALID`. The same check refuses a
 key pasted into the certificate field — which used to be stored with the certificate's
 permissions rather than the key's, and left the site with no recorded expiry at all.
 
-**DockPanel renews only the Let's Encrypt certificates it issued itself.** Its ACME
+**ARSY renews only the Let's Encrypt certificates it issued itself.** Its ACME
 client can produce nothing else, so a certificate from any other issuer — a commercial
 wildcard, a Cloudflare Origin CA certificate, a corporate PKI — is left alone by the
 automatic renewal loops, and the Renew button refuses it with the issuer named. Renew

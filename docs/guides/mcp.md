@@ -1,19 +1,19 @@
 # MCP Server Guide
 
-`dockpanel-mcp` exposes read-only fleet introspection to AI agents over the
+`arsy-mcp` exposes read-only fleet introspection to AI agents over the
 [Model Context Protocol](https://modelcontextprotocol.io) — the same information
 an operator sees in the panel, reachable by an agent over Streamable HTTP.
 
 **v1 is read-only. Zero mutating or destructive tools.** Every call is a thin
 proxy onto the existing REST API — no new business logic, no new permissions
 model. Mutating tools are planned for a later release, gated behind an
-explicit confirmation model; see [FEATURES.md](https://github.com/ovexro/dockpanel/blob/main/FEATURES.md)
+explicit confirmation model; see [FEATURES.md](https://github.com/A-L-L-A-H/mw-arsy/blob/main/FEATURES.md)
 for the roadmap.
 
 ## Concepts
 
-- **A 4th binary**: `dockpanel-mcp` ships alongside `dockpanel-api`, `dockpanel-agent`
-  and the `dockpanel` CLI, but is **not installed running** — it is off by
+- **A 4th binary**: `arsy-mcp` ships alongside `arsy-api`, `arsy-agent`
+  and the `arsy` CLI, but is **not installed running** — it is off by
   default on every install, opt-in only.
 - **Its own API key**: authenticates the same way the CLI does — a `dp_`
   key minted from Settings → API Keys, saved to a token file. Independently
@@ -33,13 +33,13 @@ for the roadmap.
    again.
 2. **Save the token on the host**, root-only:
    ```
-   echo 'dp_...' > /etc/dockpanel/mcp.token
-   chown root:root /etc/dockpanel/mcp.token
-   chmod 600 /etc/dockpanel/mcp.token
+   echo 'dp_...' > /etc/arsy/mcp.token
+   chown root:root /etc/arsy/mcp.token
+   chmod 600 /etc/arsy/mcp.token
    ```
 3. **Start the service:**
    ```
-   systemctl enable --now dockpanel-mcp
+   systemctl enable --now arsy-mcp
    ```
 4. **Record it in Settings → Services → MCP Server** so the panel's own
    Settings page shows accurate status. This step is bookkeeping only — it
@@ -51,9 +51,9 @@ at that URL with the key from step 1 as a bearer token.
 
 ### Bind mode
 
-The default (`loopback`) binds `dockpanel-mcp` to `127.0.0.1`, reachable only
+The default (`loopback`) binds `arsy-mcp` to `127.0.0.1`, reachable only
 through the nginx proxy — the same posture as the API and agent. An advanced
-`direct` mode exists (set `LISTEN_ADDR` in `/etc/dockpanel/mcp.env`) that
+`direct` mode exists (set `LISTEN_ADDR` in `/etc/arsy/mcp.env`) that
 binds a different address, bypassing nginx and TLS entirely; only use it if
 you are fronting the service with your own reverse proxy.
 

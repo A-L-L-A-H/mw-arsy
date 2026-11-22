@@ -45,7 +45,7 @@ ok()  { PASS=$((PASS+1)); printf '  \033[0;32m✓\033[0m %s\n' "$1"; }
 bad() { FAIL=$((FAIL+1)); printf '  \033[0;31m✗\033[0m %s\n' "$1"; }
 
 AGENT_SEC=panel/agent/src/routes/security.rs
-AGENT_UNIT=panel/agent/dockpanel-agent.service
+AGENT_UNIT=panel/agent/arsy-agent.service
 HEALER=panel/backend/src/services/auto_healer.rs
 BACK_SEC=panel/backend/src/routes/security.rs
 ROUTER=panel/backend/src/routes/mod.rs
@@ -166,8 +166,8 @@ for label, v in (("CANARY_PLANT_PATHS", plant_agent), ("CANARY_PLANTABLE", plant
 
 # The agent's plant paths are file paths; the const holds (path, description)
 # pairs, so keep only the ones that look like a canary file.
-plant_agent = [p for p in plant_agent if p.endswith(".dockpanel-canary")]
-plant_back  = [p for p in plant_back if p.endswith(".dockpanel-canary")]
+plant_agent = [p for p in plant_agent if p.endswith(".arsy-canary")]
+plant_back  = [p for p in plant_back if p.endswith(".arsy-canary")]
 
 rw = re.search(r'^ReadWritePaths=(.*)$', unit, re.M)
 if not rw:

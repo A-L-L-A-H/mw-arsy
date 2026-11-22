@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# DockPanel Chain-of-Trust Report E2E Test Suite
+# ARSY Chain-of-Trust Report E2E Test Suite
 #
 # v2.8.1: site-only.
 # v2.8.2: extended to db + volume backups via the generic
@@ -7,8 +7,8 @@
 #   GET /api/backup-orchestrator/chain-report/{kind}/{id}/pdf    (PDF, lazy-installs typst)
 # where {kind} ∈ {site, database, volume}.
 #
-# Auth strategy mirrors tier2-certpin-e2e.sh: prefer DOCKPANEL_TEST_PASSWORD;
-# otherwise mint a short-lived admin JWT from /etc/dockpanel/api.env.
+# Auth strategy mirrors tier2-certpin-e2e.sh: prefer ARSY_TEST_PASSWORD;
+# otherwise mint a short-lived admin JWT from /etc/arsy/api.env.
 #
 # typst lazy-installs on the first PDF render (~30MB tarball, ~30s on a
 # fresh box, sha256-pinned in v2.8.2). Subsequent runs hit the cached
@@ -17,9 +17,9 @@
 # timeout (default 90s) for the first install.
 set -uo pipefail
 
-API="${DOCKPANEL_API_URL:-http://127.0.0.1:3080}"
-ADMIN_EMAIL="${DOCKPANEL_TEST_EMAIL:-admin@dockpanel.dev}"
-ADMIN_PASSWORD="${DOCKPANEL_TEST_PASSWORD:-}"
+API="${ARSY_API_URL:-http://127.0.0.1:3080}"
+ADMIN_EMAIL="${ARSY_TEST_EMAIL:-admin@moonwitness.dev}"
+ADMIN_PASSWORD="${ARSY_TEST_PASSWORD:-}"
 PDF_TIMEOUT="${CHAIN_REPORT_PDF_TIMEOUT:-90}"
 
 PASS=0 FAIL=0 SKIP=0 TOTAL=0
@@ -30,11 +30,11 @@ skip()  { echo -e "\e[33m  ~ $1\e[0m"; SKIP=$((SKIP+1)); TOTAL=$((TOTAL+1)); }
 sect()  { echo; echo "── $1 ──"; }
 
 psql_exec() {
-    docker exec dockpanel-postgres psql -U dockpanel -d dockpanel -qtAc "$1" 2>/dev/null
+    docker exec arsy-postgres psql -U arsy -d arsy -qtAc "$1" 2>/dev/null
 }
 
 echo "═══════════════════════════════════════════════"
-echo "  DockPanel Chain-of-Trust Report E2E Suite"
+echo "  ARSY Chain-of-Trust Report E2E Suite"
 echo "═══════════════════════════════════════════════"
 
 # ── Auth ──────────────────────────────────────────────────────────────────
@@ -50,8 +50,8 @@ if [ -n "$ADMIN_PASSWORD" ]; then
         -d "{\"email\":\"$ADMIN_EMAIL\",\"password\":\"$ADMIN_PASSWORD\"}" -D - 2>/dev/null \
         | grep -oP 'token=\K[^;]+')
 fi
-if [ -z "$BEARER_TOKEN" ] && [ -r /etc/dockpanel/api.env ]; then
-    JWT_SECRET=$(grep -E '^JWT_SECRET=' /etc/dockpanel/api.env | cut -d= -f2-)
+if [ -z "$BEARER_TOKEN" ] && [ -r /etc/arsy/api.env ]; then
+    JWT_SECRET=$(grep -E '^JWT_SECRET=' /etc/arsy/api.env | cut -d= -f2-)
     if [ -n "$JWT_SECRET" ]; then
         BEARER_TOKEN=$(JWT_SECRET="$JWT_SECRET" ADMIN_UID="$ADMIN_UID" ADMIN_EMAIL="$ADMIN_EMAIL" \
             python3 - <<'PYEOF'
@@ -67,7 +67,7 @@ PYEOF
     fi
 fi
 if [ -z "$BEARER_TOKEN" ]; then
-    echo "FATAL: Could not obtain admin token (set DOCKPANEL_TEST_PASSWORD or ensure /etc/dockpanel/api.env is readable)"
+    echo "FATAL: Could not obtain admin token (set ARSY_TEST_PASSWORD or ensure /etc/arsy/api.env is readable)"
     exit 1
 fi
 

@@ -6,8 +6,8 @@
 //! The orchestrator's job is:
 //!
 //!   1. Create a persistent snapshot via [`super::panel_snapshot`].
-//!   2. Shell out to `update.sh` with `DOCKPANEL_NO_SELF_REFRESH=1` +
-//!      `DOCKPANEL_VERSION=$target` so a single subprocess invocation does
+//!   2. Shell out to `update.sh` with `ARSY_NO_SELF_REFRESH=1` +
+//!      `ARSY_VERSION=$target` so a single subprocess invocation does
 //!      the work without mid-flight re-exec.
 //!   3. Track state in two places:
 //!      - In-process `Arc<RwLock<UpdateState>>` for fast guards against
@@ -23,7 +23,7 @@
 //!   - In-flight rollback is `update.sh`'s `.bak` restore — orchestrator
 //!     doesn't touch it.
 //!   - Operator-triggered rollback from a snapshot is
-//!     [`rollback_to_snapshot`] — restores binaries + DB + /etc/dockpanel
+//!     [`rollback_to_snapshot`] — restores binaries + DB + /etc/arsy
 //!     and bounces services. Routes/UI gate this behind a destructive
 //!     confirm.
 
@@ -42,8 +42,8 @@ use crate::models::PanelSnapshot;
 use crate::services::panel_snapshot::{self, SnapshotTrigger};
 
 /// Path to `scripts/update.sh` on a panel install. setup.sh + update.sh
-/// both lay the source tree under `/opt/dockpanel`, so this is stable.
-const UPDATE_SCRIPT: &str = "/opt/dockpanel/scripts/update.sh";
+/// both lay the source tree under `/opt/arsy`, so this is stable.
+const UPDATE_SCRIPT: &str = "/opt/arsy/scripts/update.sh";
 
 /// A snapshot row is considered "in flight" if it has `to_version IS NULL`
 /// and was created within this window. Older rows that never finalized are
@@ -76,7 +76,7 @@ const LOG_TAIL_MAX: usize = 64;
 /// no restart came to carry a verdict, this process had already observed a
 /// successful exit, and the UI sat on a frozen `last_log_line` until the
 /// 15-minute in-flight window lapsed.
-const PANEL_UPDATE_RESULT_PATH: &str = "/var/lib/dockpanel/last-panel-update.json";
+const PANEL_UPDATE_RESULT_PATH: &str = "/var/lib/arsy/last-panel-update.json";
 
 /// How long to keep watching for `update.sh`'s verdict after the detached
 /// handoff. Matches the `child.wait` budget: an update that has not reported
@@ -429,20 +429,20 @@ pub async fn start_panel_update(
     *handle.write().await = in_flight.clone();
 
     // Spawn update.sh. Detached process group so systemctl stop of
-    // dockpanel-api (issued by update.sh) doesn't propagate SIGTERM to
+    // arsy-api (issued by update.sh) doesn't propagate SIGTERM to
     // the script itself. PID1 reaps when complete.
     let mut cmd = Command::new("bash");
     cmd.arg(UPDATE_SCRIPT)
         .env("INSTALL_FROM_RELEASE", "1")
-        .env("DOCKPANEL_NO_SELF_REFRESH", "1")
-        // update.sh documents DOCKPANEL_VERSION as `vX.Y.Z` and concatenates it
+        .env("ARSY_NO_SELF_REFRESH", "1")
+        // update.sh documents ARSY_VERSION as `vX.Y.Z` and concatenates it
         // straight into the release download URL, but the poller stores the
         // advertised version with the `v` stripped (telemetry_collector.rs) and
         // apply_update validates against that stripped form. Passing it through
         // verbatim built `releases/download/2.11.2/...`, which 404s — so every
         // self-update died at the first `curl -sfL` with exit 22, before any
         // binary was swapped. Re-add the prefix at this boundary.
-        .env("DOCKPANEL_VERSION", format!("v{}", target_version.trim_start_matches('v')))
+        .env("ARSY_VERSION", format!("v{}", target_version.trim_start_matches('v')))
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .stdin(Stdio::null());
@@ -498,7 +498,7 @@ pub async fn start_panel_update(
 
         // Ask the updater what happened, rather than the process that launched
         // it. If the update SUCCEEDS this loop never finishes: update.sh stops
-        // dockpanel-api, which is the process running this task, and the next
+        // arsy-api, which is the process running this task, and the next
         // boot's `finalize_pending_on_startup` closes the row. The case being
         // rescued is the opposite one — a failure BEFORE the api is stopped,
         // where no restart will ever come to close anything.
@@ -586,7 +586,7 @@ async fn finalize_failed_update(
 
 /// Stream `update.sh` stdout + stderr into the handle's `last_log_line`.
 /// This loop exits when both pipes hit EOF — typically because the api
-/// process is being killed by `systemctl stop dockpanel-api`.
+/// process is being killed by `systemctl stop arsy-api`.
 async fn stream_update_output(
     handle: UpdateStateHandle,
     stdout: Option<tokio::process::ChildStdout>,
@@ -1050,7 +1050,7 @@ async fn update_one_server(
     // Normalise to the `vX.Y.Z` release-tag spelling at this boundary, exactly
     // as `start_panel_update` does for the local path. The operator's input is
     // free text and `validate_target_version` accepts both spellings, so a bare
-    // `2.11.4` reached the remote agent verbatim, became DOCKPANEL_VERSION, and
+    // `2.11.4` reached the remote agent verbatim, became ARSY_VERSION, and
     // update.sh concatenated it into `releases/download/2.11.4/...` — a 404 and
     // `curl -sfL` exit 22 before any swap. The local path was repaired in
     // v2.11.3; this sibling call site was missed. update.sh's own bare-semver
@@ -1159,15 +1159,15 @@ mod tests {
     #[test]
     fn the_updater_writes_a_verdict_from_a_trap() {
         assert!(
-            UPDATE_SH.contains("trap _dockpanel_on_exit EXIT"),
+            UPDATE_SH.contains("trap _arsy_on_exit EXIT"),
             "the verdict must be written from an EXIT trap, not only from the happy path"
         );
         assert!(
-            UPDATE_SH.contains("_dockpanel_write_result true \"complete\""),
+            UPDATE_SH.contains("_arsy_write_result true \"complete\""),
             "a successful update must record success"
         );
         assert!(
-            UPDATE_SH.contains("_dockpanel_write_result false \"rollback\""),
+            UPDATE_SH.contains("_arsy_write_result false \"rollback\""),
             "an in-flight rollback must be distinguishable from a clean success"
         );
     }

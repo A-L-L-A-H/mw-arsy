@@ -15,7 +15,7 @@
 --     every security scan with no opt-in at all.
 --
 --   SHAPE B — a subdomain site under a zone wildcard. There is no certificate
---     at `/etc/dockpanel/ssl/{site.domain}/`, so the guard exits on
+--     at `/etc/arsy/ssl/{site.domain}/`, so the guard exits on
 --     `has_cert:false` before it ever reads an issuer. The renewal issues an
 --     orphan single-name certificate into the site's own directory, the panel
 --     then re-renders the vhost from `ssl_cert_path` and points nginx BACK at
@@ -110,7 +110,7 @@ UPDATE sites s
    SET ssl_challenge    = 'dns-01',
        ssl_wildcard     = (e.action = 'site.ssl.wildcard'),
        ssl_cert_subject = CASE
-           WHEN s.ssl_cert_path LIKE '/etc/dockpanel/ssl/%/fullchain.pem'
+           WHEN s.ssl_cert_path LIKE '/etc/arsy/ssl/%/fullchain.pem'
                THEN split_part(s.ssl_cert_path, '/', 5)
            ELSE s.domain
        END

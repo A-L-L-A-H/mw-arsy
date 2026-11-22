@@ -4,15 +4,15 @@ use tokio::io::AsyncWriteExt;
 use tokio_stream::StreamExt;
 use crate::safe_cmd::safe_command;
 
-const MIGRATION_DIR: &str = "/tmp/dockpanel-migration";
+const MIGRATION_DIR: &str = "/tmp/arsy-migration";
 
 /// Where a URL-fetched archive is staged before analysis — inside the ONE
 /// subtree systemd actually grants this unit write access to
-/// (`ReadWritePaths=... /var/backups/dockpanel ...`, not the bare
+/// (`ReadWritePaths=... /var/backups/arsy ...`, not the bare
 /// `/var/backups/` an operator-copied archive can live under). Landing a new
 /// path outside a granted `ReadWritePaths` entry is the exact EROFS class the
-/// per-site SFTP jail hit (`/var/dockpanel-sftp` didn't exist yet either).
-pub const FETCH_DIR: &str = "/var/backups/dockpanel/migration-fetch";
+/// per-site SFTP jail hit (`/var/arsy-sftp` didn't exist yet either).
+pub const FETCH_DIR: &str = "/var/backups/arsy/migration-fetch";
 
 /// Hard ceiling on a fetched archive's size. Generous for a real cPanel/Plesk/
 /// HestiaCP backup, bounded so a misconfigured or hostile URL cannot fill the
@@ -667,12 +667,12 @@ pub async fn import_database(migration_id: &str, sql_file: &str, container_name:
         return Err("Invalid migration ID format".into());
     }
 
-    // Validate container name — only allow DockPanel-managed DB containers
-    if !container_name.starts_with("dockpanel-") || container_name.contains('/') || container_name.contains('\0')
+    // Validate container name — only allow ARSY-managed DB containers
+    if !container_name.starts_with("arsy-") || container_name.contains('/') || container_name.contains('\0')
         || container_name.len() > 128
         || !container_name.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
     {
-        return Err("Invalid container name — only DockPanel-managed containers are allowed".into());
+        return Err("Invalid container name — only ARSY-managed containers are allowed".into());
     }
 
     // Validate no path traversal in sql_file

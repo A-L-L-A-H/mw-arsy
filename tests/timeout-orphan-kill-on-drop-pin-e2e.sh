@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Regression pins for the "timeout doesn't actually stop the thing"
 # kill_on_drop gap found in the s450 pkg.rs fan-out's completeness-critic
-# stage (project_dockpanel_tech_debt, ledger p189 — dockpanel-fanout run
+# stage (project_arsy_tech_debt, ledger p189 — arsy-fanout run
 # wf_2ad3e1e8-ab5).
 #
 # safe_command() (panel/agent/src/safe_cmd.rs:36) is a bare
@@ -32,8 +32,8 @@
 #
 # s451 CORRECTION + EXTENSION: this suite's own header, above, claimed
 # database_backup.rs was among the "already fixed" files. That claim was
-# FALSE — a s451 dockpanel-fanout finder/skeptic pair (rotation target
-# database_backup.rs, per feedback_dockpanel_audit_scope) found only
+# FALSE — a s451 arsy-fanout finder/skeptic pair (rotation target
+# database_backup.rs, per feedback_arsy_audit_scope) found only
 # dump_mongo (1 of 6 privileged subprocess functions) actually had
 # kill_on_drop(true); dump_mysql/dump_postgres/restore_mysql/
 # restore_postgres/restore_mongo did not — meaning this pin suite provided
@@ -58,7 +58,7 @@
 # pkg.rs/safe_cmd.rs's OWN systemd-run-backed timeout (a harder, separate
 # problem — killing the LOCAL waiter does not stop the REMOTE transient unit,
 # proven live during the same audit) is explicitly OUT of scope here — see
-# project_dockpanel_tech_debt ledger p189 for why that one is a sized carry,
+# project_arsy_tech_debt ledger p189 for why that one is a sized carry,
 # not a same-session fix.
 #
 # These are SOURCE pins and need no running panel.
@@ -208,7 +208,7 @@ windowHasKillOnDrop "$MAIL_ROUTE" '"xzf", backup_file,' \
   "mail.rs's mailbox_restore tar xzf carries kill_on_drop(true)"
 
 echo
-echo "== H. wordpress.rs: the crate's single wp-cli choke point + its own 5 pre-existing subprocess sites are all annotated (s452 dockpanel-fanout run wf_72e4e04f-373, rotation target wp_vulnerability.rs) =="
+echo "== H. wordpress.rs: the crate's single wp-cli choke point + its own 5 pre-existing subprocess sites are all annotated (s452 arsy-fanout run wf_72e4e04f-373, rotation target wp_vulnerability.rs) =="
 # wp_at_root's own doc comment already says every wp-cli invocation in this
 # crate goes through it — which means it was ALSO the single highest-leverage
 # gap: no timeout at all (so no kill_on_drop could matter until one was added
@@ -238,7 +238,7 @@ windowHasKillOnDrop "$WORDPRESS_SVC" '"-u", "www-data", WP_CLI, "eval"' \
   "wordpress.rs's health_check sudo wp-cli eval carries kill_on_drop(true)"
 
 echo
-echo "== J. backups.rs (services): the 4 sites the s452 fix to THIS SAME FILE (site D above) did not cover are annotated (s453 dockpanel-fanout run wf_a5d044b9-fa0, rotation target services/backups.rs + routes/backups.rs) =="
+echo "== J. backups.rs (services): the 4 sites the s452 fix to THIS SAME FILE (site D above) did not cover are annotated (s453 arsy-fanout run wf_a5d044b9-fa0, rotation target services/backups.rs + routes/backups.rs) =="
 # extract_payload / restore_inner / list_backup_files / restore_single_file all
 # wrap tar in tokio::time::timeout without kill_on_drop — the D-above fix only
 # ever covered create_backup's OWN tar czf, not these four siblings in the

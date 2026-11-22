@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
-# DockPanel Uninstaller
-# Removes DockPanel completely from the server.
+# ARSY Uninstaller
+# Removes ARSY completely from the server.
 #
 set -euo pipefail
 
@@ -17,14 +17,14 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 echo ""
-echo -e "${YELLOW}${BOLD}DockPanel Uninstaller${NC}"
+echo -e "${YELLOW}${BOLD}ARSY Uninstaller${NC}"
 echo ""
 echo "This will remove:"
 echo "  - Agent and API binaries and systemd services"
 echo "  - PostgreSQL container and data volume"
 echo "  - Nginx panel config"
-echo "  - Config directory (/etc/dockpanel)"
-echo "  - Source directory (/opt/dockpanel, if present)"
+echo "  - Config directory (/etc/arsy)"
+echo "  - Source directory (/opt/arsy, if present)"
 echo ""
 echo -e "${YELLOW}Database and backup data will be DELETED.${NC}"
 echo ""
@@ -42,34 +42,34 @@ echo ""
 
 # Stop and remove agent service
 echo -e "${GREEN}[+]${NC} Removing agent service..."
-systemctl stop dockpanel-agent 2>/dev/null || true
-systemctl disable dockpanel-agent 2>/dev/null || true
-rm -f /etc/systemd/system/dockpanel-agent.service
-rm -f /usr/local/bin/dockpanel-agent
+systemctl stop arsy-agent 2>/dev/null || true
+systemctl disable arsy-agent 2>/dev/null || true
+rm -f /etc/systemd/system/arsy-agent.service
+rm -f /usr/local/bin/arsy-agent
 
 # Stop and remove API service
 echo -e "${GREEN}[+]${NC} Removing API service..."
-systemctl stop dockpanel-api 2>/dev/null || true
-systemctl disable dockpanel-api 2>/dev/null || true
-rm -f /etc/systemd/system/dockpanel-api.service
-rm -f /usr/local/bin/dockpanel-api
+systemctl stop arsy-api 2>/dev/null || true
+systemctl disable arsy-api 2>/dev/null || true
+rm -f /etc/systemd/system/arsy-api.service
+rm -f /usr/local/bin/arsy-api
 
 systemctl daemon-reload 2>/dev/null || true
 
 # Remove PostgreSQL container and volume
-if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -c "^dockpanel-postgres$" >/dev/null; then
+if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -c "^arsy-postgres$" >/dev/null; then
     echo -e "${GREEN}[+]${NC} Removing PostgreSQL container..."
-    docker stop dockpanel-postgres 2>/dev/null || true
-    docker rm dockpanel-postgres 2>/dev/null || true
+    docker stop arsy-postgres 2>/dev/null || true
+    docker rm arsy-postgres 2>/dev/null || true
 fi
 
-if docker volume ls --format '{{.Name}}' 2>/dev/null | grep -c "^dockpanel-pgdata$" >/dev/null; then
+if docker volume ls --format '{{.Name}}' 2>/dev/null | grep -c "^arsy-pgdata$" >/dev/null; then
     echo -e "${GREEN}[+]${NC} Removing PostgreSQL data volume..."
-    docker volume rm dockpanel-pgdata 2>/dev/null || true
+    docker volume rm arsy-pgdata 2>/dev/null || true
 fi
 
 # Also handle old Docker Compose deployments
-for DIR in /opt/dockpanel/panel /home/*/dockpanel/panel; do
+for DIR in /opt/arsy/panel /home/*/arsy/panel; do
     if [ -f "$DIR/docker-compose.yml" ]; then
         echo -e "${GREEN}[+]${NC} Stopping old Docker Compose deployment at $DIR..."
         (cd "$DIR" && docker compose down -v 2>/dev/null) || true
@@ -79,41 +79,41 @@ done
 
 # Remove nginx config
 echo -e "${GREEN}[+]${NC} Removing nginx config..."
-rm -f /etc/nginx/sites-enabled/dockpanel-panel.conf
-rm -f /etc/nginx/conf.d/dockpanel-panel.conf
+rm -f /etc/nginx/sites-enabled/arsy-panel.conf
+rm -f /etc/nginx/conf.d/arsy-panel.conf
 nginx -t > /dev/null 2>&1 && (nginx -s reload 2>/dev/null || systemctl reload nginx 2>/dev/null) || true
 
 # Remove CLI binary
 echo -e "${GREEN}[+]${NC} Removing CLI binary..."
-rm -f /usr/local/bin/dockpanel
+rm -f /usr/local/bin/arsy
 
 # Remove directories
 echo -e "${GREEN}[+]${NC} Removing data directories..."
-rm -rf /etc/dockpanel
-rm -rf /var/run/dockpanel
-rm -rf /var/backups/dockpanel
-rm -rf /var/lib/dockpanel
+rm -rf /etc/arsy
+rm -rf /var/run/arsy
+rm -rf /var/backups/arsy
+rm -rf /var/lib/arsy
 rm -rf /var/www/acme
 
 # Remove tmpfiles.d config
-rm -f /etc/tmpfiles.d/dockpanel.conf
+rm -f /etc/tmpfiles.d/arsy.conf
 
 # Remove the package-manager drop-ins setup.sh/install-agent.sh wrote. Leaving
-# the needrestart override behind would keep excluding a dockpanel-agent that
+# the needrestart override behind would keep excluding a arsy-agent that
 # no longer exists, and silently weaken needrestart for whatever replaces it.
-rm -f /etc/needrestart/conf.d/99-dockpanel.conf
-rm -f /etc/apt/apt.conf.d/99-dockpanel-lock-wait.conf
+rm -f /etc/needrestart/conf.d/99-arsy.conf
+rm -f /etc/apt/apt.conf.d/99-arsy-lock-wait.conf
 
-# Remove DockPanel crontab entries
-(crontab -l 2>/dev/null | grep -v "dockpanel" | crontab -) 2>/dev/null || true
+# Remove ARSY crontab entries
+(crontab -l 2>/dev/null | grep -v "arsy" | crontab -) 2>/dev/null || true
 
-# Remove source (if installed to /opt/dockpanel by install.sh)
-if [ -d /opt/dockpanel ]; then
+# Remove source (if installed to /opt/arsy by install.sh)
+if [ -d /opt/arsy ]; then
     echo -e "${GREEN}[+]${NC} Removing source directory..."
-    rm -rf /opt/dockpanel
+    rm -rf /opt/arsy
 fi
 
 echo ""
-echo -e "${GREEN}${BOLD}DockPanel removed.${NC}"
+echo -e "${GREEN}${BOLD}ARSY removed.${NC}"
 echo -e "Note: Docker, Nginx, and Node.js were NOT uninstalled (they may be used by other services)."
 echo ""

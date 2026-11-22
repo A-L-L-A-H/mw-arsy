@@ -3,7 +3,7 @@
 #
 # A container name is not a key anybody owns.
 #
-# `dockpanel-git-{X}` is written for a deployment called X. It was ALSO written
+# `arsy-git-{X}` is written for a deployment called X. It was ALSO written
 # for a preview of config C on branch B whenever `{C}-pr-{slug(B)}` spelled X —
 # and `is_valid_name` accepts that name, so an admin creates it by ordinary
 # means while the branch half is chosen by whoever can push to C's repo. The
@@ -552,7 +552,7 @@ else
   fi
   # The three callers that stop and restart another tenant's app process.
   USES=$(count "$N" 'owned_service_name\(&domain\)')
-  RAW=$(count "$N" 'format!\("dockpanel-app-\{\}", domain\.replace')
+  RAW=$(count "$N" 'format!\("arsy-app-\{\}", domain\.replace')
   if [ "$USES" -ge 3 ] && [ "$RAW" -eq 0 ]; then
     ok "F4 all three lifecycle callers resolve an owned unit, and none derives the name itself"
   else

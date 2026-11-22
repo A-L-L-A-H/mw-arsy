@@ -698,7 +698,7 @@ function ImportDatabase({ database, onClose }: { database: Database; onClose: ()
   const [confirmFile, setConfirmFile] = useState<string | null>(null);
   const [importing, setImporting] = useState<string | null>(null);
 
-  const dir = `/var/backups/dockpanel/databases/${database.name}`;
+  const dir = `/var/backups/arsy/databases/${database.name}`;
 
   const load = useCallback(async () => {
     setLoading(true);

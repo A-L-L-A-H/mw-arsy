@@ -14,7 +14,7 @@ const SECTIONS: LegalSection[] = [
   {
     id: 'site',
     label: 'This site',
-    title: 'Marketing website (dockpanel.dev)',
+    title: 'Marketing website (moonwitness.dev)',
     body: (
       <p>
         This marketing website does not use cookies, analytics, tracking pixels, or any third-party
@@ -26,10 +26,10 @@ const SECTIONS: LegalSection[] = [
   {
     id: 'software',
     label: 'Your server',
-    title: 'DockPanel software (self-hosted)',
+    title: 'ARSY software (self-hosted)',
     body: (
       <p>
-        When you install DockPanel on your own server, all data stays on your server. DockPanel does
+        When you install ARSY on your own server, all data stays on your server. ARSY does
         not phone home, send telemetry, or transmit any information to us or third parties. Your
         server configuration, site data, database credentials, and backups remain entirely under your
         control.
@@ -42,7 +42,7 @@ const SECTIONS: LegalSection[] = [
     title: 'Cookies',
     body: (
       <p>
-        This website does not use cookies. The self-hosted DockPanel application uses a session cookie
+        This website does not use cookies. The self-hosted ARSY application uses a session cookie
         solely for authentication purposes on your own server — this cookie is never shared with any
         external service.
       </p>
@@ -74,7 +74,7 @@ const SECTIONS: LegalSection[] = [
     title: 'GitHub',
     body: (
       <p>
-        DockPanel&apos;s source code is hosted on GitHub. If you open issues, submit pull requests, or
+        ARSY&apos;s source code is hosted on GitHub. If you open issues, submit pull requests, or
         interact with the repository, GitHub&apos;s privacy policy applies to those interactions.
       </p>
     ),
@@ -87,7 +87,7 @@ const SECTIONS: LegalSection[] = [
       <p>
         If you have questions about this privacy policy, you can open an issue on our{' '}
         <a
-          href="https://github.com/ovexro/dockpanel"
+          href="https://github.com/A-L-L-A-H/mw-arsy"
           className={docLink}
           target="_blank"
           rel="noopener noreferrer"
@@ -108,7 +108,7 @@ export default function PrivacyPolicy() {
       updated={UPDATED}
       standfirst={
         <>
-          DockPanel is a free, open-source, self-hosted server management panel. We are committed to
+          ARSY is a free, open-source, self-hosted server management panel. We are committed to
           transparency about data practices. The short version: we collect almost nothing, and your
           server data never leaves your infrastructure.
         </>

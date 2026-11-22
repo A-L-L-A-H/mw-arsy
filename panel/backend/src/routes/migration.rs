@@ -220,7 +220,7 @@ pub async fn analyze(
     // agent is told to write the file to.
     let resolved_path = if let Some(ref u) = url {
         format!(
-            "/var/backups/dockpanel/migration-fetch/{}{}",
+            "/var/backups/arsy/migration-fetch/{}{}",
             Uuid::new_v4(),
             fetch_archive_extension(u)
         )

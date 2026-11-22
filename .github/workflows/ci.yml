@@ -107,10 +107,10 @@ jobs:
         run: |
           echo "| Binary | Size |" >> $GITHUB_STEP_SUMMARY
           echo "|--------|------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Agent | $(du -h panel/agent/target/release/dockpanel-agent | cut -f1) |" >> $GITHUB_STEP_SUMMARY
-          echo "| API | $(du -h panel/backend/target/release/dockpanel-api | cut -f1) |" >> $GITHUB_STEP_SUMMARY
-          echo "| CLI | $(du -h panel/cli/target/release/dockpanel | cut -f1) |" >> $GITHUB_STEP_SUMMARY
-          echo "| MCP | $(du -h panel/mcp/target/release/dockpanel-mcp | cut -f1) |" >> $GITHUB_STEP_SUMMARY
+          echo "| Agent | $(du -h panel/agent/target/release/arsy-agent | cut -f1) |" >> $GITHUB_STEP_SUMMARY
+          echo "| API | $(du -h panel/backend/target/release/arsy-api | cut -f1) |" >> $GITHUB_STEP_SUMMARY
+          echo "| CLI | $(du -h panel/cli/target/release/arsy | cut -f1) |" >> $GITHUB_STEP_SUMMARY
+          echo "| MCP | $(du -h panel/mcp/target/release/arsy-mcp | cut -f1) |" >> $GITHUB_STEP_SUMMARY
 
   build-frontend:
     name: Build (Frontend)
@@ -182,7 +182,7 @@ jobs:
       # Audits are ENFORCING (no `|| true`): a real advisory now FAILS the build.
       # Accepted, upstream-blocked items are ignored narrowly and on purpose —
       # panel/backend/.cargo/audit.toml pins RUSTSEC-2023-0071 (the rsa phantom
-      # lockfile entry from sqlx-mysql; DockPanel is Postgres-only). Unmaintained
+      # lockfile entry from sqlx-mysql; ARSY is Postgres-only). Unmaintained
       # and yanked advisories are cargo-audit *warnings* and do not fail the run.
       - name: Audit Agent
         run: cd panel/agent && cargo audit
@@ -225,7 +225,7 @@ jobs:
         run: cd website/server && npm ci && node ../../scripts/npm-audit-gate.mjs
 
   # s263: the same fact was published on three surfaces — the .md files GitHub
-  # renders, docs.dockpanel.dev, and the dockpanel.dev marketing site — and kept
+  # renders, docs.moonwitness.dev, and the moonwitness.dev marketing site — and kept
   # in sync by hand. It drifted: the app-template count read 152 in ten places
   # while the catalogue held 153, and FEATURES.md was stamped with a version
   # five months and 28 releases old. Neither was discoverable without counting a
@@ -498,7 +498,7 @@ jobs:
       #
       # IT NAMED AN IDENTITY NOBODY RE-VERIFIED. Removing a Docker app deleted
       # the vhost, cert directory, logs and data tree of whatever its
-      # `dockpanel.app.domain` label said — by then possibly a site's. The git
+      # `arsy.app.domain` label said — by then possibly a site's. The git
       # preview sweep did the same from an unattended 5-minute loop.
       #
       # IT WAS NOT INJECTIVE. `domain.replace('.', "-")` maps a.b.com and
@@ -526,7 +526,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      # Pure source analysis. `dockpanel-git-{X}` was the container of a git
+      # Pure source analysis. `arsy-git-{X}` was the container of a git
       # deployment called X AND of a preview of config C on branch B whenever
       # `{C}-pr-{slug(B)}` spelled X — a name `is_valid_name` accepts and an
       # admin creates by ordinary means. `find_container` filtered
@@ -573,7 +573,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      # Pure source analysis. DockPanel's multi-server migration reached every
+      # Pure source analysis. ARSY's multi-server migration reached every
       # HTTP route and NOT ONE background service: all twelve were spawned with
       # `AppState.agent` (the doc-commented "Legacy single-agent accessor")
       # while `AppState.agents` — the registry that "dispatches to local or
@@ -621,7 +621,7 @@ jobs:
       # doesnt work properly". He was right on both halves, and the cause was
       # not his box.
       #
-      # DockPanel's Compose support does not run `docker compose` — it creates
+      # ARSY's Compose support does not run `docker compose` — it creates
       # each service through the Docker API so the panel's own sandboxing
       # applies. That means every convenience compose gives for free has to be
       # reproduced deliberately, and almost none of it was. Services were
@@ -644,7 +644,7 @@ jobs:
       # ATTACKED: 17 deliberate evasions against the fixed tree, of which THREE
       # beat the first draft — an alias field present but EMPTY, a
       # `confirm_running` whose result was discarded (the class that beat the
-      # s294 pin), and a teardown arm that matched `dockpanel.managed` inside
+      # s294 pin), and a teardown arm that matched `arsy.managed` inside
       # the log line NARRATING the check rather than the check itself. Every arm
       # they beat is now keyed on the property. A null mutation is included as a
       # control: a harness that cannot report a green is not reporting.
@@ -672,9 +672,9 @@ jobs:
       postgres:
         image: postgres:16
         env:
-          POSTGRES_USER: dockpanel
-          POSTGRES_PASSWORD: dockpanel
-          POSTGRES_DB: dockpanel
+          POSTGRES_USER: arsy
+          POSTGRES_PASSWORD: arsy
+          POSTGRES_DB: arsy
         # The port map is load-bearing, not decoration: this job runs directly
         # on the runner rather than in a container, so without it the service is
         # reachable only by container name and the API's DATABASE_URL, which
@@ -709,18 +709,18 @@ jobs:
       - name: Build the API
         run: cargo build --release --manifest-path panel/backend/Cargo.toml
 
-      # No agent socket and no /etc/dockpanel here. The API needs exactly three
+      # No agent socket and no /etc/arsy here. The API needs exactly three
       # variables, all hard `.expect()`s with no default (config.rs:96,119,124),
       # and applies its own migrations on boot (main.rs:192) — so a bare runner
       # with an empty postgres is enough.
       - name: Start the API
         env:
-          DATABASE_URL: postgresql://dockpanel:dockpanel@localhost:5432/dockpanel
+          DATABASE_URL: postgresql://arsy:arsy@localhost:5432/arsy
           JWT_SECRET: ci-only-not-a-secret-0123456789abcdef0123456789abcdef
           AGENT_TOKEN: ci-only-agent-token-not-a-secret
-          AGENT_SOCKET: /tmp/dockpanel-agent-absent.sock
+          AGENT_SOCKET: /tmp/arsy-agent-absent.sock
         run: |
-          ./panel/backend/target/release/dockpanel-api > /tmp/api.log 2>&1 &
+          ./panel/backend/target/release/arsy-api > /tmp/api.log 2>&1 &
           API_PID=$!
           for i in $(seq 1 60); do
             # The liveness check is not belt-and-braces. If postgres is
@@ -749,14 +749,14 @@ jobs:
           code=$(curl -s -o /tmp/setup.json -w '%{http_code}' \
             -X POST http://127.0.0.1:3080/api/auth/setup \
             -H 'Content-Type: application/json' \
-            -d '{"email":"admin@dockpanel.dev","password":"DockPanelCI!2026"}')
+            -d '{"email":"admin@moonwitness.dev","password":"ARSYCI!2026"}')
           [ "$code" = "201" ] || { echo "::error::setup returned $code"; cat /tmp/setup.json; exit 1; }
 
       - name: A pinned agent identity refuses an impostor
         env:
-          DOCKPANEL_TEST_DB_CONTAINER: ${{ job.services.postgres.id }}
-          DOCKPANEL_TEST_EMAIL: admin@dockpanel.dev
-          DOCKPANEL_TEST_PASSWORD: DockPanelCI!2026
+          ARSY_TEST_DB_CONTAINER: ${{ job.services.postgres.id }}
+          ARSY_TEST_EMAIL: admin@moonwitness.dev
+          ARSY_TEST_PASSWORD: ARSYCI!2026
         run: bash tests/tier2-certpin-e2e.sh
 
       - name: The API log, on failure

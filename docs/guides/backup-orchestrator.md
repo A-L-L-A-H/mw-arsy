@@ -19,7 +19,7 @@ The fastest way to get started is the one-click preset.
 
 1. Go to **Backup Orchestrator** in the sidebar
 2. Click **Protect Everything**
-3. DockPanel creates a policy that backs up all sites, databases, and volumes daily at 2 AM, keeps 7 days of history, and verifies each backup after creation.
+3. ARSY creates a policy that backs up all sites, databases, and volumes daily at 2 AM, keeps 7 days of history, and verifies each backup after creation.
 
 ## Creating Backup Policies
 
@@ -52,13 +52,13 @@ The backup runs `pg_dump` or `mysqldump` inside the container and stores the com
 **From the CLI:**
 
 ```bash
-dockpanel backup db-create dockpanel-db-myapp myapp --db-type postgres --user root --password secret
+arsy backup db-create arsy-db-myapp myapp --db-type postgres --user root --password secret
 ```
 
 ### List Database Backups
 
 ```bash
-dockpanel backup db-list myapp
+arsy backup db-list myapp
 ```
 
 ### Restore a Database
@@ -80,13 +80,13 @@ The restore replaces the database contents. Encrypted backups are decrypted auto
 **From the CLI:**
 
 ```bash
-dockpanel backup vol-create my_app_data my-app-container
+arsy backup vol-create my_app_data my-app-container
 ```
 
 ### List Volume Backups
 
 ```bash
-dockpanel backup vol-list my-app-container
+arsy backup vol-list my-app-container
 ```
 
 ### Restore a Volume
@@ -113,7 +113,7 @@ Enable **Verify after backup** on a policy to verify every backup automatically.
 **From the CLI:**
 
 ```bash
-dockpanel backup verify --type database myapp myapp_2026-03-22_020000.sql.gz
+arsy backup verify --type database myapp myapp_2026-03-22_020000.sql.gz
 ```
 
 Sample output:
@@ -145,7 +145,7 @@ Store backups off-server. There are exactly two destination types — `s3` and `
 
 Add a destination under **Backup Manager** > **Destinations**, then select it on a policy.
 
-A policy with no destination writes its archives to this server's own disk and nowhere else. DockPanel says so on the Backup Manager overview rather than leaving you to discover it — see [What DockPanel checks for you](prerequisites.md).
+A policy with no destination writes its archives to this server's own disk and nowhere else. ARSY says so on the Backup Manager overview rather than leaving you to discover it — see [What ARSY checks for you](prerequisites.md).
 
 > **Retention off-site covers site archives only.** The prune that enforces a retention count at the destination is keyed on a site's domain, so remote copies of *database* and *volume* backups accumulate there even as their local copies are pruned. Watch the bucket, or prune it on the provider's own lifecycle rules, until this is resource-agnostic.
 
@@ -181,7 +181,7 @@ When encryption is enabled, for the database dumps it covers:
 **From the CLI:**
 
 ```bash
-dockpanel backup health
+arsy backup health
 ```
 
 The dashboard shows:

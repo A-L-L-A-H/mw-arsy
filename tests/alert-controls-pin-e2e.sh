@@ -442,7 +442,7 @@ echo "== §F  the fired severity reaches every payload, not a keyword guess =="
 
 # F1: send_notification_with_runbook — every alert-fire path's actual send —
 # takes severity as the caller's own value and never re-derives it from the
-# subject text. It used to keyword-scan "DockPanel Alert: <title>" for words
+# subject text. It used to keyword-scan "ARSY Alert: <title>" for words
 # like "FAIL"/"critical"/"warning", so a stored-critical whose title read
 # plainly ("Certificate expired") reached PagerDuty as the generic "error".
 SNWR=$(awk '/^pub async fn send_notification_with_runbook\(/{inside=1} inside{print} inside && /^}$/{exit}' "$NOTIF")

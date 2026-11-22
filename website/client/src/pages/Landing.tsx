@@ -67,7 +67,7 @@ function AnimatedTerminal() {
   const [typing, setTyping] = useState('');
   const [phase, setPhase] = useState<'idle' | 'typing' | 'running' | 'done'>('idle');
 
-  const command = 'curl -sL dockpanel.dev/install.sh | sudo bash';
+  const command = 'curl -sL moonwitness.dev/install.sh | sudo bash';
 
   useEffect(() => {
     if (!inView || started.current) return;
@@ -89,8 +89,8 @@ function AnimatedTerminal() {
 
         const output: { text: string; cls: string; delay: number }[] = [
           { text: '  Detecting OS... Ubuntu 24.04 LTS', cls: 'text-zinc-600', delay: 400 },
-          { text: `  Downloading dockpanel-api (${m.binary.api} MB)...`, cls: 'text-zinc-600', delay: 600 },
-          { text: '  Downloading dockpanel-agent...', cls: 'text-zinc-600', delay: 350 },
+          { text: `  Downloading arsy-api (${m.binary.api} MB)...`, cls: 'text-zinc-600', delay: 600 },
+          { text: '  Downloading arsy-agent...', cls: 'text-zinc-600', delay: 350 },
           { text: '  Configuring nginx & PostgreSQL...', cls: 'text-zinc-600', delay: 500 },
           { text: '  Starting services...', cls: 'text-zinc-600', delay: 400 },
           { text: '\u00A0', cls: '', delay: 250 },
@@ -103,7 +103,7 @@ function AnimatedTerminal() {
           // edit: the version came out for being un-bumpable and the "41 MB"
           // beside it, wrong by a factor of two, stayed. Both were decoration;
           // only one was noticed. It is quoted from the register now.
-          { text: `\u2713 DockPanel installed in ${m.installSeconds}s`, cls: 'text-emerald-400 font-medium', delay: 350 },
+          { text: `\u2713 ARSY installed in ${m.installSeconds}s`, cls: 'text-emerald-400 font-medium', delay: 350 },
           { text: '  Panel \u2192 https://your-server:3080', cls: 'text-zinc-300', delay: 200 },
         ];
 
@@ -158,7 +158,7 @@ function RamBar({ name, mb, max, highlight = false, delay = 0 }: {
   const width = (mb / max) * 100;
 
   // The figure sits OUTSIDE the fill, in a fixed column, for the reason this
-  // chart exists: DockPanel is a small fraction of an 800 MB scale, so its bar
+  // chart exists: ARSY is a small fraction of an 800 MB scale, so its bar
   // is narrow and a label printed inside it was clipped to nothing — the one
   // number the chart is making an argument about was the only one you could
   // not read. Putting every figure in the same right-hand column also means
@@ -262,8 +262,8 @@ const steps = [
 const faqs = [
   { q: 'Is it really free?', a: 'Every feature, every server, no limits. Licensed under the AGPL v3 — free software, on as many servers as you like, commercially included. There is no premium tier.' },
   { q: 'System requirements?', a: '512 MB RAM, 1 CPU, 10 GB disk. Runs on Ubuntu, Debian, CentOS, Rocky, AlmaLinux, and Fedora. ARM64 works too.' },
-  { q: 'How is this different from cPanel?', a: `cPanel uses ~${m.competitorRam.cPanel} MB of RAM, costs $15/month, and doesn't support Docker. DockPanel's two services take about ${m.ram.services} MB between them, or roughly ${m.ram.fullStack} MB counting the bundled PostgreSQL, cost nothing, and ship with ${m.templates} Docker templates, a WAF, passkey authentication, Git deploys, a CLI, and multi-server management.` },
-  { q: 'What happens if DockPanel goes down?', a: 'Your sites keep running. Nginx and Docker are independent processes \u2014 the panel is just the management layer. It auto-restarts via systemd if it ever stops.' },
+  { q: 'How is this different from cPanel?', a: `cPanel uses ~${m.competitorRam.cPanel} MB of RAM, costs $15/month, and doesn't support Docker. ARSY's two services take about ${m.ram.services} MB between them, or roughly ${m.ram.fullStack} MB counting the bundled PostgreSQL, cost nothing, and ship with ${m.templates} Docker templates, a WAF, passkey authentication, Git deploys, a CLI, and multi-server management.` },
+  { q: 'What happens if ARSY goes down?', a: 'Your sites keep running. Nginx and Docker are independent processes \u2014 the panel is just the management layer. It auto-restarts via systemd if it ever stops.' },
   { q: 'Can I manage multiple servers?', a: 'As many as you want. Install a lightweight agent on each server and manage them all from one dashboard.' },
   // "On a $5 VPS, that's the difference between running 20 sites and running 2"
   // used to close this answer. Nothing derives 20 or 2, and a page arguing from
@@ -307,14 +307,14 @@ export default function Landing() {
   }, []);
 
   useEffect(() => {
-    fetch('https://api.github.com/repos/ovexro/dockpanel')
+    fetch('https://api.github.com/repos/A-L-L-A-H/mw-arsy')
       .then(r => r.json())
       .then(d => { if (d.stargazers_count) setStars(d.stargazers_count); })
       .catch(() => {});
   }, []);
 
   const handleCopy = () => {
-    navigator.clipboard.writeText('curl -sL https://dockpanel.dev/install.sh | sudo bash');
+    navigator.clipboard.writeText('curl -sL https://moonwitness.dev/install.sh | sudo bash');
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -348,7 +348,7 @@ export default function Landing() {
         <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2.5">
             <Logo className="h-6 w-6" />
-            <span className="text-[17px] font-semibold text-[#f4f4f5] tracking-[-0.01em]">DockPanel</span>
+            <span className="text-[17px] font-semibold text-[#f4f4f5] tracking-[-0.01em]">ARSY</span>
           </Link>
           <div className="hidden md:flex items-center gap-8 text-[13px] font-medium text-zinc-500">
             <NavLink href="#features" label="Features" active={activeSection === 'features'} />
@@ -358,7 +358,7 @@ export default function Landing() {
             <NavLink href="#faq" label="FAQ" active={activeSection === 'faq'} />
           </div>
           <div className="flex items-center gap-3">
-            <a href="https://github.com/ovexro/dockpanel" className="hidden sm:flex items-center gap-1.5 text-[13px] text-zinc-500 hover:text-white transition-colors">
+            <a href="https://github.com/A-L-L-A-H/mw-arsy" className="hidden sm:flex items-center gap-1.5 text-[13px] text-zinc-500 hover:text-white transition-colors">
               <Github className="w-4 h-4" />
               {stars !== null && (
                 <span className="flex items-center gap-1 text-xs">
@@ -367,7 +367,7 @@ export default function Landing() {
                 </span>
               )}
             </a>
-            <a href="https://docs.dockpanel.dev" className="hidden sm:block text-[13px] font-semibold px-4 py-1.5 rounded-md bg-white text-zinc-900 hover:bg-zinc-200 transition-colors">
+            <a href="https://docs.moonwitness.dev" className="hidden sm:block text-[13px] font-semibold px-4 py-1.5 rounded-md bg-white text-zinc-900 hover:bg-zinc-200 transition-colors">
               Docs
             </a>
             <button onClick={() => setMobileMenu(true)} className="md:hidden p-1 text-zinc-400 hover:text-white transition-colors">
@@ -400,10 +400,10 @@ export default function Landing() {
                 <a href="#pricing" onClick={() => setMobileMenu(false)} className="text-zinc-300 hover:text-white transition-colors">Pricing</a>
                 <a href="#faq" onClick={() => setMobileMenu(false)} className="text-zinc-300 hover:text-white transition-colors">FAQ</a>
                 <hr className="border-zinc-800" />
-                <a href="https://github.com/ovexro/dockpanel" className="flex items-center gap-2 text-zinc-300 hover:text-white transition-colors">
+                <a href="https://github.com/A-L-L-A-H/mw-arsy" className="flex items-center gap-2 text-zinc-300 hover:text-white transition-colors">
                   <Github className="w-4 h-4" /> GitHub
                 </a>
-                <a href="https://docs.dockpanel.dev" className="flex items-center gap-2 text-zinc-300 hover:text-white transition-colors">
+                <a href="https://docs.moonwitness.dev" className="flex items-center gap-2 text-zinc-300 hover:text-white transition-colors">
                   Docs
                 </a>
               </div>
@@ -507,7 +507,7 @@ export default function Landing() {
             <div className="flex items-stretch border border-[#1e1e22] bg-[#101012] hover:border-[#2a2a30] transition-colors">
               <span className="mono select-none px-4 sm:px-5 flex items-center text-[#3f3f46] border-r border-[#1e1e22]">$</span>
               <code className="mono flex-1 min-w-0 overflow-x-auto whitespace-nowrap px-4 sm:px-5 py-4 text-[13px] sm:text-[15px] text-[#f4f4f5]">
-                curl -sL dockpanel.dev/install.sh | sudo bash
+                curl -sL moonwitness.dev/install.sh | sudo bash
               </code>
               <button
                 onClick={handleCopy}
@@ -520,10 +520,10 @@ export default function Landing() {
             </div>
 
             <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-3">
-              <a href="https://docs.dockpanel.dev" className="text-sm font-medium text-[#f4f4f5] underline decoration-[#3f3f46] hover:decoration-[#f4f4f5] underline-offset-4 transition-colors">
+              <a href="https://docs.moonwitness.dev" className="text-sm font-medium text-[#f4f4f5] underline decoration-[#3f3f46] hover:decoration-[#f4f4f5] underline-offset-4 transition-colors">
                 Read the docs
               </a>
-              <a href="https://github.com/ovexro/dockpanel" className="text-sm font-medium text-[#a3a3ad] hover:text-[#f4f4f5] transition-colors inline-flex items-center gap-1.5">
+              <a href="https://github.com/A-L-L-A-H/mw-arsy" className="text-sm font-medium text-[#a3a3ad] hover:text-[#f4f4f5] transition-colors inline-flex items-center gap-1.5">
                 <Github className="w-3.5 h-3.5" /> Source
               </a>
               <p className="mono text-[11px] text-[#3f3f46] ml-auto">
@@ -542,7 +542,7 @@ export default function Landing() {
           >
             <img
               src="/screenshots/dp-dashboard.png"
-              alt="The DockPanel dashboard: CPU, memory and disk over 24 hours, with uptime, sites, databases and container counts beneath."
+              alt="The ARSY dashboard: CPU, memory and disk over 24 hours, with uptime, sites, databases and container counts beneath."
               className="w-full block border border-[#1e1e22]"
             />
             {/* Names no host. The demo box is private, and a landing page is
@@ -708,7 +708,7 @@ export default function Landing() {
           </div>
 
           <div className="max-w-4xl space-y-3 mb-16">
-            <RamBar name="DockPanel" mb={m.ram.fullStack} max={m.competitorRam.cPanel} highlight delay={0} />
+            <RamBar name="ARSY" mb={m.ram.fullStack} max={m.competitorRam.cPanel} highlight delay={0} />
             <RamBar name="CloudPanel" mb={m.competitorRam.cloudPanel} max={m.competitorRam.cPanel} delay={0.1} />
             <RamBar name="Plesk" mb={m.competitorRam.plesk} max={m.competitorRam.cPanel} delay={0.2} />
             <RamBar name="HestiaCP" mb={m.competitorRam.hestiaCp} max={m.competitorRam.cPanel} delay={0.3} />
@@ -728,7 +728,7 @@ export default function Landing() {
               </thead>
               <tbody>
                 {[
-                  { n: 'DockPanel', t: '<60 sec', p: 'Free', d: true, s: true, hl: true },
+                  { n: 'ARSY', t: '<60 sec', p: 'Free', d: true, s: true, hl: true },
                   { n: 'cPanel', t: '~45 min', p: '$15/mo', d: false, s: true },
                   { n: 'Plesk', t: '~20 min', p: '$10/mo', d: false, s: true },
                   { n: 'RunCloud', t: '~5 min', p: '$8/mo', d: false, s: false },
@@ -782,14 +782,14 @@ export default function Landing() {
               </dl>
 
               <div className="mt-9 max-w-2xl flex flex-wrap items-center gap-x-6 gap-y-3">
-                <a href="https://github.com/ovexro/dockpanel" className="inline-flex items-center gap-2 text-sm font-medium text-[#f4f4f5] underline decoration-[#3f3f46] hover:decoration-[#f4f4f5] underline-offset-4 transition-colors">
+                <a href="https://github.com/A-L-L-A-H/mw-arsy" className="inline-flex items-center gap-2 text-sm font-medium text-[#f4f4f5] underline decoration-[#3f3f46] hover:decoration-[#f4f4f5] underline-offset-4 transition-colors">
                   <Github className="w-3.5 h-3.5" /> View on GitHub
                 </a>
-                <a href="https://docs.dockpanel.dev" className="text-sm font-medium text-[#a3a3ad] hover:text-[#f4f4f5] transition-colors">
+                <a href="https://docs.moonwitness.dev" className="text-sm font-medium text-[#a3a3ad] hover:text-[#f4f4f5] transition-colors">
                   Read the docs
                 </a>
                 <p className="mono text-[11px] text-[#3f3f46] ml-auto">
-                  stuck? <a href="mailto:hello@dockpanel.dev" className="text-[#6b6b74] hover:text-[#f4f4f5] underline underline-offset-4 decoration-[#3f3f46] transition-colors">hello@dockpanel.dev</a>
+                  stuck? <a href="mailto:hello@moonwitness.dev" className="text-[#6b6b74] hover:text-[#f4f4f5] underline underline-offset-4 decoration-[#3f3f46] transition-colors">hello@moonwitness.dev</a>
                 </p>
               </div>
 
@@ -819,10 +819,10 @@ export default function Landing() {
                   security fix ships the day it is written instead of the weekend after.
                 </p>
                 <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-3">
-                  <a href="https://github.com/sponsors/ovexro" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-sm font-medium text-[#f4f4f5] underline decoration-[#3f3f46] hover:decoration-[#f4f4f5] underline-offset-4 transition-colors">
+                  <a href="https://github.com/sponsors/A-L-L-A-H" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-sm font-medium text-[#f4f4f5] underline decoration-[#3f3f46] hover:decoration-[#f4f4f5] underline-offset-4 transition-colors">
                     <Github className="w-3.5 h-3.5" /> GitHub Sponsors
                   </a>
-                  <a href="https://www.paypal.com/paypalme/ovexro" target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-[#a3a3ad] hover:text-[#f4f4f5] transition-colors">
+                  <a href="https://www.paypal.com/paypalme/A-L-L-A-H" target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-[#a3a3ad] hover:text-[#f4f4f5] transition-colors">
                     PayPal
                   </a>
                   <p className="mono text-[11px] text-[#3f3f46] ml-auto">entirely optional</p>
@@ -867,7 +867,7 @@ export default function Landing() {
             <div>
               <div className="flex items-center gap-2.5 mb-3">
                 <Logo className="h-6 w-6" />
-                <span className="text-[17px] font-semibold text-[#f4f4f5] tracking-[-0.01em]">DockPanel</span>
+                <span className="text-[17px] font-semibold text-[#f4f4f5] tracking-[-0.01em]">ARSY</span>
               </div>
               <p className="text-[13px] text-zinc-600 max-w-xs leading-relaxed">
                 Lightweight, Docker-native server management.<br />
@@ -880,8 +880,8 @@ export default function Landing() {
                 <div className="flex flex-col gap-2.5 text-[13px] text-zinc-600">
                   <a href="#features" className="hover:text-zinc-300 transition-colors">Features</a>
                   <Link to="/security" className="hover:text-zinc-300 transition-colors">Security</Link>
-                  <a href="https://docs.dockpanel.dev" className="hover:text-zinc-300 transition-colors">Docs</a>
-                  <a href="https://github.com/ovexro/dockpanel" className="hover:text-zinc-300 transition-colors">GitHub</a>
+                  <a href="https://docs.moonwitness.dev" className="hover:text-zinc-300 transition-colors">Docs</a>
+                  <a href="https://github.com/A-L-L-A-H/mw-arsy" className="hover:text-zinc-300 transition-colors">GitHub</a>
                 </div>
               </div>
               <div>
@@ -894,7 +894,7 @@ export default function Landing() {
             </div>
           </div>
           <div className="mt-10 pt-6 border-t border-zinc-800/40 flex flex-col sm:flex-row items-center justify-between gap-2">
-            <span className="text-[12px] text-zinc-700">&copy; 2026 DockPanel</span>
+            <span className="text-[12px] text-zinc-700">&copy; 2026 ARSY</span>
             <span className="text-[11px] text-zinc-700">Solo-developed &middot; AGPL v3</span>
           </div>
         </div>

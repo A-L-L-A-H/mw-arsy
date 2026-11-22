@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # shutdown-drain-race-pin-e2e.sh — s466
 #
-# Standing carry from s465 (project_dockpanel_tech_debt_p204): the demo
-# deploy's own `systemctl stop dockpanel-api` triggered the graceful-shutdown
+# Standing carry from s465 (project_arsy_tech_debt_p204): the demo
+# deploy's own `systemctl stop arsy-api` triggered the graceful-shutdown
 # watchdog (main.rs::shutdown_signal, GRACEFUL_SHUTDOWN_TIMEOUT = 20s) for the
 # FIRST time in 12 sessions of monitoring — a real forced exit
 # (`std::process::exit(1)`, systemd `status=1/FAILURE`), not another clean
@@ -50,7 +50,7 @@
 #
 # Adversarially reviewed via a 3-lens skeptic workflow (correctness,
 # completeness-vs-independent-grep, blast-radius) before shipping — see
-# project_dockpanel_tech_debt_p205 for the verdicts.
+# project_arsy_tech_debt_p205 for the verdicts.
 
 set -uo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 1

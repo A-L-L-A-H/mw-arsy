@@ -420,7 +420,7 @@ async fn execute_policy(db: &PgPool, agents: &AgentRegistry, policy: &PolicyRow,
 
                     let mut uploaded = false;
                     if let (Some(dest), false) = (&destination, destination_down) {
-                        let filepath = format!("/var/backups/dockpanel/{domain}/{filename}");
+                        let filepath = format!("/var/backups/arsy/{domain}/{filename}");
                         uploaded = upload_to_destination(agent, dest, &filepath, &format!("site {domain}")).await;
                         if uploaded {
                             // Enforce remote retention too, or the destination grows
@@ -506,7 +506,7 @@ async fn execute_policy(db: &PgPool, agents: &AgentRegistry, policy: &PolicyRow,
     if policy.backup_databases {
         // `server_id` comes free from the join this query already makes — the same
         // shape `create_db_backup` uses. Without it the panel `docker exec`s whatever
-        // answers to `dockpanel-db-{name}` on ITS OWN host, and that name is unique
+        // answers to `arsy-db-{name}` on ITS OWN host, and that name is unique
         // only per owner, so the dump can be another tenant's database entirely.
         //
         // LEFT JOIN both owner tables + COALESCE, same pattern as databases.rs's
@@ -549,7 +549,7 @@ async fn execute_policy(db: &PgPool, agents: &AgentRegistry, policy: &PolicyRow,
             };
             let agent = &agent;
             let password = crate::services::secrets_crypto::decrypt_credential_or_legacy(password_enc, jwt_secret);
-            let container_name = format!("dockpanel-db-{db_name}");
+            let container_name = format!("arsy-db-{db_name}");
             let body = serde_json::json!({
                 "container_name": container_name,
                 "db_name": db_name,
@@ -579,8 +579,8 @@ async fn execute_policy(db: &PgPool, agents: &AgentRegistry, policy: &PolicyRow,
                     let mut uploaded = false;
                     if let (Some(dest), false) = (&destination, destination_down) {
                         // `database_backup::backup_dir` nests per database:
-                        // /var/backups/dockpanel/databases/<db_name>/<filename>.
-                        let filepath = format!("/var/backups/dockpanel/databases/{db_name}/{filename}");
+                        // /var/backups/arsy/databases/<db_name>/<filename>.
+                        let filepath = format!("/var/backups/arsy/databases/{db_name}/{filename}");
                         uploaded = upload_to_destination(agent, dest, &filepath, &format!("database {db_name}")).await;
                         if !uploaded {
                             upload_failures += 1;
@@ -707,8 +707,8 @@ async fn execute_policy(db: &PgPool, agents: &AgentRegistry, policy: &PolicyRow,
                                             let mut uploaded = false;
                                             if let (Some(dest), false) = (&destination, destination_down) {
                                                 // `volume_backup::backup_dir` nests per container:
-                                                // /var/backups/dockpanel/volumes/<container>/<filename>.
-                                                let filepath = format!("/var/backups/dockpanel/volumes/{container_name}/{filename}");
+                                                // /var/backups/arsy/volumes/<container>/<filename>.
+                                                let filepath = format!("/var/backups/arsy/volumes/{container_name}/{filename}");
                                                 uploaded = upload_to_destination(agent, dest, &filepath, &format!("volume {vol_name}")).await;
                                                 if !uploaded {
                                                     upload_failures += 1;

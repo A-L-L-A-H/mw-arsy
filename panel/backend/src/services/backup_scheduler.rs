@@ -295,7 +295,7 @@ async fn run_scheduled_backup(
             None
         }
     };
-    let filepath = format!("/var/backups/dockpanel/{}/{}", row.domain, filename);
+    let filepath = format!("/var/backups/arsy/{}/{}", row.domain, filename);
 
     // Carries an exhausted upload past the INSERT. The archive still gets a row —
     // that row is what retention enumerates and what the hash chain hangs off —

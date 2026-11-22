@@ -8,7 +8,7 @@
 --
 --   * An operator who already holds a certificate — a wildcard from their CA, a
 --     corporate PKI leaf, an EV certificate — had nowhere to put it. The single
---     -site upload writes into `/etc/dockpanel/ssl/{domain}/`, which is the
+--     -site upload writes into `/etc/arsy/ssl/{domain}/`, which is the
 --     directory the stack teardown DELETES and every scheduled renewer treats
 --     as its own, so it cannot be shared by several stacks or survive one of
 --     them being removed.
@@ -21,8 +21,8 @@
 --     may not repeat.
 --
 -- `tls_certificates` holds METADATA ONLY. The PEM pair lives on the agent, at
--- `/etc/dockpanel/ssl-registry/<alias>/`, deliberately a sibling of — never
--- inside — `/etc/dockpanel/ssl/`, because everything that walks that tree
+-- `/etc/arsy/ssl-registry/<alias>/`, deliberately a sibling of — never
+-- inside — `/etc/arsy/ssl/`, because everything that walks that tree
 -- treats each directory as a domain to renew or to delete. Postgres records
 -- what the agent parsed out of the certificate (names, issuer, validity,
 -- fingerprint) so the panel can list, warn on expiry and refuse a claim the

@@ -273,7 +273,7 @@ export default function PublicStatusPage() {
 
         {/* Footer */}
         <div className="text-center mt-10 text-xs text-dark-600 font-mono">
-          Last updated {timeAgo(data.updated_at)} — Powered by DockPanel
+          Last updated {timeAgo(data.updated_at)} — Powered by ARSY
         </div>
       </div>
     </div>

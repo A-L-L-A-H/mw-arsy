@@ -306,7 +306,7 @@ async fn change_hostname(Json(body): Json<serde_json::Value>) -> Result<Json<ser
 /// GET /system/port-check?port=8080 — Is this host port free to publish on?
 ///
 /// Answers the one question the deploy preflight cannot answer from the panel's
-/// own records: a port can be held by something DockPanel doesn't manage — the
+/// own records: a port can be held by something ARSY doesn't manage — the
 /// operator's own service, a stray container, a system daemon — and the only
 /// authority on that is the host itself.
 ///

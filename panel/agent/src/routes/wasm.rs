@@ -127,8 +127,8 @@ async fn upload_component(
         name: name.clone(),
         version: version.clone(),
         description,
-        component_path: format!("/var/lib/dockpanel/wasm-components/{id}.wasm"),
-        wit_path: wit.map(|w| format!("/var/lib/dockpanel/wasm-components/{id}.wit")),
+        component_path: format!("/var/lib/arsy/wasm-components/{id}.wasm"),
+        wit_path: wit.map(|w| format!("/var/lib/arsy/wasm-components/{id}.wit")),
         resource_limits,
         created_at: chrono::Utc::now(),
         updated_at: chrono::Utc::now(),
@@ -239,9 +239,9 @@ async fn unload_component(
     }
 
     // Remove from disk
-    let path = format!("/var/lib/dockpanel/wasm-components/{id}.wasm");
+    let path = format!("/var/lib/arsy/wasm-components/{id}.wasm");
     tokio::fs::remove_file(&path).await.ok();
-    let wit_path = format!("/var/lib/dockpanel/wasm-components/{id}.wit");
+    let wit_path = format!("/var/lib/arsy/wasm-components/{id}.wit");
     tokio::fs::remove_file(&wit_path).await.ok();
 
     Ok(Json(serde_json::json!({ "ok": true })))

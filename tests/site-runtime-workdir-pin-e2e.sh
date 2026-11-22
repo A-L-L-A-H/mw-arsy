@@ -201,7 +201,7 @@ if [ -n "$SU" ]; then
 
   # B3 — the description marker is the independent second identifier, and the
   # whole reason two markers exist is that either one alone can be edited away.
-  if has "$SU" 'Description=DockPanel App: \{domain\}'; then
+  if has "$SU" 'Description=ARSY App: \{domain\}'; then
     ok "B3 the description marker still identifies the unit independently"
   else
     bad "B3 the description marker is gone — a single edited line now decides ownership"

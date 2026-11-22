@@ -10,7 +10,7 @@
 #      way — neither can report a new advisory — so both directions are pinned,
 #      along with there being exactly ONE allowlist.
 #   B. A site is installed at the scheme it can actually serve.
-#   C. …and the promotion to HTTPS only ever touches the URL DockPanel itself set.
+#   C. …and the promotion to HTTPS only ever touches the URL ARSY itself set.
 #   D. A certificate that stops renewing is announced, not just logged.
 #   E. The installer does not read "I could not ask systemd" as "the service
 #      failed" — which aborted a real fresh install four steps from the end.
@@ -383,7 +383,7 @@ else
 fi
 
 echo
-echo "── C: the promotion only ever touches the URL DockPanel itself set ──"
+echo "── C: the promotion only ever touches the URL ARSY itself set ──"
 
 # Extracted so it can be tested at all — the surrounding function shells out to
 # wp-cli. A settable canonical URL is a site-takeover primitive, so the guard
@@ -475,7 +475,7 @@ fi
 # the one-liner this helper replaced turned it red on a correct installer.
 # Controlled in §I.
 check "no bare is-active decides a service's fate" \
-  "$(code_count "$SETUP" -F -e 'if systemctl is-active --quiet dockpanel')" "0"
+  "$(code_count "$SETUP" -F -e 'if systemctl is-active --quiet arsy')" "0"
 
 # Extract the helper and run it against a stubbed systemctl. STRIP FIRST, then
 # slice: code_lines blanks rather than deletes, so the range boundaries land on
@@ -864,8 +864,8 @@ else
 fi
 
 cp "$SETUP" "$FIXDIR/x_setup.sh"
-printf '\nif systemctl is-active --quiet dockpanel; then :; fi\n' >> "$FIXDIR/x_setup.sh"
-if [ "$(code_count "$FIXDIR/x_setup.sh" -F -e 'if systemctl is-active --quiet dockpanel')" -gt 0 ]; then
+printf '\nif systemctl is-active --quiet arsy; then :; fi\n' >> "$FIXDIR/x_setup.sh"
+if [ "$(code_count "$FIXDIR/x_setup.sh" -F -e 'if systemctl is-active --quiet arsy')" -gt 0 ]; then
   ok "§E's bare-is-active arm still fires when the one-liner is really in code"
 else
   bad "§E's bare-is-active arm no longer fires on a real bare is-active — the stripper is eating code"
@@ -929,7 +929,7 @@ fi
 echo
 echo "── K: a mail host's certificate never destroys the one already there ──"
 
-# The mail auto-SSL leg writes /etc/dockpanel/ssl/{domain}/fullchain.pem through
+# The mail auto-SSL leg writes /etc/arsy/ssl/{domain}/fullchain.pem through
 # the agent, and that file is not the mail host's private property: a DNS-01
 # WILDCARD is stored under the zone apex, which is exactly the name a mail domain
 # is normally created at. Every arm here is scoped with `prod_lines`, because this

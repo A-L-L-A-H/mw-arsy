@@ -670,7 +670,7 @@ pub async fn export_vault(
         .bind(vault_id).fetch_all(&state.db).await
         .map_err(|e| internal_error("export vault", e))?;
 
-    // Export with encrypted values (portable — can be imported on another DockPanel with same key)
+    // Export with encrypted values (portable — can be imported on another ARSY with same key)
     let secrets_export: Vec<serde_json::Value> = rows.into_iter().map(|r| {
         serde_json::json!({
             "key": r.key,

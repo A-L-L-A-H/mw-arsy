@@ -305,7 +305,7 @@ pub async fn invite(
     let _ = email::send_email(
         &state.db,
         &email_addr,
-        &format!("Invitation to join {} on DockPanel", team_name.0),
+        &format!("Invitation to join {} on ARSY", team_name.0),
         &format!(
             "<h2>You've been invited!</h2>\
              <p>{} has invited you to join <strong>{}</strong> as a <strong>{role}</strong>.</p>\

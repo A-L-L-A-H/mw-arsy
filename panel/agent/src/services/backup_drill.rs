@@ -36,14 +36,14 @@ pub async fn drill_site_backup(domain: &str, filename: &str) -> Result<DrillResu
         return Err("Invalid filename".to_string());
     }
 
-    let backup_path = format!("/var/backups/dockpanel/{domain}/{filename}");
+    let backup_path = format!("/var/backups/arsy/{domain}/{filename}");
     if !std::path::Path::new(&backup_path).exists() {
         return Err("Backup file not found".to_string());
     }
 
     let drill_id = uuid::Uuid::new_v4().to_string();
-    let scratch_dir = format!("/var/lib/dockpanel/drills/{drill_id}");
-    let container_name = format!("dockpanel-drill-{}", &drill_id[..8]);
+    let scratch_dir = format!("/var/lib/arsy/drills/{drill_id}");
+    let container_name = format!("arsy-drill-{}", &drill_id[..8]);
 
     // Always tear down on exit. Use a guard pattern via an inner async block.
     let result = run_site_drill(&backup_path, &scratch_dir, &container_name, start).await;
@@ -208,13 +208,13 @@ pub async fn drill_db_backup(
         return Err("Invalid filename".to_string());
     }
 
-    let backup_path = format!("/var/backups/dockpanel/databases/{db_name}/{filename}");
+    let backup_path = format!("/var/backups/arsy/databases/{db_name}/{filename}");
     if !std::path::Path::new(&backup_path).exists() {
         return Err("Backup file not found".to_string());
     }
 
     let drill_id = uuid::Uuid::new_v4().to_string();
-    let container_name = format!("dockpanel-drill-db-{}", &drill_id[..8]);
+    let container_name = format!("arsy-drill-db-{}", &drill_id[..8]);
     let test_password = "drill_test_pass_12345";
 
     let result = match db_type {
@@ -555,16 +555,16 @@ pub async fn drill_volume_backup(
         return Err("Invalid filename".to_string());
     }
 
-    let backup_dir = format!("/var/backups/dockpanel/volumes/{container_name}");
+    let backup_dir = format!("/var/backups/arsy/volumes/{container_name}");
     let backup_path = format!("{backup_dir}/{filename}");
     if !std::path::Path::new(&backup_path).exists() {
         return Err("Backup file not found".to_string());
     }
 
     let drill_id = uuid::Uuid::new_v4().to_string();
-    let scratch_volume = format!("dockpanel-drill-vol-{}", &drill_id[..8]);
-    let restore_container = format!("dockpanel-drill-vrestore-{}", &drill_id[..8]);
-    let probe_container = format!("dockpanel-drill-vprobe-{}", &drill_id[..8]);
+    let scratch_volume = format!("arsy-drill-vol-{}", &drill_id[..8]);
+    let restore_container = format!("arsy-drill-vrestore-{}", &drill_id[..8]);
+    let probe_container = format!("arsy-drill-vprobe-{}", &drill_id[..8]);
 
     let result = run_volume_drill(
         &backup_dir, filename, &scratch_volume,

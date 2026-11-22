@@ -13,7 +13,7 @@ use crate::error::{err, internal_error, ApiError};
 use crate::services::activity;
 use crate::AppState;
 
-const BRANDING_DIR: &str = "/var/lib/dockpanel/branding";
+const BRANDING_DIR: &str = "/var/lib/arsy/branding";
 const MAX_LOGO_BYTES: usize = 2 * 1024 * 1024;
 
 #[derive(serde::Serialize)]

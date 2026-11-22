@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# DockPanel Remote Agent Installer
+# ARSY Remote Agent Installer
 # Usage: curl -sSL https://panel.example.com/install-agent.sh | sudo bash -s -- \
 #   --panel-url https://panel.example.com \
 #   --token <agent_token> \
 #   --server-id <server_uuid>
 #
-# This installs ONLY the DockPanel agent binary (no database, no API, no frontend).
+# This installs ONLY the ARSY agent binary (no database, no API, no frontend).
 # The agent connects back to the panel via HTTPS on port 9443.
 
 set -euo pipefail
@@ -52,7 +52,7 @@ if [[ "$PANEL_URL" == --* || "$TOKEN" == --* || "$SERVER_ID" == --* ]]; then
 fi
 
 echo "======================================"
-echo "  DockPanel Agent Installer (Remote)"
+echo "  ARSY Agent Installer (Remote)"
 echo "======================================"
 echo ""
 
@@ -77,19 +77,19 @@ detect_pkg_manager() {
         # Lock timeout: without it, any agent install/update racing
         # unattended-upgrades dies on "Could not get lock /var/lib/dpkg/lock-frontend".
         mkdir -p /etc/apt/apt.conf.d
-        cat > /etc/apt/apt.conf.d/99-dockpanel-lock-wait.conf << 'APT_EOF'
+        cat > /etc/apt/apt.conf.d/99-arsy-lock-wait.conf << 'APT_EOF'
 DPkg::Lock::Timeout "300";
 APT_EOF
         # needrestart: the agent links libc, so a plain libc6 upgrade puts
-        # dockpanel-agent.service on needrestart's restart list — killing the
+        # arsy-agent.service on needrestart's restart list — killing the
         # process that is streaming that very update's progress back to the
         # panel, which then reports a clean update as failed. Exclude only the
         # agent; every other service still restarts.
         if [ -d /etc/needrestart ]; then
             mkdir -p /etc/needrestart/conf.d
-            cat > /etc/needrestart/conf.d/99-dockpanel.conf << 'NR_EOF'
-# Managed by DockPanel — do not edit; rewritten by setup.sh/update.sh.
-$nrconf{override_rc}{qr(^dockpanel-agent)} = 0;
+            cat > /etc/needrestart/conf.d/99-arsy.conf << 'NR_EOF'
+# Managed by ARSY — do not edit; rewritten by setup.sh/update.sh.
+$nrconf{override_rc}{qr(^arsy-agent)} = 0;
 1;
 NR_EOF
         fi
@@ -177,37 +177,37 @@ pkg_install curl openssl sshpass
 
 # Create directories
 echo "[3/7] Creating directories..."
-mkdir -p /etc/dockpanel/ssl
-mkdir -p /var/run/dockpanel
+mkdir -p /etc/arsy/ssl
+mkdir -p /var/run/arsy
 mkdir -p /var/www
-mkdir -p /var/backups/dockpanel
-mkdir -p /var/lib/dockpanel/git
+mkdir -p /var/backups/arsy
+mkdir -p /var/lib/arsy/git
 
 # Ensure socket directory persists across reboots
-echo "d /run/dockpanel 0755 root root -" > /etc/tmpfiles.d/dockpanel.conf
+echo "d /run/arsy 0755 root root -" > /etc/tmpfiles.d/arsy.conf
 
 # Save agent token and server ID
 echo "[4/7] Saving configuration..."
-echo "$TOKEN" > /etc/dockpanel/agent.token
-chmod 600 /etc/dockpanel/agent.token
+echo "$TOKEN" > /etc/arsy/agent.token
+chmod 600 /etc/arsy/agent.token
 
 # Persist agent configuration
 # AGENT_TOKEN + AGENT_LISTEN_TCP = direct multi-server TCP access
-# DOCKPANEL_* vars = phone-home mode (agent checks in with central panel)
-cat > /etc/dockpanel/agent.env << ENVEOF
+# ARSY_* vars = phone-home mode (agent checks in with central panel)
+cat > /etc/arsy/agent.env << ENVEOF
 AGENT_TOKEN=$TOKEN
 AGENT_LISTEN_TCP=0.0.0.0:$AGENT_PORT
-DOCKPANEL_SERVER_TOKEN=$TOKEN
-DOCKPANEL_SERVER_ID=$SERVER_ID
-DOCKPANEL_CENTRAL_URL=$PANEL_URL
+ARSY_SERVER_TOKEN=$TOKEN
+ARSY_SERVER_ID=$SERVER_ID
+ARSY_CENTRAL_URL=$PANEL_URL
 ENVEOF
-chmod 600 /etc/dockpanel/agent.env
+chmod 600 /etc/arsy/agent.env
 
 # Download agent binary (naming matches GitHub release assets)
 #
-# Until s336 this was the ONE path that put a DockPanel binary on a machine
+# Until s336 this was the ONE path that put a ARSY binary on a machine
 # without checking it: no checksum, no signature, and the bytes went straight
-# onto /usr/local/bin/dockpanel-agent. Its three siblings all verify sha256
+# onto /usr/local/bin/arsy-agent. Its three siblings all verify sha256
 # against the release's checksums.txt and all quarantine first — setup.sh's own
 # comment states the contract, "so the live executable path never holds
 # unverified bytes". This is the installer the Add-Server dialog tells an
@@ -218,10 +218,10 @@ chmod 600 /etc/dockpanel/agent.env
 # running the kernel refuses the open with ETXTBSY, curl reports a write failure,
 # and the branch below blamed the network. Quarantine + rename fixes that too:
 # rename over a running executable is allowed, writing to it is not.
-ASSET="dockpanel-agent-linux-${ARCH_LABEL}"
-BASE_URL="https://github.com/ovexro/dockpanel/releases/latest/download"
+ASSET="arsy-agent-linux-${ARCH_LABEL}"
+BASE_URL="https://github.com/A-L-L-A-H/mw-arsy/releases/latest/download"
 DOWNLOAD_URL="$BASE_URL/$ASSET"
-AGENT_TMP="/usr/local/bin/.dockpanel-agent.dl.$$"
+AGENT_TMP="/usr/local/bin/.arsy-agent.dl.$$"
 echo "[5/7] Downloading agent binary..."
 if ! curl -fsSL "$DOWNLOAD_URL" -o "$AGENT_TMP"; then
     rm -f "$AGENT_TMP"
@@ -255,15 +255,15 @@ fi
 rm -f "$AGENT_TMP.sums"
 
 chmod +x "$AGENT_TMP"
-mv -f "$AGENT_TMP" /usr/local/bin/dockpanel-agent
+mv -f "$AGENT_TMP" /usr/local/bin/arsy-agent
 
 # Generate self-signed TLS cert for agent HTTPS
 echo "[6/7] Generating TLS certificate..."
-if [[ ! -f /etc/dockpanel/ssl/agent.crt ]]; then
-    openssl req -x509 -newkey rsa:2048 -keyout /etc/dockpanel/ssl/agent.key \
-        -out /etc/dockpanel/ssl/agent.crt -days 3650 -nodes \
-        -subj "/CN=dockpanel-agent" > /dev/null 2>&1
-    chmod 600 /etc/dockpanel/ssl/agent.key
+if [[ ! -f /etc/arsy/ssl/agent.crt ]]; then
+    openssl req -x509 -newkey rsa:2048 -keyout /etc/arsy/ssl/agent.key \
+        -out /etc/arsy/ssl/agent.crt -days 3650 -nodes \
+        -subj "/CN=arsy-agent" > /dev/null 2>&1
+    chmod 600 /etc/arsy/ssl/agent.key
 fi
 
 # Install the systemd unit — TAKEN FROM THE BINARY, not written here.
@@ -278,7 +278,7 @@ fi
 # a pin that matches its own explanation cannot fail.
 #
 # The panel's own installers (setup.sh, update.sh) deploy
-# panel/agent/dockpanel-agent.service by copying that file. This script has no
+# panel/agent/arsy-agent.service by copying that file. This script has no
 # repo tree — it is fetched from the panel and downloads a release binary — so
 # it asks the binary it just downloaded, which carries the unit via include_str!
 # for exactly the reason agent-self-update.sh does: it cannot then drift from
@@ -290,18 +290,18 @@ fi
 # hangs for ever at "[7/7]" against an older release instead of refusing, which
 # is what it did when first driven on a real box (s271).
 echo "[7/7] Installing systemd service..."
-if ! timeout 15 /usr/local/bin/dockpanel-agent --print-unit > /tmp/dockpanel-agent.service.$$ 2>/dev/null \
-   || ! grep -q '^ExecStart=/usr/local/bin/dockpanel-agent' /tmp/dockpanel-agent.service.$$; then
-    rm -f /tmp/dockpanel-agent.service.$$
+if ! timeout 15 /usr/local/bin/arsy-agent --print-unit > /tmp/arsy-agent.service.$$ 2>/dev/null \
+   || ! grep -q '^ExecStart=/usr/local/bin/arsy-agent' /tmp/arsy-agent.service.$$; then
+    rm -f /tmp/arsy-agent.service.$$
     echo "Error: the downloaded agent could not emit its systemd unit."
-    echo "  '/usr/local/bin/dockpanel-agent --print-unit' produced nothing usable, which"
+    echo "  '/usr/local/bin/arsy-agent --print-unit' produced nothing usable, which"
     echo "  means the release binary predates this installer. Writing a unit here instead"
     echo "  is what shipped an unsandboxed agent to every remote server for eighteen"
     echo "  releases, so this installer refuses to guess one."
     exit 1
 fi
-install -m 644 /tmp/dockpanel-agent.service.$$ /etc/systemd/system/dockpanel-agent.service
-rm -f /tmp/dockpanel-agent.service.$$
+install -m 644 /tmp/arsy-agent.service.$$ /etc/systemd/system/arsy-agent.service
+rm -f /tmp/arsy-agent.service.$$
 
 # Every directory the unit's ReadWritePaths names, DERIVED FROM THE UNIT.
 #
@@ -313,7 +313,7 @@ rm -f /tmp/dockpanel-agent.service.$$
 # success, and every write beneath it fails read-only until the next restart
 # (s269). So both halves are created, and the `-` is stripped rather than
 # filtered on.
-AGENT_RWP="$(sed -n 's/^ReadWritePaths=//p' /etc/systemd/system/dockpanel-agent.service \
+AGENT_RWP="$(sed -n 's/^ReadWritePaths=//p' /etc/systemd/system/arsy-agent.service \
              | tr ' ' '\n' | sed 's/^-//' | { grep '^/' || true; })"
 for d in $AGENT_RWP; do
     [ -d "$d" ] || mkdir -p "$d" 2>/dev/null || true
@@ -339,12 +339,12 @@ fi
 # success banner over a crash loop. `activating` is tolerated because a unit
 # with Restart=always can be caught mid-cycle by a single probe.
 systemctl daemon-reload
-systemctl enable dockpanel-agent >/dev/null 2>&1 || true
-systemctl start dockpanel-agent || true
+systemctl enable arsy-agent >/dev/null 2>&1 || true
+systemctl start arsy-agent || true
 
 AGENT_OK=0
 for _ in $(seq 1 15); do
-    STATE=$(systemctl is-active dockpanel-agent 2>/dev/null || true)
+    STATE=$(systemctl is-active arsy-agent 2>/dev/null || true)
     if [[ "$STATE" == "active" ]]; then AGENT_OK=1; break; fi
     [[ "$STATE" == "failed" ]] && break
     sleep 1
@@ -352,22 +352,22 @@ done
 
 if [[ "$AGENT_OK" != "1" ]]; then
     echo ""
-    echo "Error: dockpanel-agent did not start (systemctl is-active: $(systemctl is-active dockpanel-agent 2>/dev/null || echo unknown))"
+    echo "Error: arsy-agent did not start (systemctl is-active: $(systemctl is-active arsy-agent 2>/dev/null || echo unknown))"
     echo "Last journal lines:"
-    journalctl -u dockpanel-agent -n 15 --no-pager 2>/dev/null || true
+    journalctl -u arsy-agent -n 15 --no-pager 2>/dev/null || true
     exit 1
 fi
 
 echo ""
 echo "======================================"
-echo "  DockPanel Agent installed!"
+echo "  ARSY Agent installed!"
 echo "======================================"
 echo ""
 echo "  Agent listening on: 0.0.0.0:${AGENT_PORT}"
 echo "  Token: ${TOKEN:0:12}..."
 echo "  Server ID: ${SERVER_ID}"
-echo "  Config: /etc/dockpanel/agent.env"
+echo "  Config: /etc/arsy/agent.env"
 echo ""
-echo "  Return to your DockPanel and click"
+echo "  Return to your ARSY and click"
 echo "  'Test Connection' to verify."
 echo ""

@@ -5,23 +5,23 @@
 # never emits, so `unwrap_or(default)` swallows the mismatch silently —
 # no error, no panic, just permanently wrong/blank output.
 #
-# Found by a dockpanel-fanout finder/skeptic pair (panel/cli/src, the
+# Found by a arsy-fanout finder/skeptic pair (panel/cli/src, the
 # never-fully-audited command files) plus a completeness-critic off-menu
 # find in a sibling file:
 #
-#   - `dockpanel security` (overview): read `firewall_status`/`fail2ban_status`
+#   - `arsy security` (overview): read `firewall_status`/`fail2ban_status`
 #     (strings) and `ssl_coverage`/`scan_date` (fields that don't exist at
 #     all) — the agent's `SecurityOverview` has `firewall_active`/
 #     `fail2ban_running` (bools) and no ssl_coverage/scan_date concept.
-#   - `dockpanel security firewall`: read `enabled` (agent emits `active`)
+#   - `arsy security firewall`: read `enabled` (agent emits `active`)
 #     and `port`/`proto` on each rule (agent's `FirewallRule` has only
 #     `number, to, action, from` — action is literally "ALLOW IN"/"DENY IN",
 #     never bare "allow").
-#   - `dockpanel security scan`: read `risk_level` (doesn't exist on
+#   - `arsy security scan`: read `risk_level` (doesn't exist on
 #     `ScanResult`) and each finding's `message` (agent's `Finding` has
 #     `title`/`description`, no `message`). The real severity vocabulary is
 #     "critical"/"warning"/"info" (security_scanner.rs), not "low/medium/high".
-#   - `dockpanel backup list <domain>` (off-menu, completeness critic): read
+#   - `arsy backup list <domain>` (off-menu, completeness critic): read
 #     `created` — the agent emits `created_at`, and the file's OWN sibling
 #     functions (`cmd_db_backup_list`, `cmd_vol_backup_list`) already read
 #     `created_at` correctly, so this is a same-file regression check too.

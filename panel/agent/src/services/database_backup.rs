@@ -4,7 +4,7 @@ use crate::safe_cmd::{safe_command, DockerEnvFile};
 
 use super::backups::{BackupInfo, compute_file_sha256};
 
-const BACKUP_DIR: &str = "/var/backups/dockpanel/databases";
+const BACKUP_DIR: &str = "/var/backups/arsy/databases";
 
 /// Validate backup filename (prevent path traversal).
 fn is_safe_filename(name: &str) -> bool {
@@ -750,7 +750,7 @@ pub fn list_db_backups(db_name: &str) -> Result<Vec<BackupInfo>, String> {
         // imported into a given DATABASE is a different question with a different answer
         // per engine and per encryption state, and it is decided by the panel, which
         // knows both. Encoding it here would mislabel every encrypted backup as broken in
-        // `dockpanel backup db-list`, which is a backup listing, not an import listing.
+        // `arsy backup db-list`, which is a backup listing, not an import listing.
         let unsupported = if is_safe_filename(&name) {
             None
         } else {
@@ -974,7 +974,7 @@ mod tests {
         // Legitimate identifiers still pass.
         assert!(is_safe_db_identifier("wordpress"));
         assert!(is_safe_db_identifier("my_db-01"));
-        assert!(is_safe_db_identifier("dockpanel-db-wordpress"));
+        assert!(is_safe_db_identifier("arsy-db-wordpress"));
     }
 
     #[test]
@@ -1028,7 +1028,7 @@ mod tests {
         let plain = unusable_reason("wordpress", "dump.sql");
         assert!(plain.contains("gzip"), "a plain .sql must be told to gzip: {plain}");
         assert!(
-            plain.contains("/var/backups/dockpanel/databases/wordpress/dump.sql"),
+            plain.contains("/var/backups/arsy/databases/wordpress/dump.sql"),
             "the fix must name the full path so it can be pasted: {plain}"
         );
 

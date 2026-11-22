@@ -33,7 +33,7 @@
 #    before decryption would even run.
 #
 # Position arms (B, C), not just presence, for the same reason
-# project_dockpanel_tech_debt_p178/p179 drew from their own mutations: a
+# project_arsy_tech_debt_p178/p179 drew from their own mutations: a
 # check that exists in the function but runs at the wrong point is not the
 # same guarantee as the prose describing it claims.
 
@@ -127,7 +127,7 @@ else
   bad "A4 no magic marker constant — legacy detection has nothing to key off"
 fi
 
-if has "$ENC_C" '"dockpanel-backup-hmac-v1"'; then
+if has "$ENC_C" '"arsy-backup-hmac-v1"'; then
   ok "A5 the MAC key is domain-separated from the AES key by a fixed label"
 else
   bad "A5 no domain-separation label — the MAC subkey derivation changed shape"
@@ -240,7 +240,7 @@ if r.returncode != 0:
 ciphertext = open(enc_path, "rb").read()
 
 def compute_tag(passphrase: str, ciphertext: bytes) -> bytes:
-    mac_key = hmac.new(passphrase.encode(), b"dockpanel-backup-hmac-v1", hashlib.sha256).digest()
+    mac_key = hmac.new(passphrase.encode(), b"arsy-backup-hmac-v1", hashlib.sha256).digest()
     return hmac.new(mac_key, ciphertext, hashlib.sha256).digest()
 
 tag = compute_tag(passphrase, ciphertext)

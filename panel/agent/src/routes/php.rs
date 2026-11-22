@@ -253,7 +253,7 @@ async fn install_version(
                     message: format!(
                         "PHP {version} is not offered by this system's package repositories. \
                          Available versions here: {}. (Other versions would need the third-party \
-                         remi repository, which DockPanel does not configure.)",
+                         remi repository, which ARSY does not configure.)",
                         streams.join(", ")
                     ),
                     version: version.to_string(),

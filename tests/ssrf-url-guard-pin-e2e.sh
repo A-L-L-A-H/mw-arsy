@@ -84,7 +84,7 @@ done
 # extraction at all — e.g. parsing the scp-like `git@host:path` git-remote shorthand
 # (s417's git-deploy repo_url SSRF guard), which is not a URI, has no userinfo
 # ambiguity to get wrong, and genuinely cannot go through `url::Url::parse`. Per the
-# s416 pin lesson (project_dockpanel_lessons_p153 #862): when a pin fires on a
+# s416 pin lesson (project_arsy_lessons_p153 #862): when a pin fires on a
 # legitimate new shape, tighten the pin to the ACTUAL invariant instead of loosening
 # the code to dodge it.
 OLD_CHAIN='split\(\x27/\x27\)\.next\(\)[^;]*split\(\x27:\x27\)\.next\(\)'

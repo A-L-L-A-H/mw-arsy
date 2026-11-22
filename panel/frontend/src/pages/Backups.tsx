@@ -245,7 +245,7 @@ export default function Backups() {
           <p className="text-xs text-dark-300 mt-2 max-w-xl">
             A backup contains this site&apos;s <strong className="text-dark-200">files and its
             databases</strong>, so restoring one brings back its content too. The Contains column
-            shows what each archive actually holds &mdash; backups made before DockPanel included
+            shows what each archive actually holds &mdash; backups made before ARSY included
             databases are marked <strong className="text-dark-200">Files only</strong>.
           </p>
         </div>

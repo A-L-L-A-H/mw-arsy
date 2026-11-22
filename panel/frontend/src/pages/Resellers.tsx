@@ -527,7 +527,7 @@ export default function Resellers() {
                   className="w-full px-3 py-2 border border-dark-500 rounded-lg text-sm focus:ring-2 focus:ring-accent-500 focus:border-accent-500"
                   placeholder="Acme Hosting"
                 />
-                <p className="text-xs text-dark-400 mt-1">Shown to this reseller in place of the DockPanel name. Up to 100 characters.</p>
+                <p className="text-xs text-dark-400 mt-1">Shown to this reseller in place of the ARSY name. Up to 100 characters.</p>
               </div>
 
               <div className="grid grid-cols-3 gap-3">
@@ -582,7 +582,7 @@ export default function Resellers() {
 
               <label className="flex items-center gap-2 text-sm text-dark-100">
                 <input type="checkbox" checked={hideBranding} onChange={(e) => setHideBranding(e.target.checked)} className="rounded border-dark-500" />
-                Hide DockPanel branding for this reseller
+                Hide ARSY branding for this reseller
               </label>
 
               {editId && (

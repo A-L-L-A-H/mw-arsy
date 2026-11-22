@@ -1290,7 +1290,7 @@ pub async fn require_enrolment_proof(
                         1,
                         30,
                         secret,
-                        Some("DockPanel".to_string()),
+                        Some("ARSY".to_string()),
                         user.email.clone(),
                     ) {
                         passed = totp.check_current(candidate).unwrap_or(false);
@@ -1375,7 +1375,7 @@ pub async fn twofa_setup(
         1,
         30,
         secret.to_bytes().map_err(|e| internal_error("2FA setup", e))?,
-        Some("DockPanel".to_string()),
+        Some("ARSY".to_string()),
         user.email.clone(),
     )
     .map_err(|e| internal_error("2FA setup", e))?;
@@ -1441,7 +1441,7 @@ pub async fn twofa_enable(
         .to_bytes()
         .map_err(|e| internal_error("2FA enable", e))?;
 
-    let totp = TOTP::new(Algorithm::SHA1, 6, 1, 30, secret, Some("DockPanel".to_string()), user.email.clone())
+    let totp = TOTP::new(Algorithm::SHA1, 6, 1, 30, secret, Some("ARSY".to_string()), user.email.clone())
         .map_err(|e| internal_error("2FA enable", e))?;
 
     if !totp.check_current(&body.code).map_err(|e| internal_error("2FA enable", e))? {
@@ -1556,7 +1556,7 @@ pub async fn twofa_verify(
         .to_bytes()
         .map_err(|e| internal_error("2FA verify", e))?;
 
-    let totp = TOTP::new(Algorithm::SHA1, 6, 1, 30, secret, Some("DockPanel".to_string()), user.email.clone())
+    let totp = TOTP::new(Algorithm::SHA1, 6, 1, 30, secret, Some("ARSY".to_string()), user.email.clone())
         .map_err(|e| internal_error("2FA verify", e))?;
 
     let code_valid = totp.check_current(&body.code)
@@ -1690,7 +1690,7 @@ pub async fn twofa_disable(
         .to_bytes()
         .map_err(|e| internal_error("2FA disable", e))?;
 
-    let totp = TOTP::new(Algorithm::SHA1, 6, 1, 30, secret, Some("DockPanel".to_string()), user.email.clone())
+    let totp = TOTP::new(Algorithm::SHA1, 6, 1, 30, secret, Some("ARSY".to_string()), user.email.clone())
         .map_err(|e| internal_error("2FA disable", e))?;
 
     // A current TOTP code OR one of the recovery codes, exactly like the login
@@ -1788,7 +1788,7 @@ pub async fn twofa_regenerate_recovery_codes(
     let secret = Secret::Encoded(secret_b32)
         .to_bytes()
         .map_err(|e| internal_error("2FA recovery codes", e))?;
-    let totp = TOTP::new(Algorithm::SHA1, 6, 1, 30, secret, Some("DockPanel".to_string()), user.email.clone())
+    let totp = TOTP::new(Algorithm::SHA1, 6, 1, 30, secret, Some("ARSY".to_string()), user.email.clone())
         .map_err(|e| internal_error("2FA recovery codes", e))?;
 
     let code_valid = totp

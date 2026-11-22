@@ -9,8 +9,8 @@
 // `dp_`-prefixed key, hashed the same way `agent.token` is, authenticated by
 // auth.rs's `AuthUser` extractor exactly like a session JWT.
 
-const API_ENV_PATH: &str = "/etc/dockpanel/api.env";
-const TOKEN_PATH: &str = "/etc/dockpanel/mcp.token";
+const API_ENV_PATH: &str = "/etc/arsy/api.env";
+const TOKEN_PATH: &str = "/etc/arsy/mcp.token";
 
 pub fn load_token() -> Result<String, String> {
     let not_configured = || {
@@ -48,7 +48,7 @@ pub fn base_url() -> Result<String, String> {
 }
 
 /// GET a panel API path and return the parsed JSON body. Read-only by
-/// construction — this is the only HTTP verb `dockpanel-mcp` v1 ever issues
+/// construction — this is the only HTTP verb `arsy-mcp` v1 ever issues
 /// against the panel API (see the design doc §3: zero mutating tools in v1).
 pub async fn get(path: &str, token: &str) -> Result<serde_json::Value, String> {
     let url = format!("{}{path}", base_url()?);

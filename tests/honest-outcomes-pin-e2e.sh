@@ -35,7 +35,7 @@ bad() { printf '\033[31m✗\033[0m %s — %s\n' "$1" "$2"; FAIL=$((FAIL+1)); }
 eq()  { [ "$2" = "$3" ] && ok "$1" || bad "$1" "expected '$3', got '$2'"; }
 
 # ugrep's --ignore-files shim honours .gitignore, so every count below uses the
-# real binary explicitly (dockpanel-ops-p2, s357).
+# real binary explicitly (arsy-ops-p2, s357).
 G=/usr/bin/grep
 
 API=panel/backend/src/routes/docker_apps.rs
@@ -352,7 +352,7 @@ eq "F5 the migration path guard no longer offers /tmp" \
 eq "F5b …and it is still guarded to /var/backups (control: the check exists)" \
    "$($G -c 'starts_with("/var/backups/")' panel/agent/src/routes/migration.rs)" "2"
 eq "F5c the agent unit really does have a private /tmp, which is why" \
-   "$($G -c '^PrivateTmp=yes' panel/agent/dockpanel-agent.service 2>/dev/null || $G -rc 'PrivateTmp=yes' panel/agent/src/ scripts/ 2>/dev/null | awk -F: '{s+=$2} END{print (s>0)?1:0}')" "1"
+   "$($G -c '^PrivateTmp=yes' panel/agent/arsy-agent.service 2>/dev/null || $G -rc 'PrivateTmp=yes' panel/agent/src/ scripts/ 2>/dev/null | awk -F: '{s+=$2} END{print (s>0)?1:0}')" "1"
 # "Container running" is not "database usable": mariadb:11 refuses the app user
 # while it initialises, so a fixed sleep produced `Access denied` — a
 # credentials message for a timing problem.

@@ -10,7 +10,7 @@
 4. Click **Create**
 
 The backup contains the site's directory — its files — **and a dump of every database attached to
-the site**. It is saved as a single compressed tarball in `/var/backups/dockpanel/`.
+the site**. It is saved as a single compressed tarball in `/var/backups/arsy/`.
 
 For a CMS such as WordPress, almost everything you think of as "the site" — posts, pages,
 comments, users, settings — lives in the database rather than in the files, so a backup that
@@ -28,11 +28,11 @@ The site's Nginx configuration is not in the tarball; the panel rewrites it from
 
 ```
 ./                             the site's document root, exactly as it is on disk
-.dockpanel-backup/manifest.json  what this archive holds
-.dockpanel-backup/db/*.sql.gz    one compressed dump per database
+.arsy-backup/manifest.json  what this archive holds
+.arsy-backup/db/*.sql.gz    one compressed dump per database
 ```
 
-The `.dockpanel-backup` directory is DockPanel's own; it is extracted separately during a restore
+The `.arsy-backup` directory is ARSY's own; it is extracted separately during a restore
 and never lands in your document root.
 
 A database that could not be dumped is **not** silently skipped: the backup reports which ones are
@@ -41,7 +41,7 @@ missing, the Backups page shows the archive as incomplete, and a restore tells y
 ### From the CLI
 
 ```bash
-dockpanel backup create example.com
+arsy backup create example.com
 ```
 
 Sample output:
@@ -65,7 +65,7 @@ Creating backup for example.com...
 ### List Backups
 
 ```bash
-dockpanel backup list example.com
+arsy backup list example.com
 ```
 
 Sample output:
@@ -93,7 +93,7 @@ Scheduled backups run in the background. The backup scheduler checks for pending
 
 ## Configure S3 / Remote Destination
 
-Store backups off-server for disaster recovery. DockPanel supports any S3-compatible storage (AWS S3, Backblaze B2, MinIO, Wasabi, DigitalOcean Spaces, etc.).
+Store backups off-server for disaster recovery. ARSY supports any S3-compatible storage (AWS S3, Backblaze B2, MinIO, Wasabi, DigitalOcean Spaces, etc.).
 
 1. Go to **Backup Manager** > **Destinations**
 2. Click **Add Destination**
@@ -154,7 +154,7 @@ Two outcomes are reported honestly rather than as a success:
 ### From the CLI
 
 ```bash
-dockpanel backup restore example.com example.com_2026-03-20_143022.tar.gz
+arsy backup restore example.com example.com_2026-03-20_143022.tar.gz
 ```
 
 Sample output:
@@ -167,7 +167,7 @@ Restoring example.com from example.com_2026-03-20_143022.tar.gz...
 
 > **The CLI can restore databases too — if a panel API key is configured.** `backup restore`
 > prefers a panel-API-authenticated path (`Settings → API Keys`, saved to
-> `/etc/dockpanel/backend.token`) that restores both files and databases through the same route
+> `/etc/arsy/backend.token`) that restores both files and databases through the same route
 > the panel UI's own Restore button uses. Without a configured key, it falls back to the older
 > agent-direct path (files only): the agent has no access to the site's database credentials, so
 > restoring an archive that carries database dumps **fails** rather than restoring the files and
@@ -178,7 +178,7 @@ Restoring example.com from example.com_2026-03-20_143022.tar.gz...
 ### From the CLI
 
 ```bash
-dockpanel backup delete example.com example.com_2026-03-18_020000.tar.gz
+arsy backup delete example.com example.com_2026-03-18_020000.tar.gz
 ```
 
 ### From the Panel
@@ -187,11 +187,11 @@ Click the delete icon next to any backup in the list.
 
 ## Database Backups
 
-DockPanel runs an automatic daily database backup cron job for the panel's own PostgreSQL database:
+ARSY runs an automatic daily database backup cron job for the panel's own PostgreSQL database:
 
 - **Schedule**: Daily at 2:00 AM
 - **Retention**: 7 days (older backups are automatically deleted)
-- **Location**: `/var/backups/dockpanel/`
+- **Location**: `/var/backups/arsy/`
 
 This is separate from site backups, and it covers the panel's own database only — not your
 sites'. A site's database (its MySQL or PostgreSQL container) is not captured by either one, so

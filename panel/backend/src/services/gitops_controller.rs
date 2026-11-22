@@ -1,4 +1,4 @@
-// GitOps Fleet Sync Controller for DockPanel
+// GitOps Fleet Sync Controller for ARSY
 // Provides declarative desired state management for fleet resources
 // Watches Git repository with desired state YAML and reconciles actual state
 
@@ -503,7 +503,7 @@ impl GitOpsController {
 
     /// Clone or pull the Git repository
     async fn clone_or_pull_repo(&self) -> Result<String, String> {
-        let repo_dir = format!("/var/lib/dockpanel/gitops/{}", 
+        let repo_dir = format!("/var/lib/arsy/gitops/{}", 
             self.config.git_repo_url.split('/').last().unwrap_or("repo").replace(".git", ""));
         
         let git_dir = format!("{repo_dir}/.git");

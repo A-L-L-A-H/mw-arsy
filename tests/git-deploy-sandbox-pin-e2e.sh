@@ -15,25 +15,25 @@
 #      the shared helper, NOT a per-call-site patch — ~77 docker invocations go
 #      through it and the one that got missed is how this stayed hidden.
 #      Same shape twice more: nixpacks installed itself into /usr/local/bin and
-#      cached into /var/cache/dockpanel, neither writable.
+#      cached into /var/cache/arsy, neither writable.
 #   B. THE UPDATE'S AGENT CHECK ASKS THE AGENT. It curled an AUTHENTICATED
 #      panel endpoint with no token, so it returned 401 and warned on every
 #      update on every install — identically whether the agent was alive or
 #      dead. A check that cannot distinguish those two states is not a check.
 #   C. THE INSTALLER INSTALLS THE VERSION IT WAS GIVEN. install.sh reads
-#      DOCKPANEL_VERSION and clones that ref; setup.sh, its only consumer,
-#      always fetched releases/latest. `DOCKPANEL_VERSION=v2.31.2 install.sh`
+#      ARSY_VERSION and clones that ref; setup.sh, its only consumer,
+#      always fetched releases/latest. `ARSY_VERSION=v2.31.2 install.sh`
 #      built a v2.31.2 tree around v2.34.2 binaries and printed "v2.34.2".
 #
 # These are SOURCE pins and need no running panel. The behavioural proof is in
-# /home/ovidiu/dockpanel-update-path-drill-s261.md.
+# /home/ovidiu/arsy-update-path-drill-s261.md.
 #   run: bash tests/git-deploy-sandbox-pin-e2e.sh
 set -u
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SAFECMD="$REPO/panel/agent/src/safe_cmd.rs"
 GITBUILD="$REPO/panel/agent/src/services/git_build.rs"
-UNIT="$REPO/panel/agent/dockpanel-agent.service"
+UNIT="$REPO/panel/agent/arsy-agent.service"
 UPDATE="$REPO/scripts/update.sh"
 SETUP="$REPO/scripts/setup.sh"
 INSTALL="$REPO/scripts/install.sh"
@@ -62,25 +62,25 @@ nocode() { strip_comments "$1" | grep -cE -- "$2" >/dev/null && bad "$3" || ok "
 
 echo
 echo "A. The agent can write what its build tools need"
-has  "$SAFECMD" 'DOCKER_CONFIG_DIR: &str = "/var/lib/dockpanel/docker"' \
-     "the docker CLI config dir is a fixed path under /var/lib/dockpanel"
+has  "$SAFECMD" 'DOCKER_CONFIG_DIR: &str = "/var/lib/arsy/docker"' \
+     "the docker CLI config dir is a fixed path under /var/lib/arsy"
 code "$SAFECMD" 'cmd\.env\("DOCKER_CONFIG", DOCKER_CONFIG_DIR\)' \
      "safe_command sets DOCKER_CONFIG (env_clear means a unit Environment= cannot)"
 [ "$(sed -E 's/[[:space:]]*\/\/.*$//' "$SAFECMD" | grep -c 'DOCKER_CONFIG')" -ge 4 ] \
      && ok "every helper family sets it — async, sync, and both unsandboxed" \
      || bad "every helper family sets it — async, sync, and both unsandboxed"
-hasE "$UNIT" 'ReadWritePaths=.*/var/lib/dockpanel' \
-     "and /var/lib/dockpanel really is writable under the unit's sandbox"
+hasE "$UNIT" 'ReadWritePaths=.*/var/lib/arsy' \
+     "and /var/lib/arsy really is writable under the unit's sandbox"
 nocode "$UNIT" 'ReadWritePaths=.*(/root|/usr/local/bin)' \
      "the fix did NOT widen the sandbox to /root or /usr/local/bin"
 
-has  "$GITBUILD" 'NIXPACKS_BIN: &str = "/var/lib/dockpanel/bin/nixpacks"' \
+has  "$GITBUILD" 'NIXPACKS_BIN: &str = "/var/lib/arsy/bin/nixpacks"' \
      "nixpacks installs inside ReadWritePaths, not /usr/local/bin"
-has  "$GITBUILD" 'NIXPACKS_CACHE_ROOT: &str = "/var/lib/dockpanel/nixpacks-cache"' \
-     "its build cache too (/var/cache/dockpanel was never in ReadWritePaths)"
+has  "$GITBUILD" 'NIXPACKS_CACHE_ROOT: &str = "/var/lib/arsy/nixpacks-cache"' \
+     "its build cache too (/var/cache/arsy was never in ReadWritePaths)"
 nocode "$GITBUILD" 'mv /tmp/nixpacks /usr/local/bin' \
      "the download no longer moves the binary into a read-only prefix"
-nocode "$GITBUILD" '/var/cache/dockpanel/nixpacks' \
+nocode "$GITBUILD" '/var/cache/arsy/nixpacks' \
      "no code path still points the cache at the unwritable location"
 code "$GITBUILD" 'Path::new\(NIXPACKS_BIN\)\.is_file\(\)' \
      "an already-downloaded nixpacks is found again (it is off the agent's PATH)"
@@ -91,16 +91,16 @@ code "$UPDATE" 'curl .*--unix-socket .*AGENT_SOCK.*localhost/health' \
      "the check probes the agent's own socket"
 nocode "$UPDATE" 'curl.*api/system/info' \
      "it no longer curls an authenticated panel endpoint with no token"
-has  "$UPDATE" 'AGENT_SOCK=/run/dockpanel/agent.sock' \
+has  "$UPDATE" 'AGENT_SOCK=/run/arsy/agent.sock' \
      "the modern socket path is tried first"
-has  "$UPDATE" 'AGENT_SOCK=/var/run/dockpanel/agent.sock' \
+has  "$UPDATE" 'AGENT_SOCK=/var/run/arsy/agent.sock' \
      "with the legacy path as fallback, so older boxes still probe correctly"
 has  "$REPO/panel/agent/src/routes/mod.rs" 'if request.uri().path() == "/health"' \
      "and /health is genuinely exempt from the agent's auth middleware"
 
 echo
 echo "C. The installer installs the version it was given"
-code "$SETUP" 'DOCKPANEL_VERSION' \
+code "$SETUP" 'ARSY_VERSION' \
      "download_binaries reads the pin instead of ignoring it"
 code "$SETUP" 'Pinned release' \
      "and says so, rather than printing a version it did not install"

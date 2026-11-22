@@ -1,4 +1,4 @@
-// Horizontal Autoscaler for DockPanel
+// Horizontal Autoscaler for ARSY
 // Integrates with KEDA and Prometheus metrics for container autoscaling
 // Supports CPU, Memory, RPS, and custom metric-based scaling
 

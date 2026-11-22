@@ -197,7 +197,7 @@ export default function SiteDetail() {
   // site's own name while the certificate sits under the zone's). Both hold a
   // real certificate; neither is evidence about who issued it.
   const [sslProvenance, setSslProvenance] = useState<{
-    provenance: "foreign" | "dockpanel" | "unknown";
+    provenance: "foreign" | "arsy" | "unknown";
     issuer: string | null;
   } | null>(null);
 
@@ -404,7 +404,7 @@ export default function SiteDetail() {
   // agent must not therefore start asserting a CA.
   const loadSslProvenance = useCallback(() => {
     api
-      .get<{ provenance: "foreign" | "dockpanel" | "unknown"; issuer: string | null }>(
+      .get<{ provenance: "foreign" | "arsy" | "unknown"; issuer: string | null }>(
         `/sites/${id}/ssl`,
       )
       .then((r) => setSslProvenance({ provenance: r.provenance, issuer: r.issuer }))
@@ -1048,7 +1048,7 @@ export default function SiteDetail() {
                     </svg>
                     {sslProvenance?.provenance === "foreign" && sslProvenance.issuer
                       ? `Enabled (${sslProvenance.issuer})`
-                      : sslProvenance?.provenance === "dockpanel"
+                      : sslProvenance?.provenance === "arsy"
                         ? "Enabled (Let's Encrypt)"
                         : "Enabled"}
                   </span>
@@ -1059,7 +1059,7 @@ export default function SiteDetail() {
                   )}
                   {sslProvenance?.provenance === "foreign" && (
                     <p className="text-xs text-dark-300">
-                      DockPanel did not issue this certificate and will not renew it. Renew it
+                      ARSY did not issue this certificate and will not renew it. Renew it
                       wherever it was issued, then install the replacement here.
                     </p>
                   )}
@@ -1230,7 +1230,7 @@ export default function SiteDetail() {
                   this product did not issue — correct, since a purchased
                   wildcard or an Origin CA cert is a paid asset nobody asked
                   to have replaced — but until this control existed the only
-                  way past it was `dockpanel ssl provision --force` on the
+                  way past it was `arsy ssl provision --force` on the
                   CLI, with the panel's own button offering no path forward
                   at all. This asks the SAME confirmation the CLI's `--force`
                   requires: read what would be lost, then say so explicitly. */}

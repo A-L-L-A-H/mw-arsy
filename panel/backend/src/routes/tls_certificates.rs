@@ -3,12 +3,12 @@
 //! A certificate is registered ONCE, under an alias the operator chooses, and a
 //! Compose stack refers to it by that alias when it claims a domain. The PEM pair
 //! never passes through this table: the agent parses it, checks the key belongs
-//! to it, writes it under `/etc/dockpanel/ssl-registry/<alias>/`, and hands back
+//! to it, writes it under `/etc/arsy/ssl-registry/<alias>/`, and hands back
 //! the metadata that is recorded here — names, issuer, validity, fingerprint and
 //! the two paths. Postgres holds no key material.
 //!
 //! Why this is not the single-site upload with a second caller: that door writes
-//! into `/etc/dockpanel/ssl/{domain}/`, the directory every scheduled renewer
+//! into `/etc/arsy/ssl/{domain}/`, the directory every scheduled renewer
 //! treats as its own and the stack teardown deletes. A certificate that several
 //! stacks share, and that must survive any one of them being removed, cannot
 //! live in a directory named after one domain.

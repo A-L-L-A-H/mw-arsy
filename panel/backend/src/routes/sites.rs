@@ -137,7 +137,7 @@ fn emit_step(
     }
 }
 
-/// Store a credential DockPanel generated on the user's behalf into the site's
+/// Store a credential ARSY generated on the user's behalf into the site's
 /// auto-created vault.
 ///
 /// Encrypts with `secrets::get_encryption_key` — the same derivation the Secrets
@@ -167,7 +167,7 @@ async fn store_site_secret(
 
     match sqlx::query(
         "INSERT INTO secrets (vault_id, key, encrypted_value, description, secret_type, updated_by) \
-         VALUES ($1, $2, $3, $4, 'password', 'dockpanel') \
+         VALUES ($1, $2, $3, $4, 'password', 'arsy') \
          ON CONFLICT (vault_id, key) DO UPDATE SET \
            encrypted_value = EXCLUDED.encrypted_value, \
            description = EXCLUDED.description, \
@@ -643,7 +643,7 @@ pub async fn create(
             // NOTE: Auto-monitor creation disabled — on fresh installs without DNS
             // configured, auto-created monitors immediately show "down" which confuses
             // new users. Users can create monitors manually when ready.
-            // See: https://github.com/ovexro/dockpanel/issues/XX
+            // See: https://github.com/A-L-L-A-H/mw-arsy/issues/XX
 
             // Auto-create backup schedule for every new site (daily 3 AM, 7 retention)
             {
@@ -1280,7 +1280,7 @@ pub async fn create(
                                 emit_step(
                                     &cms_logs, site_id, "complete",
                                     &format!("{cms_label} installed — HTTPS still in progress"), "done",
-                                    Some("DockPanel is still trying to issue a certificate. \
+                                    Some("ARSY is still trying to issue a certificate. \
                                           The site's SSL section shows the result.".into()),
                                 );
                             }
@@ -1326,7 +1326,7 @@ pub async fn create(
                             emit_step(
                                 &final_logs, site_id, "complete",
                                 "Site created — HTTPS still in progress", "done",
-                                Some("DockPanel is still trying to issue a certificate. \
+                                Some("ARSY is still trying to issue a certificate. \
                                       The site's SSL section shows the result.".into()),
                             );
                         }
@@ -3274,7 +3274,7 @@ pub async fn rename_domain(
     // Update site record.
     //
     // ⛔ `ssl_cert_path`/`ssl_key_path` MUST move with the domain. The agent has
-    // just renamed `/etc/dockpanel/ssl/{old}` to `{new}` (or copied it, when the
+    // just renamed `/etc/arsy/ssl/{old}` to `{new}` (or copied it, when the
     // directory is shared), and this statement used to write the domain alone —
     // so a renamed site kept a path naming a directory it no longer uses, for
     // ever, since no renewal door rewrites the column either. That is not
@@ -3290,15 +3290,15 @@ pub async fn rename_domain(
     sqlx::query(
         "UPDATE sites SET domain = $1, \
          ssl_cert_path = CASE WHEN ssl_cert_path LIKE $3 \
-             THEN '/etc/dockpanel/ssl/' || $1 || '/fullchain.pem' ELSE ssl_cert_path END, \
+             THEN '/etc/arsy/ssl/' || $1 || '/fullchain.pem' ELSE ssl_cert_path END, \
          ssl_key_path = CASE WHEN ssl_key_path LIKE $4 \
-             THEN '/etc/dockpanel/ssl/' || $1 || '/privkey.pem' ELSE ssl_key_path END, \
+             THEN '/etc/arsy/ssl/' || $1 || '/privkey.pem' ELSE ssl_key_path END, \
          updated_at = NOW() WHERE id = $2",
     )
         .bind(&new_domain)
         .bind(id)
-        .bind(format!("/etc/dockpanel/ssl/{old_domain}/%"))
-        .bind(format!("/etc/dockpanel/ssl/{old_domain}/%"))
+        .bind(format!("/etc/arsy/ssl/{old_domain}/%"))
+        .bind(format!("/etc/arsy/ssl/{old_domain}/%"))
         .execute(&state.db)
         .await
         .map_err(|e| internal_error("rename domain", e))?;
@@ -4359,7 +4359,7 @@ const OWNERSHIP_DENORMALIZED_TABLES: [&str; 4] =
 
 /// POST /api/sites/{id}/transfer — hand a site to another account. Admin only.
 ///
-/// The point of the whole `client` design (GitHub #51). DockPanel has exactly one
+/// The point of the whole `client` design (GitHub #51). ARSY has exactly one
 /// ownership axis, `sites.user_id`, and 108 ownership-scoped reads that all say
 /// `WHERE user_id = $1`. Moving the row therefore moves the site completely, and
 /// every one of those reads keeps working without being touched — which is why

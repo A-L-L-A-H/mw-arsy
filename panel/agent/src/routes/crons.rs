@@ -48,7 +48,7 @@ pub struct CronResult {
     pub exit_code: Option<i32>,
 }
 
-const CRONTAB_MARKER: &str = "# dockpanel:";
+const CRONTAB_MARKER: &str = "# arsy:";
 
 pub fn router() -> Router<AppState> {
     Router::new()
@@ -62,7 +62,7 @@ pub fn router() -> Router<AppState> {
 /// Receives a list of crons and writes them atomically.
 ///
 /// **This sync owns only the lines it was sent.** It used to strip every line
-/// carrying `# dockpanel:` — the marker is panel-wide, not per-site — and then
+/// carrying `# arsy:` — the marker is panel-wide, not per-site — and then
 /// re-add only the one site the panel was syncing. So any tenant adding, editing
 /// or deleting a single cron on their OWN site silently removed every OTHER
 /// site's jobs from the crontab, box-wide. Nothing errored and nothing was
@@ -96,7 +96,7 @@ async fn sync_crons(
         .map(|s| s.to_string())
         .collect();
 
-    // Add dockpanel crons.
+    // Add arsy crons.
     //
     // A row that fails validation is SKIPPED, not fatal to the whole sync.
     // This endpoint used to return 400 for the entire batch on the first bad
@@ -211,7 +211,7 @@ async fn run_cron(
     }))
 }
 
-/// GET /crons/list — Read dockpanel crons from system crontab.
+/// GET /crons/list — Read arsy crons from system crontab.
 async fn list_crons() -> Result<Json<Vec<serde_json::Value>>, ApiErr> {
     // Read-only: a failed read destroys nothing here, so it degrades to an empty
     // listing rather than a 500. The panel's own `crons` rows are the record.
@@ -223,7 +223,7 @@ async fn list_crons() -> Result<Json<Vec<serde_json::Value>>, ApiErr> {
         .lines()
         .filter(|line| line.contains(CRONTAB_MARKER))
         .filter_map(|line| {
-            // Format: schedule command # dockpanel:id label
+            // Format: schedule command # arsy:id label
             let marker_pos = line.find(CRONTAB_MARKER)?;
             let before_marker = &line[..marker_pos].trim();
             let after_marker = &line[marker_pos + CRONTAB_MARKER.len()..];
@@ -263,9 +263,9 @@ async fn remove_cron(
     Ok(Json(serde_json::json!({ "removed": id })))
 }
 
-/// The dockpanel cron id a crontab line carries, if any.
+/// The arsy cron id a crontab line carries, if any.
 ///
-/// The marker is written as `# dockpanel:{id} {label}`, so the id is the token
+/// The marker is written as `# arsy:{id} {label}`, so the id is the token
 /// immediately after the marker. Parsed rather than substring-matched so that a
 /// line belonging to one cron cannot be attributed to another whose id merely
 /// extends it.
@@ -294,22 +294,22 @@ mod sync_scope_tests {
     #[test]
     fn the_id_is_the_token_after_the_marker() {
         assert_eq!(
-            marker_id("*/5 * * * * /bin/true # dockpanel:abc-123 My label"),
+            marker_id("*/5 * * * * /bin/true # arsy:abc-123 My label"),
             Some("abc-123")
         );
-        assert_eq!(marker_id("*/5 * * * * /bin/true # dockpanel:abc-123"), Some("abc-123"));
+        assert_eq!(marker_id("*/5 * * * * /bin/true # arsy:abc-123"), Some("abc-123"));
         assert_eq!(marker_id("0 3 * * * /usr/bin/certbot renew"), None);
         assert_eq!(marker_id("# a plain operator comment"), None);
     }
 
-    /// The wipe this replaced: every dockpanel line on the box was stripped and
+    /// The wipe this replaced: every arsy line on the box was stripped and
     /// only the synced site's re-added. A line whose id was NOT sent must
     /// survive, whoever owns it.
     #[test]
     fn a_line_this_sync_does_not_own_is_kept() {
         let crontab = "\
-*/15 * * * * php wp-cron.php # dockpanel:site-a-cron WordPress Cron
-0 2 * * * /usr/local/bin/backup # dockpanel:site-b-cron Nightly backup
+*/15 * * * * php wp-cron.php # arsy:site-a-cron WordPress Cron
+0 2 * * * /usr/local/bin/backup # arsy:site-b-cron Nightly backup
 0 4 * * * /usr/bin/certbot renew";
         let owned: std::collections::HashSet<&str> = ["site-a-cron"].into_iter().collect();
         let kept: Vec<&str> = crontab
@@ -328,7 +328,7 @@ mod sync_scope_tests {
     /// unanchored-match class as the WordPress auto-update marker.
     #[test]
     fn a_prefix_id_does_not_match_a_longer_one() {
-        let line = "*/5 * * * * /bin/true # dockpanel:abc-1234 label";
+        let line = "*/5 * * * * /bin/true # arsy:abc-1234 label";
         assert_ne!(marker_id(line), Some("abc-123"));
         assert_eq!(marker_id(line), Some("abc-1234"));
     }

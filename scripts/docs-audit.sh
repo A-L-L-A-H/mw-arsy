@@ -1,5 +1,5 @@
 #!/bin/bash
-# DockPanel docs audit — verify all 10 doc surfaces match reality
+# ARSY docs audit — verify all 10 doc surfaces match reality
 # Run after feature work, before release
 
 RED='\033[0;31m'
@@ -10,7 +10,7 @@ ISSUES=0
 
 cd "$(dirname "$0")/.." || exit 1
 
-echo "=== DockPanel Docs Audit ==="
+echo "=== ARSY Docs Audit ==="
 echo ""
 
 # ─── Count actual values from source ───
