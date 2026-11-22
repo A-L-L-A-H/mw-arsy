@@ -2,6 +2,7 @@ use rmcp::handler::server::wrapper::Parameters;
 use rmcp::model::{Implementation, ServerCapabilities, ServerInfo};
 use rmcp::{schemars, tool, tool_handler, tool_router, ServerHandler};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 use crate::backend_client;
 
@@ -176,7 +177,7 @@ pub struct IncidentListParams {
 
 /// Mutating tool parameter types
 
-#[derive(Debug, Deserialize, schemars::JsonSchema)]
+#[derive(Debug, Deserialize, Serialize, schemars::JsonSchema)]
 pub struct CreateSiteParams {
     /// Domain name for the site.
     pub domain: String,
@@ -205,7 +206,7 @@ pub struct CreateSiteParams {
     pub ssl_certificate: Option<String>,
 }
 
-#[derive(Debug, Deserialize, schemars::JsonSchema)]
+#[derive(Debug, Deserialize, Serialize, schemars::JsonSchema)]
 pub struct UpdateSiteParams {
     /// The site's UUID.
     pub site_id: String,
@@ -235,13 +236,13 @@ pub struct UpdateSiteParams {
     pub enabled: Option<bool>,
 }
 
-#[derive(Debug, Deserialize, schemars::JsonSchema)]
+#[derive(Debug, Deserialize, Serialize, schemars::JsonSchema)]
 pub struct DeleteSiteParams {
     /// The site's UUID.
     pub site_id: String,
 }
 
-#[derive(Debug, Deserialize, schemars::JsonSchema)]
+#[derive(Debug, Deserialize, Serialize, schemars::JsonSchema)]
 pub struct CreateAppParams {
     /// App name (will be prefixed with "dockpanel-").
     pub name: String,
@@ -834,10 +835,20 @@ impl ServerHandler for DockPanelMcp {
         ServerInfo::new(ServerCapabilities::builder().enable_tools().build())
             .with_server_info(Implementation::new("dockpanel-mcp", env!("CARGO_PKG_VERSION")))
             .with_instructions(
-                "Read-only introspection tools for a DockPanel-managed server fleet. Every call \
+                "DockPanel MCP server with full read/write tool catalogue. Every call \
                  is attributed in the panel's own audit log to the API key configured for this \
-                 MCP server. v1 has no mutating or destructive tools — everything here only \
-                 reads state.",
+                 MCP server. Mutating tools require an admin-scoped API key with write scope.\n\n\
+                 READ-ONLY TOOLS (40): list_sites, get_site, list_apps, get_app_logs, get_app_stats,\
+                 list_crons, list_site_backups, list_wordpress_sites, list_databases, get_database_tables,\
+                 list_servers, get_server_metrics, get_fleet_dashboard, list_monitors, get_monitor_uptime,\
+                 get_status_page, list_alerts, get_alerts_summary, list_on_call_schedules,\
+                 list_escalation_policies, list_incidents, get_security_overview, get_security_audit_log,\
+                 get_security_posture, list_dns_zones, list_dns_records, get_backup_orchestrator_health,\
+                 list_db_backups, get_mail_status, list_mail_domains, get_system_logs, list_activity,\
+                 get_update_status, list_webhook_endpoints, list_git_deploys, list_stacks,\
+                 list_users, get_settings, list_resellers, get_telemetry_stats.\n\n\
+                 MUTATING TOOLS (10): create_site, update_site, delete_site, create_app, update_app,\
+                 delete_app, create_database, delete_database, deploy_git, scale_app.",
             )
     }
 }
