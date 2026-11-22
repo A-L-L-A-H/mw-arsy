@@ -545,7 +545,7 @@ deny[msg] {
 
         // Add the query module for decision extraction
         let query_rego = r#"
-package dockpanel.query
+package arsy.query
 
 decision = "allow" {
     not deny[_]
@@ -573,7 +573,7 @@ decision = "deny" {
 
         // Evaluate the query
         let results = engine
-            .eval_query("data.dockpanel.query.decision", input_value)
+            .eval_query("data.arsy.query.decision", input_value)
             .map_err(|e| format!("Query evaluation failed: {}", e))?;
 
         // Extract the decision from the results

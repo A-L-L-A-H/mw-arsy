@@ -38,7 +38,7 @@
   "links": [
     {
       "title": "DockPanel",
-      "url": "https://dockpanel.dev",
+      "url": "https://moonwitness.dev",
       "type": "link",
       "icon": "external link",
       "targetBlank": true
@@ -733,7 +733,7 @@
   ],
   "refresh": "30s",
   "schemaVersion": 39,
-  "tags": ["dockpanel", "fleet", "self-hosted"],
+  "tags": ["arsy", "fleet", "self-hosted"],
   "templating": {
     "list": [
       {
@@ -768,7 +768,7 @@
   "timepicker": {},
   "timezone": "browser",
   "title": "DockPanel — Fleet Overview",
-  "uid": "dockpanel-fleet",
+  "uid": "arsy-fleet",
   "version": 1,
   "weekStart": ""
 }

@@ -20,14 +20,14 @@ Type=simple
 # leans on, and the reason ONE unit can serve both roles. Without the prefix a
 # panel box would refuse to start; without the line at all a fleet member would
 # start with no token and no central URL and never phone home again.
-EnvironmentFile=-/etc/dockpanel/agent.env
-# RuntimeDirectory= creates /run/dockpanel before namespace setup AND preserves it
-# across stop/start cycles — fixes upgrade-path /run/dockpanel disappearance (v2.8.14).
-RuntimeDirectory=dockpanel
+EnvironmentFile=-/etc/arsy/agent.env
+# RuntimeDirectory= creates /run/arsy before namespace setup AND preserves it
+# across stop/start cycles — fixes upgrade-path /run/arsy disappearance (v2.8.14).
+RuntimeDirectory=arsy
 RuntimeDirectoryPreserve=yes
-ExecStartPre=/bin/sh -c 'mkdir -p /run/dockpanel /var/lib/dockpanel/git'
-ExecStart=/usr/local/bin/dockpanel-agent
-ExecStartPost=/bin/sh -c 'sleep 1 && chgrp $(getent group www-data >/dev/null 2>&1 && echo www-data || echo nginx) /var/run/dockpanel/agent.sock 2>/dev/null; chmod 660 /var/run/dockpanel/agent.sock 2>/dev/null; true'
+ExecStartPre=/bin/sh -c 'mkdir -p /run/arsy /var/lib/arsy/git'
+ExecStart=/usr/local/bin/arsy-agent
+ExecStartPost=/bin/sh -c 'sleep 1 && chgrp $(getent group www-data >/dev/null 2>&1 && echo www-data || echo nginx) /var/run/arsy/agent.sock 2>/dev/null; chmod 660 /var/run/arsy/agent.sock 2>/dev/null; true'
 Restart=always
 RestartSec=5
 Environment=RUST_LOG=info
@@ -77,7 +77,7 @@ RestrictNamespaces=~user
 # sandbox landed. Reproduced on a fresh Ubuntu 24.04 box (s288). Note the failure
 # is only legible because s287 stopped flattening the agent's message; before that
 # it read "Agent offline".
-ReadWritePaths=/etc/nginx /etc/dockpanel /var/run/dockpanel /var/backups/dockpanel /var/lib/dockpanel /var/www /var/log /etc/systemd/system /opt -/etc/letsencrypt -/etc/apt -/etc/fail2ban -/etc/powerdns -/etc/modsecurity -/etc/cloudflared -/etc/postfix -/etc/dovecot -/var/spool/postfix -/var/spool/cron -/var/vmail -/var/cache/nginx -/etc/ufw -/var/lib/ufw -/etc/php -/etc/ssh -/var/dockpanel-sftp
+ReadWritePaths=/etc/nginx /etc/arsy /var/run/arsy /var/backups/arsy /var/lib/arsy /var/www /var/log /etc/systemd/system /opt -/etc/letsencrypt -/etc/apt -/etc/fail2ban -/etc/powerdns -/etc/modsecurity -/etc/cloudflared -/etc/postfix -/etc/dovecot -/var/spool/postfix -/var/spool/cron -/var/vmail -/var/cache/nginx -/etc/ufw -/var/lib/ufw -/etc/php -/etc/ssh -/var/arsy-sftp
 
 MemoryMax=512M
 LimitNOFILE=65535

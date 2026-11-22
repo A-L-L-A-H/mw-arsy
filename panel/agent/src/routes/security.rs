@@ -487,7 +487,7 @@ async fn canary_setup() -> Result<Json<serde_json::Value>, ApiErr> {
 
     for (path, desc) in &CANARY_PLANT_PATHS {
         let content = format!(
-            "DOCKPANEL CANARY FILE — DO NOT TOUCH\n\
+            "ARSY CANARY FILE — DO NOT TOUCH\n\
              Created: {}\n\
              Purpose: Intrusion detection tripwire\n\
              If you are reading this, security has been alerted.\n",

@@ -532,14 +532,31 @@ Be specific and actionable. Reference specific evidence items."#,
         )
     }
 
-    /// Call LLM for diagnosis (placeholder - integrate with actual provider)
+    /// Call LLM for diagnosis - supports Anthropic, OpenAI, Gemini, and Grok
     async fn call_llm(&self, prompt: &str) -> Result<(String, Vec<RecommendedAction>, f32, u32), String> {
-        // This is a placeholder implementation
-        // In production, this would call Anthropic, OpenAI, Gemini, or Grok API
-        // based on self.config.llm_provider
+        let provider = &self.config.llm_provider;
+        let model = &self.config.llm_model;
+        let api_key = &self.config.llm_api_key;
 
-        // For now, return a mock diagnosis based on simple pattern matching
-        let (root_cause, actions, confidence) = if evidence.contains("disk") || evidence.contains("space") {
+        if api_key.is_empty() {
+            return Err("LLM API key not configured".to_string());
+        }
+
+        let client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(60))
+            .build()
+            .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
+
+        let (root_cause, actions, confidence, tokens) = match provider.as_str() {
+            "anthropic" => self.call_anthropic(&client, model, api_key, prompt).await?,
+            "openai" => self.call_openai(&client, model, api_key, prompt).await?,
+            "gemini" => self.call_gemini(&client, model, api_key, prompt).await?,
+            "grok" => self.call_grok(&client, model, api_key, prompt).await?,
+            _ => return Err(format!("Unknown LLM provider: {}", provider)),
+        };
+
+        Ok((root_cause, actions, confidence, tokens))
+    }
             (
                 "Disk space exhaustion detected on one or more servers".to_string(),
                 vec![
