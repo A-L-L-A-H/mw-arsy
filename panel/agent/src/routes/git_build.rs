@@ -160,6 +160,9 @@ struct BuildRequest {
     build_context: String,
     #[serde(default)]
     scope: String,
+    /// Builder to use: "railpack" (default), "nixpacks", or "dockerfile"
+    #[serde(default)]
+    builder: Option<crate::services::git_build::BuilderType>,
 }
 
 fn default_dockerfile() -> String {
@@ -307,16 +310,18 @@ async fn build(
         return Err(err(StatusCode::BAD_REQUEST, "Invalid build_context path"));
     }
 
+    let builder_type = body.builder.unwrap_or_default();
     let name = scope_of(&body.scope).scoped(&body.name);
 
-    tracing::info!("Git build: {} (commit: {})", name, body.commit_hash);
+    tracing::info!("Git build: {} (commit: {}, builder: {:?})", name, body.commit_hash, builder_type);
 
-    let result = git_build::build_image(
+    let result = git_build::build_image_with_builder(
         &name,
         &body.dockerfile,
         &body.commit_hash,
         &body.build_args,
         &body.build_context,
+        builder_type,
     )
     .await
     .map_err(|e| err(StatusCode::INTERNAL_SERVER_ERROR, &e))?;
@@ -324,6 +329,7 @@ async fn build(
     Ok(Json(serde_json::json!({
         "image_tag": result.image_tag,
         "output": result.output,
+        "builder_used": result.builder_used,
     })))
 }
 

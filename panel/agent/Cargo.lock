@@ -645,6 +645,7 @@ dependencies = [
 name = "dockpanel-agent"
 version = "2.242.1"
 dependencies = [
+ "async-trait",
  "axum",
  "axum-server",
  "base64",

@@ -190,6 +190,449 @@ pub fn register_builder(builder: Box<dyn Builder>) {
     }
 }
 
+/// Railpack builder backend - modern BuildKit-native builder (preferred)
+pub struct RailpackBuilder {
+    binary_path: PathBuf,
+}
+
+impl RailpackBuilder {
+    pub fn new() -> Self {
+        Self {
+            binary_path: PathBuf::from(format!("{BUILDER_BIN_DIR}/railpack")),
+        }
+    }
+
+    async fn ensure_binary(&self) -> Result<(), String> {
+        if self.binary_path.exists() {
+            return Ok(());
+        }
+
+        std::fs::create_dir_all(&BUILDER_BIN_DIR)
+            .map_err(|e| format!("create {BUILDER_BIN_DIR}: {e}"))?;
+
+        // Download railpack binary from GitHub releases
+        // Using a pinned version for reproducibility
+        const RAILPACK_VERSION: &str = "v0.5.0"; // Pin to a specific version
+        let url = format!(
+            "https://github.com/railwayapp/railpack/releases/download/{RAILPACK_VERSION}/railpack-{RAILPACK_VERSION}-linux-x86_64.tar.gz"
+        );
+
+        let output = tokio::time::timeout(
+            std::time::Duration::from_secs(180),
+            safe_command("sh")
+                .args(["-c", &format!(
+                    "cd {BUILDER_BIN_DIR} && curl -sSfL '{url}' | tar -xz && chmod +x railpack"
+                )])
+                .kill_on_drop(true)
+                .output(),
+        )
+        .await
+        .map_err(|_| "railpack download timed out (180s)".to_string())?
+        .map_err(|e| format!("railpack download failed: {e}"))?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(format!("railpack download failed: {stderr}"));
+        }
+
+        Ok(())
+    }
+}
+
+#[async_trait::async_trait]
+impl Builder for RailpackBuilder {
+    async fn detect(&self, repo_path: &PathBuf) -> Result<BuildPlan, String> {
+        // Railpack auto-detects language; we can run `railpack detect` for more details
+        let output = tokio::time::timeout(
+            std::time::Duration::from_secs(30),
+            safe_command(&self.binary_path)
+                .args(["detect", repo_path.to_str().unwrap()])
+                .output(),
+        )
+        .await
+        .map_err(|_| "railpack detect timed out".to_string())?
+        .map_err(|e| format!("railpack detect failed: {e}"))?;
+
+        let detected = String::from_utf8_lossy(&output.stdout);
+        let (language, framework) = parse_railpack_detect(&detected);
+
+        Ok(BuildPlan {
+            builder_type: BuilderType::Railpack,
+            detected_language: language,
+            detected_framework: framework,
+            build_command: None, // Railpack handles build internally
+            start_command: None,
+            dockerfile_path: None,
+            build_args: HashMap::new(),
+            build_context: ".".to_string(),
+        })
+    }
+
+    async fn build(&self, name: &str, plan: BuildPlan, commit_hash: &str) -> Result<BuildOutput, String> {
+        self.ensure_binary().await?;
+
+        let image_tag = format!("dockpanel-git-{name}:{commit_hash}");
+        let latest_tag = format!("dockpanel-git-{name}:latest");
+        let context_dir = format!("{GIT_BASE_DIR}/{name}/{}", plan.build_context);
+
+        // Build with railpack
+        let mut cmd = safe_command(&self.binary_path);
+        cmd.args(["build", &context_dir, "--name", &image_tag, "--cache-key", name]);
+
+        // Pass build args as environment variables
+        for (key, value) in &plan.build_args {
+            cmd.arg("--env").arg(format!("{key}={value}"));
+        }
+
+        // Set cache directory
+        let cache_dir = format!("/var/lib/dockpanel/cache/railpack/{name}");
+        std::fs::create_dir_all(&cache_dir).ok();
+        cmd.env("RAILPACK_CACHE_DIR", &cache_dir);
+
+        tracing::info!("Railpack build: {image_tag} from {context_dir}");
+
+        let output = tokio::time::timeout(
+            std::time::Duration::from_secs(900),
+            cmd.kill_on_drop(true).output(),
+        )
+        .await
+        .map_err(|_| "Railpack build timed out (900s)".to_string())?
+        .map_err(|e| format!("Railpack build failed to start: {e}"))?;
+
+        let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+        let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+        let full_output = format!("{stdout}\n{stderr}");
+
+        if !output.status.success() {
+            return Err(format!("Railpack build failed:\n{full_output}"));
+        }
+
+        // Also tag as :latest
+        let _ = safe_command("docker")
+            .args(["tag", &image_tag, &latest_tag])
+            .output()
+            .await;
+
+        tracing::info!("Railpack build succeeded: {image_tag}");
+        Ok(BuildOutput {
+            image_tag,
+            output: full_output,
+            builder_used: BuilderType::Railpack,
+        })
+    }
+
+    fn builder_type(&self) -> BuilderType {
+        BuilderType::Railpack
+    }
+
+    async fn is_available(&self) -> bool {
+        self.binary_path.exists()
+    }
+
+    async fn ensure_installed(&self) -> Result<(), String> {
+        self.ensure_binary().await
+    }
+}
+
+/// Nixpacks builder backend - legacy Nix-based builder (deprecated upstream)
+pub struct NixpacksBuilder {
+    binary_path: PathBuf,
+}
+
+impl NixpacksBuilder {
+    pub fn new() -> Self {
+        Self {
+            binary_path: PathBuf::from("/usr/local/bin/nixpacks"),
+        }
+    }
+
+    async fn ensure_binary(&self) -> Result<(), String> {
+        if self.binary_path.exists() {
+            return Ok(());
+        }
+
+        // Try to install via the official installer
+        let output = tokio::time::timeout(
+            std::time::Duration::from_secs(180),
+            safe_command("sh")
+                .args(["-c", "curl -sSfL https://nixpacks.com/install.sh | sh"])
+                .kill_on_drop(true)
+                .output(),
+        )
+        .await
+        .map_err(|_| "Nixpacks install timed out (180s)".to_string())?
+        .map_err(|e| format!("Nixpacks install failed: {e}"))?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(format!("Nixpacks install failed: {stderr}"));
+        }
+
+        Ok(())
+    }
+}
+
+#[async_trait::async_trait]
+impl Builder for NixpacksBuilder {
+    async fn detect(&self, repo_path: &PathBuf) -> Result<BuildPlan, String> {
+        let output = tokio::time::timeout(
+            std::time::Duration::from_secs(30),
+            safe_command(&self.binary_path)
+                .args(["plan", repo_path.to_str().unwrap()])
+                .output(),
+        )
+        .await
+        .map_err(|_| "nixpacks plan timed out".to_string())?
+        .map_err(|e| format!("nixpacks plan failed: {e}"))?;
+
+        let detected = String::from_utf8_lossy(&output.stdout);
+        let (language, framework) = parse_nixpacks_plan(&detected);
+
+        Ok(BuildPlan {
+            builder_type: BuilderType::Nixpacks,
+            detected_language: language,
+            detected_framework: framework,
+            build_command: None,
+            start_command: None,
+            dockerfile_path: None,
+            build_args: HashMap::new(),
+            build_context: ".".to_string(),
+        })
+    }
+
+    async fn build(&self, name: &str, plan: BuildPlan, commit_hash: &str) -> Result<BuildOutput, String> {
+        self.ensure_binary().await?;
+
+        let image_tag = format!("dockpanel-git-{name}:{commit_hash}");
+        let latest_tag = format!("dockpanel-git-{name}:latest");
+        let context_dir = format!("{GIT_BASE_DIR}/{name}/{}", plan.build_context);
+
+        let mut cmd = safe_command(&self.binary_path);
+        cmd.args(["build", &context_dir, "--name", &image_tag, "--cache-key", name]);
+
+        // Pass build args as environment variables
+        for (key, value) in &plan.build_args {
+            cmd.arg("--env").arg(format!("{key}={value}"));
+        }
+
+        let cache_dir = format!("/var/lib/dockpanel/cache/nixpacks/{name}");
+        std::fs::create_dir_all(&cache_dir).ok();
+        cmd.env("NIXPACKS_CACHE_DIR", &cache_dir);
+
+        tracing::info!("Nixpacks build: {image_tag} from {context_dir}");
+
+        let output = tokio::time::timeout(
+            std::time::Duration::from_secs(900),
+            cmd.kill_on_drop(true).output(),
+        )
+        .await
+        .map_err(|_| "Nixpacks build timed out (900s)".to_string())?
+        .map_err(|e| format!("Nixpacks build failed to start: {e}"))?;
+
+        let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+        let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+        let full_output = format!("{stdout}\n{stderr}");
+
+        if !output.status.success() {
+            return Err(format!("Nixpacks build failed:\n{full_output}"));
+        }
+
+        // Also tag as :latest
+        let _ = safe_command("docker")
+            .args(["tag", &image_tag, &latest_tag])
+            .output()
+            .await;
+
+        tracing::info!("Nixpacks build succeeded: {image_tag}");
+        Ok(BuildOutput {
+            image_tag,
+            output: full_output,
+            builder_used: BuilderType::Nixpacks,
+        })
+    }
+
+    fn builder_type(&self) -> BuilderType {
+        BuilderType::Nixpacks
+    }
+
+    async fn is_available(&self) -> bool {
+        self.binary_path.exists()
+    }
+
+    async fn ensure_installed(&self) -> Result<(), String> {
+        self.ensure_binary().await
+    }
+}
+
+/// Dockerfile builder backend - explicit Dockerfile, no auto-detection
+pub struct DockerfileBuilder;
+
+impl DockerfileBuilder {
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+#[async_trait::async_trait]
+impl Builder for DockerfileBuilder {
+    async fn detect(&self, repo_path: &PathBuf) -> Result<BuildPlan, String> {
+        // Check if Dockerfile exists
+        let dockerfile_path = repo_path.join("Dockerfile");
+        if !dockerfile_path.exists() {
+            return Err("No Dockerfile found in repository root".to_string());
+        }
+
+        Ok(BuildPlan {
+            builder_type: BuilderType::Dockerfile,
+            detected_language: None,
+            detected_framework: None,
+            build_command: None,
+            start_command: None,
+            dockerfile_path: Some("Dockerfile".to_string()),
+            build_args: HashMap::new(),
+            build_context: ".".to_string(),
+        })
+    }
+
+    async fn build(&self, name: &str, plan: BuildPlan, commit_hash: &str) -> Result<BuildOutput, String> {
+        let image_tag = format!("dockpanel-git-{name}:{commit_hash}");
+        let latest_tag = format!("dockpanel-git-{name}:latest");
+        let context_dir = format!("{GIT_BASE_DIR}/{name}/{}", plan.build_context);
+        let dockerfile = plan.dockerfile_path.unwrap_or_else(|| "Dockerfile".to_string());
+
+        let mut cmd_args: Vec<String> = vec![
+            "build".into(),
+            "--cache-from".into(), latest_tag.clone(),
+        ];
+        for (k, v) in &plan.build_args {
+            cmd_args.push("--build-arg".into());
+            cmd_args.push(format!("{k}={v}"));
+        }
+        let full_dockerfile = if plan.build_context == "." {
+            dockerfile.clone()
+        } else {
+            format!("{}/{}", plan.build_context, dockerfile)
+        };
+        cmd_args.extend([
+            "-t".into(), image_tag.clone(),
+            "-t".into(), latest_tag.clone(),
+            "-f".into(), full_dockerfile,
+            context_dir.clone(),
+        ]);
+
+        tracing::info!("Dockerfile build: {image_tag} from {context_dir} (dockerfile: {dockerfile})");
+
+        let build = tokio::time::timeout(
+            std::time::Duration::from_secs(900),
+            safe_command("docker")
+                .args(&cmd_args)
+                .env("DOCKER_BUILDKIT", "1")
+                .current_dir(&context_dir)
+                .kill_on_drop(true)
+                .output(),
+        )
+        .await
+        .map_err(|_| "Dockerfile build timed out (900s)".to_string())?
+        .map_err(|e| format!("Dockerfile build failed: {e}"))?;
+
+        let stdout = String::from_utf8_lossy(&build.stdout).to_string();
+        let stderr = String::from_utf8_lossy(&build.stderr).to_string();
+        let full_output = format!("{stdout}\n{stderr}");
+
+        if !build.status.success() {
+            return Err(format!("Dockerfile build failed:\n{full_output}"));
+        }
+
+        tracing::info!("Dockerfile build succeeded: {image_tag}");
+        Ok(BuildOutput {
+            image_tag,
+            output: full_output,
+            builder_used: BuilderType::Dockerfile,
+        })
+    }
+
+    fn builder_type(&self) -> BuilderType {
+        BuilderType::Dockerfile
+    }
+
+    async fn is_available(&self) -> bool {
+        true // Docker is always available
+    }
+
+    async fn ensure_installed(&self) -> Result<(), String> {
+        Ok(()) // Docker is always available
+    }
+}
+
+/// Parse railpack detect output to extract language and framework
+fn parse_railpack_detect(output: &str) -> (Option<String>, Option<String>) {
+    // railpack detect outputs JSON or plain text
+    // Try to parse as JSON first
+    if let Ok(json) = serde_json::from_str::<serde_json::Value>(output) {
+        let language = json.get("language").and_then(|v| v.as_str()).map(String::from);
+        let framework = json.get("framework").and_then(|v| v.as_str()).map(String::from);
+        return (language, framework);
+    }
+    // Fallback: simple text parsing
+    let language = output.lines()
+        .find(|l| l.contains("language"))
+        .and_then(|l| l.split(':').nth(1))
+        .map(|s| s.trim().to_string());
+    let framework = output.lines()
+        .find(|l| l.contains("framework"))
+        .and_then(|l| l.split(':').nth(1))
+        .map(|s| s.trim().to_string());
+    (language, framework)
+}
+
+/// Parse nixpacks plan output to extract language and framework
+fn parse_nixpacks_plan(output: &str) -> (Option<String>, Option<String>) {
+    // nixpacks plan outputs YAML or JSON
+    let language = output.lines()
+        .find(|l| l.contains("language") || l.contains("provider"))
+        .and_then(|l| l.split(':').nth(1))
+        .map(|s| s.trim().trim_matches('"').to_string());
+    let framework = output.lines()
+        .find(|l| l.contains("framework"))
+        .and_then(|l| l.split(':').nth(1))
+        .map(|s| s.trim().trim_matches('"').to_string());
+    (language, framework)
+}
+
+/// Build image using the builder abstraction (replaces direct build_image call)
+pub async fn build_image_with_builder(
+    name: &str,
+    dockerfile_path: &str,
+    commit_hash: &str,
+    build_args: &HashMap<String, String>,
+    build_context: &str,
+    builder_type: BuilderType,
+) -> Result<BuildOutput, String> {
+    // Initialize registry and register builders on first call
+    let registry = get_builder_registry().await;
+    
+    // Lazy registration - register builders if not already registered
+    if registry.get(builder_type).is_none() {
+        register_builder(Box::new(RailpackBuilder::new()));
+        register_builder(Box::new(NixpacksBuilder::new()));
+        register_builder(Box::new(DockerfileBuilder::new()));
+    }
+
+    let builder = registry.get(builder_type)
+        .ok_or_else(|| format!("Builder {:?} not registered", builder_type))?;
+
+    // For Dockerfile builder, we need to include the dockerfile_path in the plan
+    let mut plan = builder.detect(&PathBuf::from(format!("{GIT_BASE_DIR}/{name}"))).await?;
+    plan.build_args = build_args.clone();
+    plan.build_context = build_context.to_string();
+    
+    if builder_type == BuilderType::Dockerfile {
+        plan.dockerfile_path = Some(dockerfile_path.to_string());
+    }
+
+    builder.build(name, plan, commit_hash).await
+}
+
 /// Clone or pull a git repository to `/var/lib/dockpanel/git/{name}/`.
 /// Uses `--depth 50` for clone and `fetch + reset --hard` for pull.
 pub async fn clone_or_pull(
