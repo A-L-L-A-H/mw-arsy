@@ -81,6 +81,7 @@ export const navGroups: NavGroup[] = [
       { to: "/apps", label: "Docker Apps", iconName: "apps", adminOnly: true },
       { to: "/git-deploys", label: "Git Deploy", iconName: "gitDeploys", adminOnly: true },
       { to: "/migration", label: "Migration", iconName: "migration", adminOnly: true },
+      { to: "/wasm", label: "Wasm Functions", iconName: "code", adminOnly: true },
     ],
   },
   {
