@@ -117,6 +117,7 @@ const Users = lazyRetry(() => import("./pages/Users"));
 const ContainerPolicies = lazyRetry(() => import("./pages/ContainerPolicies"));
 const System = lazyRetry(() => import("./pages/System"));
 const Telemetry = lazyRetry(() => import("./pages/Telemetry"));
+const Wasm = lazyRetry(() => import("./pages/Wasm"));
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
@@ -178,6 +179,7 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/monitoring" element={<Monitoring />} />
               <Route path="/system" element={<System />} />
               <Route path="/telemetry" element={<Telemetry />} />
+              <Route path="/wasm" element={<Wasm />} />
               <Route path="/security-hardening" element={<Navigate to="/security?tab=lockdown" replace />} />
               <Route path="/monitors" element={<Navigate to="/monitoring" replace />} />
               <Route path="/alerts" element={<Navigate to="/monitoring?tab=alerts" replace />} />
