@@ -318,10 +318,58 @@ async fn reset_password(
     Ok(Json(serde_json::json!({ "success": true })))
 }
 
+/// POST /databases/wal-g/fetch — WAL-G PITR restore (backup-fetch) for PostgreSQL.
+async fn wal_g_fetch(
+    Json(body): Json<WalGFetchRequest>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
+    use crate::services::wal_g::{backup_fetch, WalGConfig};
+    use std::time::Duration;
+
+    let config = WalGConfig {
+        database_name: body.database_name,
+        s3_bucket: body.s3_bucket,
+        s3_region: body.s3_region,
+        s3_endpoint: body.s3_endpoint,
+        aws_access_key_id: body.aws_access_key_id,
+        aws_secret_access_key: body.aws_secret_access_key,
+        pg_data_dir: "/var/lib/postgresql/data".to_string(),
+        wal_level: "replica".to_string(),
+        archive_mode: "on".to_string(),
+        archive_command: "wal-g wal-push %p".to_string(),
+    };
+
+    let container_name = format!("dockpanel-db-{}", body.database_name);
+
+    match backup_fetch(&config, &container_name, Some(&body.target_time)).await {
+        Ok(output) => Ok(Json(serde_json::json!({
+            "ok": true,
+            "message": "PITR restore completed",
+            "output": output,
+        }))),
+        Err(e) => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({ "error": e })),
+        )),
+    }
+}
+
+#[derive(serde::Deserialize)]
+struct WalGFetchRequest {
+    database_name: String,
+    s3_bucket: String,
+    s3_region: String,
+    #[serde(default)]
+    s3_endpoint: Option<String>,
+    aws_access_key_id: String,
+    aws_secret_access_key: String,
+    target_time: String,
+}
+
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/databases", post(create).get(list))
         .route("/databases/query", post(query_db))
         .route("/databases/reset-password", post(reset_password))
         .route("/databases/{container_id}", delete(remove))
+        .route("/databases/wal-g/fetch", post(wal_g_fetch))
 }

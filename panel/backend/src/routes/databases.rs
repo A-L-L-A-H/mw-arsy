@@ -1032,6 +1032,12 @@ async fn find_available_port(state: &AppState, engine: &str) -> Result<i32, ApiE
 pub struct PitrConfigRequest {
     pub pitr_enabled: Option<bool>,
     pub retention_hours: Option<i32>,
+    // WAL-G S3 configuration (required when enabling PITR)
+    pub s3_bucket: Option<String>,
+    pub s3_region: Option<String>,
+    pub s3_endpoint: Option<String>,
+    pub aws_access_key_id: Option<String>,
+    pub aws_secret_access_key: Option<String>,
 }
 
 /// GET /api/databases/{id}/pitr — Get PITR configuration.
@@ -1056,9 +1062,13 @@ pub async fn pitr_config(
         .map_err(|e| internal_error("pitr config", e))?
         .ok_or_else(|| err(StatusCode::NOT_FOUND, "Database not found"))?;
 
-    let config: Option<(bool, i32, Option<chrono::DateTime<chrono::Utc>>, Option<chrono::DateTime<chrono::Utc>>, i64)> =
+    let config: Option<(
+            bool, i32, Option<chrono::DateTime<chrono::Utc>>, Option<chrono::DateTime<chrono::Utc>>, i64,
+            Option<String>, Option<String>, Option<String>, Option<String>
+        )> =
         sqlx::query_as(
-            "SELECT pitr_enabled, retention_hours, last_backup_at, last_wal_at, backup_size_bytes \
+            "SELECT pitr_enabled, retention_hours, last_backup_at, last_wal_at, backup_size_bytes, \
+                    s3_bucket, s3_region, s3_endpoint, aws_access_key_id \
              FROM db_pitr_config WHERE database_id = $1"
         )
         .bind(id)
@@ -1067,13 +1077,17 @@ pub async fn pitr_config(
         .map_err(|e| internal_error("pitr config", e))?;
 
     match config {
-        Some((enabled, hours, last_backup, last_wal, size)) => {
+        Some((enabled, hours, last_backup, last_wal, size, s3_bucket, s3_region, s3_endpoint, aws_access_key_id)) => {
             Ok(Json(serde_json::json!({
                 "pitr_enabled": enabled,
                 "retention_hours": hours,
                 "last_backup_at": last_backup,
                 "last_wal_at": last_wal,
                 "backup_size_bytes": size,
+                "s3_bucket": s3_bucket,
+                "s3_region": s3_region,
+                "s3_endpoint": s3_endpoint,
+                "aws_access_key_id": aws_access_key_id,
             })))
         }
         None => Ok(Json(serde_json::json!({
@@ -1094,8 +1108,16 @@ pub async fn update_pitr_config(
     // Ownership + container-readiness check (get_db_info also enforces the H1 guard).
     // No agent call on this path — the handler only persists the intent flag (see the
     // note below), so the server id this now returns has nothing to dispatch.
-    let (name, _engine, _password, _port, _site_server_id) =
+    let (name, engine, _password, _port, _site_server_id) =
         get_db_info(&state, id, claims.sub).await?;
+
+    if engine != "postgresql" && body.pitr_enabled.unwrap_or(false) {
+        return Err(err(
+            StatusCode::BAD_REQUEST,
+            "WAL-G PITR is only supported for PostgreSQL databases",
+        ));
+    }
+
     let enabled = body.pitr_enabled.unwrap_or(false);
     let hours = body.retention_hours.unwrap_or(24).max(1).min(720);
 
@@ -1108,16 +1130,40 @@ pub async fn update_pitr_config(
     // real, symmetric WAL archiving is implemented (pitr_restore returns 501 until then).
     // Save config
 
+    // Validate required fields when enabling
+    if enabled {
+        body.s3_bucket.as_ref().ok_or_else(|| err(StatusCode::BAD_REQUEST, "s3_bucket is required when enabling PITR"))?;
+        body.s3_region.as_ref().ok_or_else(|| err(StatusCode::BAD_REQUEST, "s3_region is required when enabling PITR"))?;
+        body.aws_access_key_id.as_ref().ok_or_else(|| err(StatusCode::BAD_REQUEST, "aws_access_key_id is required when enabling PITR"))?;
+        body.aws_secret_access_key.as_ref().ok_or_else(|| err(StatusCode::BAD_REQUEST, "aws_secret_access_key is required when enabling PITR"))?;
+    }
+
+    // Encrypt the secret access key
+    let encrypted_secret = if let Some(secret) = &body.aws_secret_access_key {
+        if enabled && !secret.is_empty() {
+            Some(crate::services::secrets_crypto::encrypt_credential(secret, &state.config.jwt_secret)
+                .map_err(|e| err(StatusCode::INTERNAL_SERVER_ERROR, &format!("Encryption failed: {e}")))?)
+        } else {
+            None
+        }
+    } else {
+        None
+    };
 
     sqlx::query(
-        "INSERT INTO db_pitr_config (database_id, pitr_enabled, retention_hours) \
-         VALUES ($1, $2, $3) \
+        "INSERT INTO db_pitr_config (database_id, pitr_enabled, retention_hours, s3_bucket, s3_region, s3_endpoint, aws_access_key_id, aws_secret_access_key) \
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) \
          ON CONFLICT (database_id) DO UPDATE SET \
-         pitr_enabled = $2, retention_hours = $3, updated_at = NOW()"
+         pitr_enabled = $2, retention_hours = $3, s3_bucket = $4, s3_region = $5, s3_endpoint = $6, aws_access_key_id = $7, aws_secret_access_key = $8, updated_at = NOW()"
     )
     .bind(id)
     .bind(enabled)
     .bind(hours)
+    .bind(&body.s3_bucket)
+    .bind(&body.s3_region)
+    .bind(&body.s3_endpoint)
+    .bind(&body.aws_access_key_id)
+    .bind(encrypted_secret)
     .execute(&state.db)
     .await
     .map_err(|e| internal_error("update pitr config", e))?;
@@ -1136,22 +1182,93 @@ pub async fn pitr_restore(
     State(state): State<AppState>,
     AuthUser(claims): AuthUser,
     Path(id): Path<Uuid>,
-    _scope: ServerScope,
-    Json(_body): Json<serde_json::Value>,
+    scope: ServerScope,
+    Json(body): Json<PitrRestoreRequest>,
 ) -> Result<Json<serde_json::Value>, ApiError> {
-    // Ownership + container-readiness check (get_db_info also enforces the H1 guard).
-    let _ = get_db_info(&state, id, claims.sub).await?;
+    // Ownership + container-readiness check
+    let db_info = get_db_info(&state, id, claims.sub).await?;
 
-    // Honesty (v2.19.0): point-in-time restore was never functional and used to LIE.
-    // The postgres branch only wrote a WAL restore-point marker (pg_create_restore_point
-    // performs NO rollback) then returned {ok:true, restored_to:...}; the mysql branch +
-    // the WAL-archive setup posted to a non-existent agent `/exec` route so nothing ran.
-    // Return an explicit 501 instead of a false success until real PITR is implemented
-    // (this also retires the dead mysqlbinlog shell string that only reached the 404 route).
-    Err(err(
-        StatusCode::NOT_IMPLEMENTED,
-        "Point-in-time restore is not yet implemented",
-    ))
+    let (name, engine, _old_password, _port, site_server_id) = db_info;
+
+    if engine != "postgresql" {
+        return Err(err(
+            StatusCode::BAD_REQUEST,
+            "PITR is only supported for PostgreSQL databases. MySQL PITR uses binlog streaming (not yet implemented).",
+        ));
+    }
+
+    let target_time = body.target_time.ok_or_else(|| err(
+        StatusCode::BAD_REQUEST,
+        "target_time is required (RFC3339 format, e.g., '2026-11-23T10:30:00Z')",
+    ))?;
+
+    // Validate target_time format
+    chrono::DateTime::parse_from_rfc3339(&target_time)
+        .map_err(|_| err(StatusCode::BAD_REQUEST, "Invalid target_time format. Use RFC3339 (e.g., '2026-11-23T10:30:00Z')"))?;
+
+    // Check PITR is enabled and configured
+    let pitr_config: Option<(String, String, String, i64)> = sqlx::query_as(
+        "SELECT s3_bucket, s3_region, aws_access_key_id, retention_hours
+         FROM db_pitr_config WHERE database_id = $1 AND pitr_enabled = true",
+    )
+    .bind(id)
+    .fetch_optional(&state.db)
+    .await
+    .map_err(|e| internal_error("pitr config lookup", e))?;
+
+    let (s3_bucket, s3_region, aws_access_key_id, retention_hours) = pitr_config
+        .ok_or_else(|| err(StatusCode::BAD_REQUEST, "PITR not enabled or not configured for this database"))?;
+
+    // Get decrypted secret
+    let encrypted_secret: Option<String> = sqlx::query_scalar(
+        "SELECT aws_secret_access_key FROM db_pitr_config WHERE database_id = $1",
+    )
+    .bind(id)
+    .fetch_optional(&state.db)
+    .await
+    .map_err(|e| internal_error("pitr secret lookup", e))?;
+
+    let aws_secret_access_key = encrypted_secret
+        .and_then(|enc| crate::services::secrets_crypto::decrypt_credential_or_legacy(&enc, &state.config.jwt_secret).ok())
+        .ok_or_else(|| err(StatusCode::INTERNAL_SERVER_ERROR, "Failed to decrypt AWS secret"))?;
+
+    // Get the agent for this database's server
+    let agent = crate::helpers::agent_for_site_server(&state, site_server_id, &name).await?;
+
+    // Prepare WAL-G config for agent
+    let wal_g_config = serde_json::json!({
+        "database_name": name,
+        "s3_bucket": s3_bucket,
+        "s3_region": s3_region,
+        "aws_access_key_id": aws_access_key_id,
+        "aws_secret_access_key": aws_secret_access_key,
+        "target_time": target_time,
+    });
+
+    // Call agent to perform WAL-G backup-fetch for PITR
+    let result = agent
+        .post("/databases/wal-g/fetch", Some(wal_g_config))
+        .await
+        .map_err(|e| agent_error("WAL-G PITR restore", e))?;
+
+    // Log activity
+    let ip = crate::routes::client_ip(&axum::http::HeaderMap::new());
+    crate::services::activity::log_activity(
+        &state.db, claims.sub, &claims.email, "database.pitr_restore",
+        Some("database"), Some(name.clone()), None, ip.as_deref(), claims.key_id,
+    ).await;
+
+    Ok(Json(serde_json::json!({
+        "ok": true,
+        "message": "PITR restore initiated",
+        "target_time": target_time,
+        "result": result,
+    })))
+}
+
+#[derive(serde::Deserialize)]
+pub struct PitrRestoreRequest {
+    pub target_time: Option<String>, // RFC3339 timestamp
 }
 
 /// POST /api/databases/{id}/reset-password — Reset the database password.
