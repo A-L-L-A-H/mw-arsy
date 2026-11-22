@@ -36,7 +36,7 @@ pub fn load_token() -> Result<String, String> {
 /// systemd unit's `EnvironmentFile=` feeds it — always in sync with what the
 /// backend actually bound, no new operator config for the common single-box
 /// install. Mirrors `panel/cli/src/backend_client.rs::base_url` exactly.
-fn base_url() -> Result<String, String> {
+pub fn base_url() -> Result<String, String> {
     let env = std::fs::read_to_string(API_ENV_PATH)
         .map_err(|e| format!("Cannot read {API_ENV_PATH}: {e}"))?;
     let addr = env
