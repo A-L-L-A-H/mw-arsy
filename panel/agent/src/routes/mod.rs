@@ -19,6 +19,7 @@ pub mod logs;
 pub mod sbom;
 pub mod mail;
 pub mod migration;
+pub mod wasm;
 pub mod nginx;
 pub mod panel_update;
 pub mod remote_backup;

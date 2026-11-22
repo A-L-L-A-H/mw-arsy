@@ -6,6 +6,7 @@ pub mod safe_cmd;
 mod services;
 pub mod site_lock;
 mod tls;
+mod wasm;
 
 use axum::{middleware, Router};
 use bollard::Docker;
@@ -223,6 +224,7 @@ async fn main() {
         .merge(routes::server_utils::router())
         .merge(routes::traefik::router())
         .merge(routes::telemetry::router())
+        .merge(routes::wasm::router())
         .route("/auth/rotate-token", axum::routing::post(routes::rotate_token))
         .layer(middleware::from_fn_with_state(state.clone(), routes::auth_middleware))
         .layer(middleware::from_fn(routes::audit_middleware))

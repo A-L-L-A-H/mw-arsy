@@ -45,3 +45,6 @@ url = "2"
 tikv-jemallocator = { version = "0.6", features = ["background_threads"] }
 sha-crypt = { version = "0.6.0", features = ["getrandom"] }
 async-trait = "0.1"
+# Wasm Component Model runtime
+wasmtime = { version = "25", features = ["component-model-async", "async", "wasi-preview2", "cranelift"] }
+wasmtime-wasi = { version = "25", features = ["preview2"] }

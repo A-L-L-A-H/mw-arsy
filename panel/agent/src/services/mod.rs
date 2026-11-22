@@ -24,6 +24,7 @@ pub mod sbom_scanner;
 pub mod migration;
 pub mod nginx;
 pub mod wal_g;
+pub mod wasm_runtime;
 pub mod ownership;
 pub mod phone_home;
 pub mod pkg;
