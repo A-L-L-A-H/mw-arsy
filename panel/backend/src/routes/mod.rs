@@ -53,6 +53,7 @@ pub mod sboms;
 pub mod passkeys;
 pub mod prometheus;
 pub mod rca;
+pub mod gitops;
 pub mod webhook_gateway;
 pub mod telemetry;
 pub mod update;
@@ -1652,6 +1653,8 @@ pub fn router() -> Router<AppState> {
         .route("/api/prometheus/settings", get(prometheus::get_settings).post(prometheus::update_settings))
         // RCA Agent (MCP-grounded root cause analysis)
         .nest("/api/rca", rca::router())
+        // GitOps Fleet Sync Controller
+        .nest("/api/gitops", gitops::router())
         // SSH Keys
         .route("/api/ssh-keys", get(system::list_ssh_keys).post(system::add_ssh_key))
         .route("/api/ssh-keys/{fingerprint}", delete(system::remove_ssh_key))
