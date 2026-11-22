@@ -44,3 +44,4 @@ libc = "0.2"
 url = "2"
 tikv-jemallocator = { version = "0.6", features = ["background_threads"] }
 sha-crypt = { version = "0.6.0", features = ["getrandom"] }
+async-trait = "0.1"

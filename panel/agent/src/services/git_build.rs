@@ -3,8 +3,9 @@ use bollard::container::{
     RenameContainerOptions, StartContainerOptions, StopContainerOptions,
 };
 use bollard::Docker;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::sync::OnceLock;
 use tera::Tera;
 use crate::routes::docker_apps::TlsIntent;
@@ -12,6 +13,9 @@ use crate::safe_cmd::safe_command;
 use crate::services::ownership;
 
 const GIT_BASE_DIR: &str = "/var/lib/dockpanel/git";
+
+/// Where builder binaries are stored (vendored like grype/syft)
+const BUILDER_BIN_DIR: &str = "/var/lib/dockpanel/builders";
 
 /// Where a Git Deploy's PERSISTENT VOLUMES live — deliberately separate from
 /// [`GIT_BASE_DIR`], which holds the git checkout/build context and is wiped
@@ -55,6 +59,135 @@ struct TlsOutcome {
     tls_mode: &'static str,
     tls_certificate: Option<String>,
     warning: Option<String>,
+}
+
+/// Supported builder backends for Git Deploy.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum BuilderType {
+    /// Railpack (Railway's successor to Nixpacks) - preferred, modern, BuildKit-native
+    Railpack,
+    /// Nixpacks (deprecated upstream, kept for backward compatibility)
+    Nixpacks,
+    /// Explicit Dockerfile - no auto-detection, full control
+    Dockerfile,
+}
+
+impl Default for BuilderType {
+    fn default() -> Self {
+        Self::Railpack
+    }
+}
+
+impl BuilderType {
+    /// Get the human-readable name
+    pub fn name(&self) -> &'static str {
+        match self {
+            Self::Railpack => "railpack",
+            Self::Nixpacks => "nixpacks",
+            Self::Dockerfile => "dockerfile",
+        }
+    }
+
+    /// Get the description for UI display
+    pub fn description(&self) -> &'static str {
+        match self {
+            Self::Railpack => "Railpack (preferred): Modern BuildKit-native builder, 38-77% smaller images",
+            Self::Nixpacks => "Nixpacks (deprecated): Legacy Nix-based builder, kept for compatibility",
+            Self::Dockerfile => "Dockerfile: Explicit Dockerfile, no auto-detection",
+        }
+    }
+}
+
+/// Build plan produced by a builder's detection/planning phase
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BuildPlan {
+    pub builder_type: BuilderType,
+    pub detected_language: Option<String>,
+    pub detected_framework: Option<String>,
+    pub build_command: Option<String>,
+    pub start_command: Option<String>,
+    pub dockerfile_path: Option<String>,
+    pub build_args: HashMap<String, String>,
+    pub build_context: String,
+}
+
+/// Result of a build operation
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BuildOutput {
+    pub image_tag: String,
+    pub output: String,
+    pub builder_used: BuilderType,
+}
+
+/// Trait for builder backends
+#[async_trait::async_trait]
+pub trait Builder: Send + Sync {
+    /// Detect the language/framework from the repo and return a build plan
+    async fn detect(&self, repo_path: &PathBuf) -> Result<BuildPlan, String>;
+
+    /// Build the Docker image from the build plan
+    async fn build(&self, name: &str, plan: BuildPlan, commit_hash: &str) -> Result<BuildOutput, String>;
+
+    /// Get the builder type
+    fn builder_type(&self) -> BuilderType;
+
+    /// Check if the builder binary is available
+    async fn is_available(&self) -> bool;
+
+    /// Install/ensure the builder binary
+    async fn ensure_installed(&self) -> Result<(), String>;
+}
+
+/// Builder registry - selects and manages builders
+pub struct BuilderRegistry {
+    builders: Vec<Box<dyn Builder>>,
+}
+
+impl BuilderRegistry {
+    pub fn new() -> Self {
+        Self { builders: Vec::new() }
+    }
+
+    pub fn register(&mut self, builder: Box<dyn Builder>) {
+        self.builders.push(builder);
+    }
+
+    pub fn get(&self, builder_type: BuilderType) -> Option<&dyn Builder> {
+        self.builders.iter()
+            .find(|b| b.builder_type() == builder_type)
+            .map(|b| b.as_ref())
+    }
+
+    pub fn get_default(&self) -> Option<&dyn Builder> {
+        self.get(BuilderType::default())
+    }
+
+    pub async fn ensure_all_installed(&self) -> Result<(), String> {
+        for builder in &self.builders {
+            builder.ensure_installed().await?;
+        }
+        Ok(())
+    }
+}
+
+/// Global builder registry (lazily initialized)
+static BUILDER_REGISTRY: OnceLock<BuilderRegistry> = OnceLock::new();
+
+/// Get or initialize the global builder registry
+pub async fn get_builder_registry() -> &'static BuilderRegistry {
+    BUILDER_REGISTRY.get_or_init(|| {
+        let mut registry = BuilderRegistry::new();
+        // Builders are registered lazily on first use to avoid initialization order issues
+        registry
+    })
+}
+
+/// Register a builder in the global registry
+pub fn register_builder(builder: Box<dyn Builder>) {
+    if let Some(registry) = BUILDER_REGISTRY.get() {
+        registry.register(builder);
+    }
 }
 
 /// Clone or pull a git repository to `/var/lib/dockpanel/git/{name}/`.
