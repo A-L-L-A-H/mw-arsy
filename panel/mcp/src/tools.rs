@@ -2,7 +2,6 @@ use rmcp::handler::server::wrapper::Parameters;
 use rmcp::model::{Implementation, ServerCapabilities, ServerInfo};
 use rmcp::{schemars, tool, tool_handler, tool_router, ServerHandler};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 use crate::backend_client;
 
@@ -270,7 +269,7 @@ pub struct CreateAppParams {
     pub ssl_certificate: Option<String>,
 }
 
-#[derive(Debug, Deserialize, schemars::JsonSchema)]
+#[derive(Debug, Deserialize, Serialize, schemars::JsonSchema)]
 pub struct UpdateAppParams {
     /// The Docker container ID.
     pub container_id: String,
@@ -288,13 +287,13 @@ pub struct UpdateAppParams {
     pub cpu_percent: Option<u64>,
 }
 
-#[derive(Debug, Deserialize, schemars::JsonSchema)]
+#[derive(Debug, Deserialize, Serialize, schemars::JsonSchema)]
 pub struct DeleteAppParams {
     /// The Docker container ID.
     pub container_id: String,
 }
 
-#[derive(Debug, Deserialize, schemars::JsonSchema)]
+#[derive(Debug, Deserialize, Serialize, schemars::JsonSchema)]
 pub struct CreateDatabaseParams {
     /// Database name.
     pub name: String,
@@ -314,19 +313,19 @@ pub struct CreateDatabaseParams {
     pub cpu_percent: Option<u64>,
 }
 
-#[derive(Debug, Deserialize, schemars::JsonSchema)]
+#[derive(Debug, Deserialize, Serialize, schemars::JsonSchema)]
 pub struct DeleteDatabaseParams {
     /// The database's UUID.
     pub database_id: String,
 }
 
-#[derive(Debug, Deserialize, schemars::JsonSchema)]
+#[derive(Debug, Deserialize, Serialize, schemars::JsonSchema)]
 pub struct DeployGitParams {
     /// Git deploy configuration UUID.
     pub deploy_id: String,
 }
 
-#[derive(Debug, Deserialize, schemars::JsonSchema)]
+#[derive(Debug, Deserialize, Serialize, schemars::JsonSchema)]
 pub struct ScaleAppParams {
     /// The Docker container ID.
     pub container_id: String,
