@@ -55,7 +55,9 @@ CREATE TABLE oauth_tokens (
     access_expires_at TIMESTAMPTZ NOT NULL,
     refresh_expires_at TIMESTAMPTZ, -- NULL if no refresh token issued
     revoked_at TIMESTAMPTZ, -- for token revocation
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    -- Link to api_keys for audit attribution when MCP server uses a dp_ key
+    api_key_id UUID REFERENCES api_keys(id) ON DELETE SET NULL
 );
 
 CREATE INDEX idx_oauth_tokens_client ON oauth_tokens(client_id);
@@ -63,6 +65,7 @@ CREATE INDEX idx_oauth_tokens_user ON oauth_tokens(user_id);
 CREATE INDEX idx_oauth_tokens_access_expires ON oauth_tokens(access_expires_at);
 CREATE INDEX idx_oauth_tokens_refresh_expires ON oauth_tokens(refresh_expires_at);
 CREATE INDEX idx_oauth_tokens_revoked ON oauth_tokens(revoked_at);
+CREATE INDEX idx_oauth_tokens_api_key ON oauth_tokens(api_key_id);
 
 -- Pre-populate with a default MCP client configuration
 -- This client represents the MCP server itself when it uses a dp_ key

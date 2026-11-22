@@ -29,7 +29,7 @@ serde_json = "1"
 # JsonSchema derive here must be the SAME major version or the #[tool] macro's
 # generated schema won't satisfy the trait bound it expects.
 schemars = "1"
-reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "multipart"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 urlencoding = "2"

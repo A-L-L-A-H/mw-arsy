@@ -1,636 +1,989 @@
-use axum::{
-    extract::{Path, Query, State},
-    http::{header, StatusCode},
-    response::{IntoResponse, Response},
-};
-use std::collections::HashMap;
-use uuid::Uuid;
+// OAuth 2.1 Authorization Server for MCP and external clients
+// Implements: RFC 6749 (OAuth 2.0), RFC 7636 (PKCE), RFC 8707 (Resource Indicators),
+// RFC 9728 (Protected Resource Metadata), RFC 7591 (DCR), MCP Spec 2025-11-25
 
-use crate::auth::AdminUser;
-use crate::error::{internal_error, err, upstream_error, ApiError};
-use crate::services::activity;
+use axum::{
+    extract::{Query, State},
+    http::{header, HeaderMap, StatusCode},
+    response::{Html, IntoResponse, Json, Redirect},
+    routing::{get, post},
+    Form, Router,
+};
+use base64;
+use chrono::{Duration, Utc};
+use rand::{distr::Alphanumeric, Rng};
+use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
+use uuid::Uuid;
+use urlencoding;
+
+use crate::auth::{session_invalid, AuthUser};
+use crate::error::{err, err_coded, internal_error, ApiError, CODE_SESSION_INVALID};
 use crate::AppState;
 
-#[derive(serde::Deserialize)]
-pub struct CallbackQuery {
-    pub code: Option<String>,
-    pub state: String,
-    #[serde(default)]
-    pub error: Option<String>,
-    #[serde(default)]
-    pub error_description: Option<String>,
+/// Mount path: /oauth
+pub fn router() -> Router<AppState> {
+    Router::new()
+        // Authorization endpoint (user-facing)
+        .route("/authorize", get(authorize_get).post(authorize_post))
+        // Token endpoint (machine-to-machine)
+        .route("/token", post(token))
+        // Token introspection (RFC 7662)
+        .route("/introspect", post(introspect))
+        // Token revocation (RFC 7009)
+        .route("/revoke", post(revoke))
+        // JWKS for token verification
+        .route("/jwks", get(jwks))
+        // Dynamic Client Registration (RFC 7591)
+        .route("/register", post(register_client))
+        // Client ID Metadata Document (CIMD) - MCP 2025-11-25 preferred
+        .route("/.well-known/oauth-client-metadata", get(client_metadata))
+        // Protected Resource Metadata (RFC 9728)
+        .route("/.well-known/oauth-protected-resource", get(protected_resource_metadata))
 }
 
-/// OAuth provider configuration
-struct OAuthProvider {
-    auth_url: &'static str,
-    token_url: &'static str,
-    userinfo_url: &'static str,
-    scopes: &'static str,
-}
-
-/// The providers this panel can be configured for. Named once so the settings
-/// UI offers exactly the set `get_provider` accepts — a fourth card for a
-/// provider the backend does not know would be a control that cannot work.
-pub const OAUTH_PROVIDERS: &[&str] = &["google", "github", "gitlab"];
-
-/// The redirect URI this panel sends to the provider, and therefore the one an
-/// operator must register at the provider's console.
-///
-/// It is built here rather than at each call site because there are now three:
-/// `authorize` sends it, `callback` re-sends it for the token exchange (the
-/// provider rejects the exchange when the two disagree), and the settings UI
-/// displays it so the operator can copy it. The UI is the reason this is a
-/// function: a screen that guesses the URI from the browser's own origin would
-/// be confidently wrong whenever BASE_URL differs from the address the admin
-/// happens to be browsing, and the resulting `redirect_uri_mismatch` names
-/// neither side. Three copies of one `format!` is how they drift apart.
-pub fn redirect_uri(base_url: &str, provider_name: &str) -> String {
-    format!("{base_url}/api/auth/oauth/{provider_name}/callback")
-}
-
-/// `Value::to_string()` serializes a JSON string WITH its surrounding quote
-/// characters — it's `Display` for the JSON representation, not the string's
-/// own content. A provider's numeric `id` field survives that unqualified
-/// (GitHub/GitLab), but a string field like Google's `sub` does not: it comes
-/// out as `"1234567890"` (14 chars, quotes included) instead of the real id.
-fn stringify_id(v: &serde_json::Value) -> String {
-    v.as_str().map(str::to_string).unwrap_or_else(|| v.to_string())
-}
-
-fn get_provider(name: &str) -> Option<OAuthProvider> {
-    match name {
-        "google" => Some(OAuthProvider {
-            auth_url: "https://accounts.google.com/o/oauth2/v2/auth",
-            token_url: "https://oauth2.googleapis.com/token",
-            userinfo_url: "https://www.googleapis.com/oauth2/v3/userinfo",
-            scopes: "openid email profile",
-        }),
-        "github" => Some(OAuthProvider {
-            auth_url: "https://github.com/login/oauth/authorize",
-            token_url: "https://github.com/login/oauth/access_token",
-            userinfo_url: "https://api.github.com/user",
-            scopes: "user:email",
-        }),
-        "gitlab" => Some(OAuthProvider {
-            auth_url: "https://gitlab.com/oauth/authorize",
-            token_url: "https://gitlab.com/oauth/token",
-            userinfo_url: "https://gitlab.com/api/v4/user",
-            scopes: "read_user",
-        }),
-        _ => None,
-    }
-}
-
-/// GET /api/settings/oauth-redirects — the redirect URIs to register, admin only.
-///
-/// Deliberately returns only what `GET /api/settings` cannot: the client ids and
-/// the masked secrets already come from there, and a second source for them
-/// would be a second thing to keep in step.
-///
-/// `base_url` is reported so the UI can say *why* when it is empty. BASE_URL is
-/// read with `unwrap_or_default()`, so an unset one is not an error at boot — it
-/// silently makes every redirect URI relative, which no provider accepts. The
-/// operator then sees a login button that fails at the provider with a message
-/// about the panel's address, having never been told the panel does not know it.
-pub async fn redirect_uris(
+/// Authorization Code Grant with PKCE (RFC 7636)
+/// GET /oauth/authorize - Show consent page
+async fn authorize_get(
     State(state): State<AppState>,
-    AdminUser(_claims): AdminUser,
-) -> Result<axum::Json<serde_json::Value>, ApiError> {
-    let base = &state.config.base_url;
+    Query(params): Query<AuthorizeParams>,
+    AuthUser(claims): AuthUser,
+) -> Result<Html<String>, ApiError> {
+    // Validate client
+    let client = validate_authorize_request(&state, &params).await?;
 
-    let uris: serde_json::Map<String, serde_json::Value> = OAUTH_PROVIDERS
-        .iter()
-        .map(|p| ((*p).to_string(), serde_json::Value::String(redirect_uri(base, p))))
-        .collect();
-
-    Ok(axum::Json(serde_json::json!({
-        "base_url": base,
-        "base_url_configured": !base.is_empty(),
-        "redirect_uris": uris,
-    })))
-}
-
-/// GET /api/auth/oauth/{provider} — Redirect to OAuth provider
-pub async fn authorize(
-    State(state): State<AppState>,
-    Path(provider_name): Path<String>,
-    headers: axum::http::HeaderMap,
-) -> Result<Response, ApiError> {
-    let provider = get_provider(&provider_name)
-        .ok_or_else(|| err(StatusCode::BAD_REQUEST, "Unknown OAuth provider"))?;
-
-    // Read client_id from settings
-    let key = format!("oauth_{provider_name}_client_id");
-    let client_id: Option<(String,)> = sqlx::query_as(
-        "SELECT value FROM settings WHERE key = $1"
-    )
-    .bind(&key)
-    .fetch_optional(&state.db)
-    .await
-    .map_err(|e| internal_error("authorize", e))?;
-
-    let client_id = client_id
-        .map(|(v,)| v)
-        .filter(|v| !v.is_empty())
-        .ok_or_else(|| err(StatusCode::BAD_REQUEST, &format!("{provider_name} OAuth not configured")))?;
-
-    // Generate CSRF state token
-    let csrf_state = Uuid::new_v4().to_string();
-    {
-        let mut states = state.oauth_states.lock().unwrap_or_else(|e| e.into_inner());
-        states.insert(csrf_state.clone(), (provider_name.clone(), std::time::Instant::now()));
+    // PKCE is mandatory per MCP spec
+    if client.require_pkce && params.code_challenge.is_none() {
+        return Err(err(
+            StatusCode::BAD_REQUEST,
+            "PKCE is required: code_challenge parameter missing (S256 only)",
+        ));
     }
 
-    let redirect_uri = redirect_uri(&state.config.base_url, &provider_name);
-
-    let auth_url = format!(
-        "{}?client_id={}&redirect_uri={}&scope={}&state={}&response_type=code",
-        provider.auth_url,
-        urlencoding::encode(&client_id),
-        urlencoding::encode(&redirect_uri),
-        urlencoding::encode(provider.scopes),
-        urlencoding::encode(&csrf_state),
-    );
-
-    // Bind `state` to THIS browser via a short-lived cookie, mirroring the value
-    // already in `state.oauth_states`. Without this, a valid `state` only proves
-    // "some /authorize call happened" — not that the browser presenting it at
-    // /callback is the one that made it. Login-CSRF: an attacker starts their own
-    // OAuth flow, captures the provider's redirect back to this panel (a real
-    // code+state pair for the ATTACKER's account) without letting their own
-    // browser follow it, then hands that exact callback URL to a victim. The old
-    // code validated `state` purely against the server-side map — which the
-    // attacker's `state` legitimately is a member of — and would have logged the
-    // victim's browser into the attacker's account. `callback` below now also
-    // requires this cookie to be present and to match `query.state`.
-    let secure_flag = crate::routes::auth::cookie_secure_flag(&headers);
-    let csrf_cookie = format!(
-        "oauth_csrf={csrf_state}; HttpOnly{secure_flag}; SameSite=Lax; Path=/; Max-Age=600"
-    );
-
-    Ok(Response::builder()
-        .status(StatusCode::TEMPORARY_REDIRECT)
-        .header(header::SET_COOKIE, csrf_cookie)
-        .header(header::LOCATION, auth_url)
-        .body(axum::body::Body::empty())
-        .unwrap()
-        .into_response())
-}
-
-/// GET /api/auth/oauth/{provider}/callback — Handle OAuth callback
-pub async fn callback(
-    State(state): State<AppState>,
-    Path(provider_name): Path<String>,
-    headers: axum::http::HeaderMap,
-    Query(query): Query<CallbackQuery>,
-) -> Result<Response, ApiError> {
-    // This door mints the same session cookie as the password and passkey doors and
-    // owed the same two gates. It had neither: the panel IP allowlist gates the
-    // panel, and lockdown is supposed to hold non-admins out until it expires —
-    // both were enforced at the other doors and skipped here, so with SSO
-    // configured, restricting the panel by IP and putting it into lockdown each
-    // left this path open.
-    crate::routes::auth::enforce_panel_ip_allowlist(&state.db, &headers).await?;
-
-    // Check for OAuth error response from provider
-    if let Some(ref error) = query.error {
-        let desc = query.error_description.as_deref().unwrap_or("Unknown error");
-        return Err(err(StatusCode::BAD_REQUEST, &format!("OAuth error: {error} — {desc}")));
-    }
-    let code = query.code.as_ref()
-        .ok_or_else(|| err(StatusCode::BAD_REQUEST, "Missing authorization code"))?;
-
-    let provider = get_provider(&provider_name)
-        .ok_or_else(|| err(StatusCode::BAD_REQUEST, "Unknown OAuth provider"))?;
-
-    // Validate CSRF state is a member of the server-side map — proves SOME
-    // /authorize call issued it, nothing about WHO is presenting it now.
-    //
-    // Neither failure branch below (nor the cookie-mismatch one further down)
-    // calls `record_suspicious_event`, and that is deliberate, same reasoning as
-    // `passkeys.rs`'s counter-regression check: that function auto-activates
-    // system-wide lockdown at five events in ten minutes, and this endpoint is
-    // reachable by anyone with no account and no credential at all
-    // (`GET .../callback?state=garbage`) — wiring it in would let any anonymous
-    // visitor lock every non-admin out of the panel with five bad requests.
-    // `err()` below still logs and returns a 400; that is the right ceiling here.
-    {
-        let mut states = state.oauth_states.lock().unwrap_or_else(|e| e.into_inner());
-        let entry = states.remove(&query.state);
-        match entry {
-            Some((name, created)) if name == provider_name && created.elapsed().as_secs() < 600 => {}
-            _ => return Err(err(StatusCode::BAD_REQUEST, "Invalid or expired OAuth state")),
+    if let Some(ref method) = params.code_challenge_method {
+        if method != "S256" {
+            return Err(err(
+                StatusCode::BAD_REQUEST,
+                "Only S256 code_challenge_method is supported",
+            ));
         }
     }
 
-    // Validate the browser presenting this callback is the one `authorize` set
-    // the csrf cookie for, and that it names the SAME state — this is what turns
-    // the check above from "a valid flow happened" into "this browser's flow".
-    // Missing/mismatched cookie means either a non-browser replay of a captured
-    // callback URL, or exactly the login-CSRF handoff this cookie exists to stop.
-    let csrf_cookie = headers
-        .get(header::COOKIE)
-        .and_then(|v| v.to_str().ok())
-        .and_then(|cookies| {
-            cookies
-                .split(';')
-                .find_map(|s| s.trim().strip_prefix("oauth_csrf=").map(|v| v.to_string()))
-        });
-    if csrf_cookie.as_deref() != Some(query.state.as_str()) {
-        return Err(err(StatusCode::BAD_REQUEST, "Invalid or expired OAuth state"));
-    }
+    // Build consent page HTML
+    let html = build_consent_page(&params, &client, &claims.email);
+    Ok(Html(html))
+}
 
-    // Read client credentials
-    let client_id_key = format!("oauth_{provider_name}_client_id");
-    let client_secret_key = format!("oauth_{provider_name}_client_secret");
-
-    let creds: Vec<(String, String)> = sqlx::query_as(
-        "SELECT key, value FROM settings WHERE key IN ($1, $2)"
-    )
-    .bind(&client_id_key)
-    .bind(&client_secret_key)
-    .fetch_all(&state.db)
-    .await
-    .map_err(|e| internal_error("callback", e))?;
-
-    let cred_map: HashMap<String, String> = creds.into_iter().collect();
-    let client_id = cred_map.get(&client_id_key).cloned().unwrap_or_default();
-    let client_secret_enc = cred_map.get(&client_secret_key).cloned().unwrap_or_default();
-
-    if client_id.is_empty() || client_secret_enc.is_empty() {
-        return Err(err(StatusCode::BAD_REQUEST, "OAuth not fully configured"));
-    }
-
-    // Decrypt the client secret (with legacy plaintext fallback)
-    let client_secret = crate::services::secrets_crypto::decrypt_credential_or_legacy(
-        &client_secret_enc, &state.config.jwt_secret,
-    );
-
-    let redirect_uri = redirect_uri(&state.config.base_url, &provider_name);
-
-    // Exchange code for token
-    let http = reqwest::Client::new();
-    let token_resp = http.post(provider.token_url)
-        .header("Accept", "application/json")
-        .form(&[
-            ("client_id", client_id.as_str()),
-            ("client_secret", client_secret.as_str()),
-            ("code", code.as_str()),
-            ("redirect_uri", redirect_uri.as_str()),
-            ("grant_type", "authorization_code"),
-        ])
-        .send()
-        .await
-        .map_err(|e| upstream_error(&format!("{provider_name} OAuth token exchange"), e))?;
-
-    let token_data: serde_json::Value = token_resp.json().await
-        .map_err(|e| upstream_error(&format!("{provider_name} OAuth token exchange"), e))?;
-
-    let access_token = token_data.get("access_token")
-        .and_then(|v| v.as_str())
-        .ok_or_else(|| err(StatusCode::BAD_GATEWAY, "No access_token in OAuth response"))?;
-
-    // Fetch user info
-    let userinfo_resp = http.get(provider.userinfo_url)
-        .header("Authorization", format!("Bearer {access_token}"))
-        .header("User-Agent", "DockPanel")
-        .send()
-        .await
-        .map_err(|e| upstream_error(&format!("{provider_name} OAuth userinfo fetch"), e))?;
-
-    let userinfo: serde_json::Value = userinfo_resp.json().await
-        .map_err(|e| upstream_error(&format!("{provider_name} OAuth userinfo fetch"), e))?;
-
-    // Extract email based on provider
-    let email = match provider_name.as_str() {
-        "google" => userinfo.get("email").and_then(|v| v.as_str()).map(|s| s.to_string()),
-        "github" => {
-            // GitHub might not return email in profile if it's private
-            let email_from_profile = userinfo.get("email").and_then(|v| v.as_str()).map(|s| s.to_string());
-            if email_from_profile.is_some() && !email_from_profile.as_ref().unwrap().is_empty() {
-                email_from_profile
-            } else {
-                // Fetch from /user/emails endpoint
-                let emails_resp = http.get("https://api.github.com/user/emails")
-                    .header("Authorization", format!("Bearer {access_token}"))
-                    .header("User-Agent", "DockPanel")
-                    .send().await.ok();
-                if let Some(resp) = emails_resp {
-                    let emails: Vec<serde_json::Value> = resp.json().await.unwrap_or_default();
-                    emails.iter()
-                        .find(|e| e.get("primary").and_then(|v| v.as_bool()).unwrap_or(false) && e.get("verified").and_then(|v| v.as_bool()).unwrap_or(false))
-                        .and_then(|e| e.get("email").and_then(|v| v.as_str()).map(|s| s.to_string()))
-                } else {
-                    None
-                }
-            }
-        }
-        "gitlab" => userinfo.get("email").and_then(|v| v.as_str()).map(|s| s.to_string()),
-        _ => None,
+/// POST /oauth/authorize - Handle consent form submission
+async fn authorize_post(
+    State(state): State<AppState>,
+    AuthUser(claims): AuthUser,
+    headers: HeaderMap,
+    Form(form): Form<AuthorizeForm>,
+) -> Result<Redirect, ApiError> {
+    // Re-validate the original authorize parameters from hidden form fields
+    let params = AuthorizeParams {
+        response_type: form.response_type,
+        client_id: form.client_id,
+        redirect_uri: form.redirect_uri,
+        scope: form.scope,
+        state: form.state,
+        code_challenge: form.code_challenge,
+        code_challenge_method: form.code_challenge_method,
+        resource: form.resource,
     };
 
-    let email = email.ok_or_else(|| err(StatusCode::BAD_GATEWAY, "Could not retrieve email from OAuth provider"))?;
+    let client = validate_authorize_request(&state, &params).await?;
 
-    // Reject an explicitly-unverified email before it can auto-link to (or
-    // auto-log-into) an existing account by email match alone — the linking
-    // logic below trusts `email` completely once we get this far. Absent means
-    // allow (`unwrap_or(true)`): GitLab's user endpoint and GitHub's profile-email
-    // path don't return this field at all, and treating "field missing" as a
-    // rejection would break both with no evidence either is a problem. Google's
-    // OIDC userinfo endpoint (configured above) does reliably return it.
-    let email_verified = userinfo.get("email_verified").and_then(|v| v.as_bool()).unwrap_or(true);
-    if !email_verified {
-        return Err(err(StatusCode::BAD_GATEWAY, "OAuth provider reports this email address is not verified"));
+    // Verify user consent
+    if form.consent != "allow" {
+        return Err(redirect_error(
+            &params.redirect_uri,
+            "access_denied",
+            "The user denied the authorization request",
+            params.state.as_deref(),
+        ));
     }
 
-    // See `stringify_id` below: `Value::to_string()` keeps a JSON string's
-    // quote characters, which corrupted Google's `sub` (a JSON string) while
-    // leaving GitHub/GitLab's `id` (a JSON number) untouched.
-    let oauth_id = userinfo.get("id").map(stringify_id)
-        .unwrap_or_else(|| userinfo.get("sub").map(stringify_id).unwrap_or_default());
+    // Generate authorization code
+    let code: String = rand::rng()
+        .sample_iter(&Alphanumeric)
+        .take(64)
+        .map(char::from)
+        .collect();
+    let code_hash = hash_token(&code);
 
-    if oauth_id.is_empty() {
-        return Err(err(StatusCode::BAD_GATEWAY, "OAuth provider did not return a user ID"));
-    }
-
-    // Find or create user
-    let user: Option<crate::models::User> = sqlx::query_as(
-        "SELECT * FROM users WHERE email = $1"
+    // Store authorization code with PKCE challenge
+    sqlx::query(
+        "INSERT INTO oauth_authorization_codes (code_hash, client_id, user_id, redirect_uri, scope, code_challenge, code_challenge_method, expires_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, NOW() + INTERVAL '10 minutes')",
     )
-    .bind(&email)
+    .bind(&code_hash)
+    .bind(client.id)
+    .bind(claims.sub)
+    .bind(&params.redirect_uri)
+    .bind(&params.scope.unwrap_or_default())
+    .bind(&params.code_challenge)
+    .bind(&params.code_challenge_method)
+    .execute(&state.db)
+    .await
+    .map_err(|e| internal_error("store auth code", e))?;
+
+    // Redirect back to client with authorization code
+    let mut redirect_url = params.redirect_uri;
+    redirect_url.push_str("?code=");
+    redirect_url.push_str(&code);
+    if let Some(state) = params.state {
+        redirect_url.push_str("&state=");
+        redirect_url.push_str(&urlencoding::encode(&state));
+    }
+    Ok(Redirect::to(&redirect_url))
+}
+
+/// Token Endpoint - Exchange authorization code for access token (RFC 6749 §4.1.3)
+async fn token(
+    State(state): State<AppState>,
+    Form(params): Form<TokenRequest>,
+) -> Result<Json<TokenResponse>, ApiError> {
+    match params.grant_type.as_str() {
+        "authorization_code" => handle_authorization_code_grant(&state, params).await,
+        "refresh_token" => handle_refresh_token_grant(&state, params).await,
+        _ => Err(err(
+            StatusCode::BAD_REQUEST,
+            &format!("Unsupported grant_type: {}", params.grant_type),
+        )),
+    }
+}
+
+/// Handle authorization_code grant with PKCE validation
+async fn handle_authorization_code_grant(
+    state: &AppState,
+    params: TokenRequest,
+) -> Result<Json<TokenResponse>, ApiError> {
+    let code = params.code.ok_or_else(|| err(StatusCode::BAD_REQUEST, "Missing code"))?;
+    let code_hash = hash_token(&code);
+    let client_id = params.client_id.ok_or_else(|| err(StatusCode::BAD_REQUEST, "Missing client_id"))?;
+    let code_verifier = params.code_verifier;
+
+    // Look up authorization code
+    let auth_code = sqlx::query!(
+        "SELECT id, client_id, user_id, redirect_uri, scope, code_challenge, code_challenge_method, expires_at
+         FROM oauth_authorization_codes WHERE code_hash = $1",
+        &code_hash
+    )
     .fetch_optional(&state.db)
     .await
-    .map_err(|e| internal_error("callback", e))?;
+    .map_err(|e| internal_error("lookup auth code", e))?
+    .ok_or_else(|| err(StatusCode::BAD_REQUEST, "Invalid or expired authorization code"))?;
 
-    let user = match user {
-        Some(mut u) => {
-            // Four-way, not three: auto-link an OAuth-only account with no
-            // provider yet, allow a plain login when already linked to THIS
-            // SAME provider account, reject a provider-account swap under a
-            // matching provider NAME, and reject everything else (a
-            // password-holder with no link yet, OR an account already linked
-            // to a DIFFERENT provider).
-            //
-            // The prior code only tested `oauth_provider.is_none()` on the reject
-            // branch, so once ANY provider was linked, a callback from a SECOND,
-            // different provider reporting the same email fell through both
-            // branches unchecked and logged straight in — contradicting this
-            // comment's own claim of an "already same provider" check, and
-            // bypassing the password-holder protection below it too.
-            if u.oauth_provider.is_none() && u.password_hash.is_empty() {
-                sqlx::query("UPDATE users SET oauth_provider = $1, oauth_id = $2 WHERE id = $3")
-                    .bind(&provider_name)
-                    .bind(&oauth_id)
-                    .bind(u.id)
-                    .execute(&state.db)
-                    .await
-                    .ok();
-                let ip = crate::routes::client_ip(&headers);
-                activity::log_activity(
-                    &state.db, u.id, &u.email, "auth.oauth_link",
-                    Some("user"), Some(&provider_name), None, ip.as_deref(), None,
-                ).await;
-                crate::services::security_hardening::audit_log(
-                    &state.db, "auth.oauth_link", Some(&u.email), ip.as_deref(),
-                    Some("user"), Some(&provider_name), None, None, "info", None,
-                ).await;
-                u.oauth_provider = Some(provider_name.clone());
-            } else if u.oauth_provider.as_deref() != Some(provider_name.as_str()) {
-                return Err(err(StatusCode::CONFLICT,
-                    "An account with this email exists, linked to a different sign-in method. \
-                     Log in with your existing method and link this one in Settings."));
-            } else if u.oauth_id.as_deref() != Some(oauth_id.as_str()) {
-                // The provider NAME matches, but the provider's own permanent
-                // account id does not — `oauth_id` is only ever written
-                // together with `oauth_provider` (the UPDATE above and the
-                // auto-create INSERT below), so a genuine returning login can
-                // never land here; matching on email + provider name alone
-                // was the whole check. The realistic way to reach this branch
-                // is the email changing hands AT THE PROVIDER (a departed
-                // employee's mailbox reassigned to a new hire's fresh
-                // account) — without this, that new person would silently
-                // inherit the departed employee's dockpanel account and role.
-                return Err(err(StatusCode::CONFLICT,
-                    "An account with this email exists, linked to a different sign-in method. \
-                     Log in with your existing method and link this one in Settings."));
+    // Check expiration
+    if auth_code.expires_at < Utc::now() {
+        // Clean up expired code
+        let _ = sqlx::query("DELETE FROM oauth_authorization_codes WHERE id = $1")
+            .bind(auth_code.id)
+            .execute(&state.db)
+            .await;
+        return Err(err(StatusCode::BAD_REQUEST, "Authorization code has expired"));
+    }
+
+    // Verify client_id matches
+    if auth_code.client_id != client_id {
+        return Err(err(StatusCode::BAD_REQUEST, "Client ID mismatch"));
+    }
+
+    // Verify redirect_uri matches
+    if params.redirect_uri.as_deref() != Some(&auth_code.redirect_uri) {
+        return Err(err(StatusCode::BAD_REQUEST, "Redirect URI mismatch"));
+    }
+
+    // PKCE verification (mandatory per MCP spec)
+    if auth_code.code_challenge.is_some() {
+        let verifier = code_verifier.ok_or_else(|| err(StatusCode::BAD_REQUEST, "PKCE required: code_verifier missing"))?;
+        let expected_challenge = match auth_code.code_challenge_method.as_deref() {
+            Some("S256" | None) => {
+                let mut hasher = Sha256::new();
+                hasher.update(verifier.as_bytes());
+                base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(hasher.finalize())
             }
-            u
+            Some(method) => return Err(err(StatusCode::BAD_REQUEST, &format!("Unsupported code_challenge_method: {}", method))),
+        };
+        if expected_challenge != auth_code.code_challenge.unwrap_or_default() {
+            return Err(err(StatusCode::BAD_REQUEST, "PKCE verification failed: code_verifier does not match code_challenge"));
         }
-        None => {
-            // Auto-create user.
-            //
-            // TWO gates, because there are two ways to open this door and until
-            // s275 they disagreed with each other.
-            //
-            // `self_registration_enabled` (routes/auth.rs) governs password
-            // registration and defaults CLOSED — an absent row means disabled.
-            // `oauth_auto_create` governed this path and defaulted OPEN — an
-            // absent row meant allowed. Both rows are absent on a fresh install,
-            // so the panel's answer to "is registration open?" depended on which
-            // door you knocked on. An operator who turned the visible
-            // Self-Registration toggle off and later configured a provider had
-            // self-registration silently back on, through a setting that had no
-            // UI control at all.
-            //
-            // So an EXPLICIT `self_registration_enabled=false` now closes this
-            // path too: off means off, whichever door. This deliberately reads
-            // the explicit value rather than the effective one — an install that
-            // never set the row keeps today's behaviour, so no existing OAuth
-            // deployment breaks on upgrade; only operators who actually asked
-            // for registration to be off get what they asked for.
-            let self_reg: Option<(String,)> = sqlx::query_as(
-                "SELECT value FROM settings WHERE key = 'self_registration_enabled'"
-            )
-            .fetch_optional(&state.db).await
-                .map_err(|e| internal_error("self-registration setting", e))?;
-            if self_reg.map(|(v,)| v == "false").unwrap_or(false) {
-                return Err(err(StatusCode::FORBIDDEN,
-                    "Registration is disabled. Contact your administrator."));
-            }
+    } else {
+        // Should not happen because we require PKCE at authorize time, but defense in depth
+        return Err(err(StatusCode::BAD_REQUEST, "PKCE required but no code_challenge was stored"));
+    }
 
-            let auto_create: Option<(String,)> = sqlx::query_as(
-                "SELECT value FROM settings WHERE key = 'oauth_auto_create'"
-            )
-            .fetch_optional(&state.db).await
-                .map_err(|e| internal_error("oauth auto-create setting", e))?;
-            let auto_create = auto_create.map(|(v,)| v != "false").unwrap_or(true);
+    // Consume the authorization code (single-use)
+    sqlx::query("DELETE FROM oauth_authorization_codes WHERE id = $1")
+        .bind(auth_code.id)
+        .execute(&state.db)
+        .await
+        .map_err(|e| internal_error("delete auth code", e))?;
 
-            if !auto_create {
-                return Err(err(StatusCode::FORBIDDEN, "OAuth auto-registration is disabled. Contact your administrator."));
-            }
+    // Get client's api_key_id for audit attribution
+    let client_api_key_id: Option<Uuid> = sqlx::query_scalar("SELECT api_key_id FROM oauth_clients WHERE id = $1")
+        .bind(auth_code.client_id)
+        .fetch_optional(&state.db)
+        .await
+        .map_err(|e| internal_error("lookup client api_key_id", e))?
+        .flatten();
 
-            // A THIRD gate, and the same lesson as the two above: `register`
-            // (auth.rs:807) marks a new account unapproved when
-            // `security_approval_required` is on, and this door omitted the column
-            // entirely — so it fell to its `DEFAULT TRUE` and the account was admitted
-            // on the spot. It never surfaced in Security → Approvals either, because
-            // that list selects `WHERE approved = FALSE`. An operator who switched
-            // approval on got it applied to one of the two ways in, with no sign that
-            // the other was open.
-            //
-            // Written into the INSERT rather than a follow-up UPDATE so the row is
-            // never briefly approved, and bound rather than interpolated.
-            let approval_required = crate::services::security_hardening::get_setting_bool(
-                &state.db, "security_approval_required", false,
-            ).await;
+    // Issue access token (and optionally refresh token)
+    let access_token: String = rand::rng()
+        .sample_iter(&Alphanumeric)
+        .take(64)
+        .map(char::from)
+        .collect();
+    let access_hash = hash_token(&access_token);
 
-            let new_user: crate::models::User = sqlx::query_as(
-                "INSERT INTO users (email, password_hash, role, email_verified, oauth_provider, oauth_id, approved) \
-                 VALUES ($1, '', 'user', true, $2, $3, $4) RETURNING *"
-            )
-            .bind(&email)
-            .bind(&provider_name)
-            .bind(&oauth_id)
-            .bind(!approval_required)
+    // Generate refresh token for confidential clients
+    let (refresh_token, refresh_hash, refresh_expires) = {
+        let client = sqlx::query!("SELECT client_secret_hash FROM oauth_clients WHERE id = $1", auth_code.client_id)
             .fetch_one(&state.db)
             .await
-            .map_err(|e| {
-                if e.to_string().contains("duplicate key") {
-                    err(StatusCode::CONFLICT, "Email already registered")
-                } else {
-                    internal_error("callback", e)
-                }
-            })?;
+            .map_err(|e| internal_error("lookup client for refresh", e))?;
 
-            tracing::info!("OAuth user created: {} via {}", email, provider_name);
-            let ip = crate::routes::client_ip(&headers);
-            activity::log_activity(
-                &state.db, new_user.id, &new_user.email, "auth.oauth_register",
-                Some("user"), Some(&provider_name), None, ip.as_deref(), None,
-            ).await;
-            crate::services::security_hardening::audit_log(
-                &state.db, "auth.oauth_register", Some(&new_user.email), ip.as_deref(),
-                Some("user"), Some(&provider_name), None, None, "info", None,
-            ).await;
-            new_user
+        if client.client_secret_hash.is_some() {
+            let rt: String = rand::rng()
+                .sample_iter(&Alphanumeric)
+                .take(64)
+                .map(char::from)
+                .collect();
+            let rth = hash_token(&rt);
+            let exp = Utc::now() + Duration::days(90);
+            (Some(rt), Some(rth), Some(exp))
+        } else {
+            (None, None, None)
         }
     };
 
-    // Block suspended accounts on the OAuth login path too (parity with password and
-    // passkey login) — otherwise suspension is bypassable by logging in via OAuth.
-    if user.role == "suspended" {
-        return Err(err(StatusCode::FORBIDDEN, "Account suspended"));
-    }
+    let access_expires = Utc::now() + Duration::hours(1);
 
-    // Feature 8, and the missing half of the parity the comment above claims: the
-    // password door refuses an unapproved account at auth.rs:305 and the passkey door
-    // at passkeys.rs:843, but this one did not check at all. Suspension parity was
-    // added here and approval parity was not, so of the three ways in, approval was
-    // enforced at two. COALESCE is copied from the other two deliberately — a row
-    // predating the column reads as approved, so repairing the gap cannot lock out an
-    // account that could sign in yesterday.
-    if let Ok(Some((approved,))) = sqlx::query_as::<_, (bool,)>(
-        "SELECT COALESCE(approved, TRUE) FROM users WHERE id = $1"
-    ).bind(user.id).fetch_optional(&state.db).await {
-        if !approved {
-            return Err(err(StatusCode::FORBIDDEN, "Account pending admin approval"));
-        }
-    }
-
-    // Lockdown, same rule and same admin escape hatch as the other two doors: an
-    // admin can always get in to lift it, everyone else waits. Checked here rather
-    // than at the top of the handler because the exemption is per-user.
-    if user.role != "admin"
-        && crate::services::security_hardening::is_locked_down(&state.db).await
-    {
-        return Err(err(StatusCode::SERVICE_UNAVAILABLE, "System is in lockdown mode"));
-    }
-
-    // If 2FA is enabled, issue a temporary token and redirect to 2FA challenge
-    if user.totp_enabled {
-        let now = chrono::Utc::now().timestamp() as usize;
-        #[derive(serde::Serialize)]
-        struct TwoFaClaims {
-            sub: uuid::Uuid,
-            purpose: String,
-            exp: usize,
-        }
-        let temp_claims = TwoFaClaims {
-            sub: user.id,
-            purpose: "2fa".to_string(),
-            exp: now + 300, // 5 minutes
-        };
-        let temp_token = jsonwebtoken::encode(
-            &jsonwebtoken::Header::new(jsonwebtoken::Algorithm::HS256),
-            &temp_claims,
-            &jsonwebtoken::EncodingKey::from_secret(state.config.jwt_secret.as_bytes()),
-        )
-        .map_err(|e| internal_error("oauth 2fa token encode", e))?;
-
-        crate::services::activity::log_activity(
-            &state.db, user.id, &user.email, "auth.oauth_login_2fa_required",
-            Some("user"), Some(&provider_name), None, None, None,
-        ).await;
-
-        // Redirect to frontend 2FA page with temp token
-        let redirect_url = format!("/login?oauth_2fa={temp_token}");
-        return Ok(Response::builder()
-            .status(StatusCode::FOUND)
-            .header(header::LOCATION, redirect_url)
-            .body(axum::body::Body::empty())
-            .unwrap()
-            .into_response());
-    }
-
-    // Issue JWT session (no 2FA required)
-    let now = chrono::Utc::now().timestamp() as usize;
-    let jti = Uuid::new_v4().to_string();
-    let claims = crate::auth::Claims {
-        sub: user.id,
-        email: user.email.clone(),
-        role: user.role.clone(),
-        iat: now,
-        exp: now + 7200, // 2 hours
-        jti: Some(jti.clone()),
-        key_id: None,
-    };
-
-    let token = jsonwebtoken::encode(
-        &jsonwebtoken::Header::new(jsonwebtoken::Algorithm::HS256),
-        &claims,
-        &jsonwebtoken::EncodingKey::from_secret(state.config.jwt_secret.as_bytes()),
+    sqlx::query(
+        "INSERT INTO oauth_tokens (access_token_hash, refresh_token_hash, client_id, user_id, scope, access_expires_at, refresh_expires_at, api_key_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
     )
-    .map_err(|e| internal_error("oauth session token encode", e))?;
-
-    // Record the session so it is visible to session management AND — critically —
-    // revocable: the DELETE user_sessions RETURNING jti -> blacklist sweeps (logout,
-    // admin de-escalation, self-service reset) can only reach a session that has a row.
-    let ua = headers.get(header::USER_AGENT).and_then(|v| v.to_str().ok()).map(|s| s.to_string());
-    let ip = headers.get("x-real-ip").and_then(|v| v.to_str().ok()).map(|s| s.trim().to_string());
-    let _ = sqlx::query(
-        "INSERT INTO user_sessions (user_id, jti, ip_address, user_agent) VALUES ($1, $2, $3, $4)"
-    )
-    .bind(user.id)
-    .bind(&jti)
-    .bind(&ip)
-    .bind(&ua)
+    .bind(&access_hash)
+    .bind(&refresh_hash)
+    .bind(auth_code.client_id)
+    .bind(auth_code.user_id)
+    .bind(&auth_code.scope)
+    .bind(access_expires)
+    .bind(refresh_expires)
+    .bind(client_api_key_id)
     .execute(&state.db)
-    .await;
+    .await
+    .map_err(|e| internal_error("store tokens", e))?;
 
-    crate::services::activity::log_activity(
-        &state.db, user.id, &user.email, "auth.oauth_login",
-        Some("user"), Some(&provider_name), None, ip.as_deref(), None,
-    ).await;
-    crate::services::security_hardening::audit_log(
-        &state.db, "auth.oauth_login", Some(&user.email), ip.as_deref(),
-        Some("user"), Some(&provider_name), None, None, "info", None,
-    ).await;
+    // Build response
+    let mut resp = TokenResponse {
+        access_token,
+        token_type: "Bearer".to_string(),
+        expires_in: 3600,
+        scope: if auth_code.scope.is_empty() { None } else { Some(auth_code.scope) },
+        refresh_token: None,
+    };
+    if let Some(rt) = refresh_token {
+        resp.refresh_token = Some(rt);
+    }
 
-    // Set cookie and redirect to dashboard.
-    // Browsers reject Secure cookies on HTTP — only set Secure when the request
-    // actually arrived over HTTPS (#47, v2.8.14; #71 — must NOT key off BASE_URL,
-    // which is https for a domain even while the vhost is served over HTTP).
-    let secure_flag = crate::routes::auth::cookie_secure_flag(&headers);
-    let cookie = format!(
-        "token={token}; HttpOnly{secure_flag}; SameSite=Lax; Path=/; Max-Age=7200"
-    );
+    Ok(Json(resp))
+}
 
-    Ok(Response::builder()
-        .status(StatusCode::FOUND)
-        .header(header::SET_COOKIE, cookie)
-        .header(header::LOCATION, "/")
-        .body(axum::body::Body::empty())
-        .unwrap()
-        .into_response())
+/// Handle refresh_token grant
+async fn handle_refresh_token_grant(
+    state: &AppState,
+    params: TokenRequest,
+) -> Result<Json<TokenResponse>, ApiError> {
+    let refresh_token = params.refresh_token.ok_or_else(|| err(StatusCode::BAD_REQUEST, "Missing refresh_token"))?;
+    let refresh_hash = hash_token(&refresh_token);
+    let client_id = params.client_id.ok_or_else(|| err(StatusCode::BAD_REQUEST, "Missing client_id"))?;
+
+    // Look up refresh token
+    let token_row = sqlx::query!(
+        "SELECT id, client_id, user_id, scope, refresh_expires_at, revoked_at, api_key_id
+         FROM oauth_tokens WHERE refresh_token_hash = $1",
+        &refresh_hash
+    )
+    .fetch_optional(&state.db)
+    .await
+    .map_err(|e| internal_error("lookup refresh token", e))?
+    .ok_or_else(|| err(StatusCode::BAD_REQUEST, "Invalid refresh token"))?;
+
+    // Validate
+    if token_row.client_id != client_id {
+        return Err(err(StatusCode::BAD_REQUEST, "Client ID mismatch"));
+    }
+    if token_row.revoked_at.is_some() {
+        return Err(err(StatusCode::BAD_REQUEST, "Refresh token has been revoked"));
+    }
+    if let Some(exp) = token_row.refresh_expires_at {
+        if exp < Utc::now() {
+            return Err(err(StatusCode::BAD_REQUEST, "Refresh token has expired"));
+        }
+    }
+
+    // Rotate refresh token (revoke old, issue new)
+    sqlx::query("UPDATE oauth_tokens SET revoked_at = NOW() WHERE id = $1")
+        .bind(token_row.id)
+        .execute(&state.db)
+        .await
+        .map_err(|e| internal_error("revoke old refresh token", e))?;
+
+    // Issue new tokens with the same api_key_id
+    let access_token: String = rand::rng()
+        .sample_iter(&Alphanumeric)
+        .take(64)
+        .map(char::from)
+        .collect();
+    let access_hash = hash_token(&access_token);
+
+    let rt: String = rand::rng()
+        .sample_iter(&Alphanumeric)
+        .take(64)
+        .map(char::from)
+        .collect();
+    let rth = hash_token(&rt);
+    let refresh_expires = Utc::now() + Duration::days(90);
+    let access_expires = Utc::now() + Duration::hours(1);
+
+    sqlx::query(
+        "INSERT INTO oauth_tokens (access_token_hash, refresh_token_hash, client_id, user_id, scope, access_expires_at, refresh_expires_at, api_key_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+    )
+    .bind(&access_hash)
+    .bind(&rth)
+    .bind(token_row.client_id)
+    .bind(token_row.user_id)
+    .bind(&token_row.scope)
+    .bind(access_expires)
+    .bind(refresh_expires)
+    .bind(token_row.api_key_id)
+    .execute(&state.db)
+    .await
+    .map_err(|e| internal_error("store rotated tokens", e))?;
+
+    Ok(Json(TokenResponse {
+        access_token,
+        token_type: "Bearer".to_string(),
+        expires_in: 3600,
+        scope: if token_row.scope.is_empty() { None } else { Some(token_row.scope) },
+        refresh_token: Some(rt),
+    }))
+}
+
+/// Issue new access token (and refresh token for confidential clients)
+async fn issue_tokens(
+    state: &AppState,
+    client_id: Uuid,
+    user_id: Uuid,
+    scope: &str,
+) -> Result<Json<TokenResponse>, ApiError> {
+    // Generate access token
+    let access_token: String = rand::rng()
+        .sample_iter(&Alphanumeric)
+        .take(64)
+        .map(char::from)
+        .collect();
+    let access_hash = hash_token(&access_token);
+
+    // Get client's api_key_id for audit attribution
+    let client_api_key_id: Option<Uuid> = sqlx::query_scalar("SELECT api_key_id FROM oauth_clients WHERE id = $1")
+        .bind(client_id)
+        .fetch_optional(&state.db)
+        .await
+        .map_err(|e| internal_error("lookup client api_key_id", e))?
+        .flatten();
+
+    // Generate refresh token for confidential clients (those with client_secret)
+    let (refresh_token, refresh_hash, refresh_expires) = {
+        let client = sqlx::query!("SELECT client_secret_hash FROM oauth_clients WHERE id = $1", client_id)
+            .fetch_one(&state.db)
+            .await
+            .map_err(|e| internal_error("lookup client for refresh", e))?;
+
+        if client.client_secret_hash.is_some() {
+            let rt: String = rand::rng()
+                .sample_iter(&Alphanumeric)
+                .take(64)
+                .map(char::from)
+                .collect();
+            let rth = hash_token(&rt);
+            let exp = Utc::now() + Duration::days(90);
+            (Some(rt), Some(rth), Some(exp))
+        } else {
+            (None, None, None)
+        }
+    };
+
+    let access_expires = Utc::now() + Duration::hours(1); // 1 hour access token lifetime
+
+    sqlx::query(
+        "INSERT INTO oauth_tokens (access_token_hash, refresh_token_hash, client_id, user_id, scope, access_expires_at, refresh_expires_at, api_key_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+    )
+    .bind(&access_hash)
+    .bind(&refresh_hash)
+    .bind(client_id)
+    .bind(user_id)
+    .bind(scope)
+    .bind(access_expires)
+    .bind(refresh_expires)
+    .bind(client_api_key_id)
+    .execute(&state.db)
+    .await
+    .map_err(|e| internal_error("store tokens", e))?;
+
+    // Build response
+    let mut resp = TokenResponse {
+        access_token,
+        token_type: "Bearer".to_string(),
+        expires_in: 3600,
+        scope: if scope.is_empty() { None } else { Some(scope.to_string()) },
+        refresh_token: None,
+    };
+    if let Some(rt) = refresh_token {
+        resp.refresh_token = Some(rt);
+    }
+
+    Ok(Json(resp))
+}
+
+/// Token Introspection (RFC 7662)
+async fn introspect(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Form(params): Form<IntrospectRequest>,
+) -> Result<Json<IntrospectResponse>, ApiError> {
+    // Authenticate the introspection request (typically client credentials)
+    // For simplicity, we accept the access token itself as proof of authorization
+    // A production impl might require client auth here
+    let token = params.token.ok_or_else(|| err(StatusCode::BAD_REQUEST, "Missing token"))?;
+    let token_hash = hash_token(&token);
+
+    let token_row = sqlx::query!(
+        "SELECT id, client_id, user_id, scope, access_expires_at, revoked_at, api_key_id
+         FROM oauth_tokens WHERE access_token_hash = $1",
+        &token_hash
+    )
+    .fetch_optional(&state.db)
+    .await
+    .map_err(|e| internal_error("introspect token", e))?;
+
+    match token_row {
+        Some(row) if row.revoked_at.is_none() && row.access_expires_at > Utc::now() => {
+            // Active token
+            let client = sqlx::query!("SELECT client_id FROM oauth_clients WHERE id = $1", row.client_id)
+                .fetch_one(&state.db)
+                .await
+                .map_err(|e| internal_error("introspect client", e))?;
+
+            Ok(Json(IntrospectResponse {
+                active: true,
+                scope: Some(row.scope),
+                client_id: Some(client.client_id),
+                exp: Some(row.access_expires_at.timestamp() as usize),
+                iat: None, // We don't store iat separately
+                sub: Some(row.user_id.to_string()),
+                token_type: Some("Bearer".to_string()),
+                api_key_id: row.api_key_id.map(|id| id.to_string()),
+            }))
+        }
+        _ => Ok(Json(IntrospectResponse {
+            active: false,
+            scope: None,
+            client_id: None,
+            exp: None,
+            iat: None,
+            sub: None,
+            token_type: None,
+            api_key_id: None,
+        })),
+    }
+}
+
+/// Token Revocation (RFC 7009)
+async fn revoke(
+    State(state): State<AppState>,
+    Form(params): Form<RevokeRequest>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    let token = params.token.ok_or_else(|| err(StatusCode::BAD_REQUEST, "Missing token"))?;
+    let token_hash = hash_token(&token);
+
+    // Try to revoke as access token
+    let result = sqlx::query("UPDATE oauth_tokens SET revoked_at = NOW() WHERE access_token_hash = $1 AND revoked_at IS NULL")
+        .bind(&token_hash)
+        .execute(&state.db)
+        .await
+        .map_err(|e| internal_error("revoke access token", e))?;
+
+    if result.rows_affected() > 0 {
+        return Ok(Json(serde_json::json!({})));
+    }
+
+    // Try as refresh token
+    let result = sqlx::query("UPDATE oauth_tokens SET revoked_at = NOW() WHERE refresh_token_hash = $1 AND revoked_at IS NULL")
+        .bind(&token_hash)
+        .execute(&state.db)
+        .await
+        .map_err(|e| internal_error("revoke refresh token", e))?;
+
+    if result.rows_affected() > 0 {
+        return Ok(Json(serde_json::json!({})));
+    }
+
+    // Per RFC 7009, we don't return an error if token not found
+    Ok(Json(serde_json::json!({})))
+}
+
+/// JWKS Endpoint - Public keys for JWT verification
+/// For OAuth 2.1, we use the same HS256 key as JWT sessions
+async fn jwks(State(state): State<AppState>) -> Json<serde_json::Value> {
+    // We use HS256 (symmetric) so JWKS only exposes the key ID
+    // In a real deployment with asymmetric keys, this would expose the public key
+    Json(serde_json::json!({
+        "keys": [{
+            "kty": "oct",
+            "alg": "HS256",
+            "kid": "dockpanel-oauth-hs256",
+            "use": "sig"
+        }]
+    }))
+}
+
+/// Dynamic Client Registration (RFC 7591) - with redirect_uri allowlist
+async fn register_client(
+    State(state): State<AppState>,
+    Json(params): Json<RegisterClientRequest>,
+) -> Result<Json<RegisterClientResponse>, ApiError> {
+    // Validate redirect URIs against allowlist
+    // Allowlist: panel's own domains + localhost for development
+    let allowed_origins = get_allowed_origins(&state).await?;
+
+    for uri in &params.redirect_uris {
+        if !is_redirect_uri_allowed(uri, &allowed_origins) {
+            return Err(err(
+                StatusCode::BAD_REQUEST,
+                &format!("Redirect URI not allowed: {}. Allowed origins: {:?}", uri, allowed_origins),
+            ));
+        }
+    }
+
+    // Generate client_id
+    let client_id = format!("dpm_{}", Uuid::new_v4().simple().to_string().replace('-', ""));
+
+    // For public clients (PKCE-only), no client_secret
+    let client_secret = if params.token_endpoint_auth_method == Some("none".to_string()) {
+        None
+    } else {
+        // Generate client_secret for confidential clients
+        let secret: String = rand::rng()
+            .sample_iter(&Alphanumeric)
+            .take(48)
+            .map(char::from)
+            .collect();
+        let hash = hash_token(&secret);
+        Some((secret, hash))
+    };
+
+    let (secret_hash, secret_plain) = match client_secret {
+        Some((plain, hash)) => (Some(hash), Some(plain)),
+        None => (None, None),
+    };
+
+    let scopes = params.scope.unwrap_or_else(|| "mcp:read:*".to_string());
+
+    sqlx::query(
+        "INSERT INTO oauth_clients (client_id, client_secret_hash, client_name, client_uri, logo_uri, redirect_uris, grant_types, response_types, scope, token_endpoint_auth_method, require_pkce, allowed_origins)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)",
+    )
+    .bind(&client_id)
+    .bind(&secret_hash)
+    .bind(&params.client_name.unwrap_or_else(|| "MCP Client".to_string()))
+    .bind(&params.client_uri)
+    .bind(&params.logo_uri)
+    .bind(&params.redirect_uris)
+    .bind(&params.grant_types.unwrap_or_else(|| vec!["authorization_code".to_string(), "refresh_token".to_string()]))
+    .bind(&params.response_types.unwrap_or_else(|| vec!["code".to_string()]))
+    .bind(&scopes)
+    .bind(&params.token_endpoint_auth_method.unwrap_or_else(|| "none".to_string()))
+    .bind(true) // require_pkce = true (MCP mandate)
+    .bind(&params.redirect_uris) // allowed_origins defaults to redirect_uris for simplicity
+    .execute(&state.db)
+    .await
+    .map_err(|e| internal_error("register client", e))?;
+
+    let mut resp = RegisterClientResponse {
+        client_id: client_id.clone(),
+        client_id_issued_at: Utc::now().timestamp() as usize,
+        client_name: params.client_name,
+        client_uri: params.client_uri,
+        logo_uri: params.logo_uri,
+        redirect_uris: params.redirect_uris,
+        grant_types: params.grant_types,
+        response_types: params.response_types,
+        scope: Some(scopes),
+        token_endpoint_auth_method: params.token_endpoint_auth_method,
+        require_pkce: Some(true),
+    };
+
+    if let Some(secret) = secret_plain {
+        resp.client_secret = Some(secret);
+        resp.client_secret_expires_at = Some(0); // 0 = never expires
+    }
+
+    Ok(Json(resp))
+}
+
+/// Client ID Metadata Document (CIMD) - MCP 2025-11-25 preferred registration
+/// Served at /.well-known/oauth-client-metadata
+async fn client_metadata(
+    State(state): State<AppState>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    // This serves the panel's own client metadata for MCP clients
+    // that want to register via CIMD instead of DCR
+    let base_url = get_base_url(&state).await?;
+
+    Ok(Json(serde_json::json!({
+        "client_id": "dockpanel-mcp-server",
+        "client_name": "DockPanel MCP Server",
+        "redirect_uris": ["http://127.0.0.1:3081/callback", "http://localhost:3081/callback"],
+        "grant_types": ["authorization_code", "refresh_token"],
+        "response_types": ["code"],
+        "scope": "mcp:read:*",
+        "token_endpoint_auth_method": "none",
+        "require_pkce": true,
+        "token_endpoint": format!("{}/oauth/token", base_url),
+        "authorization_endpoint": format!("{}/oauth/authorize", base_url),
+        "introspection_endpoint": format!("{}/oauth/introspect", base_url),
+        "revocation_endpoint": format!("{}/oauth/revoke", base_url),
+        "jwks_uri": format!("{}/oauth/jwks", base_url),
+    }))
+}
+
+/// Protected Resource Metadata (RFC 9728)
+/// Served at /.well-known/oauth-protected-resource
+async fn protected_resource_metadata(
+    State(state): State<AppState>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    let base_url = get_base_url(&state).await?;
+
+    Ok(Json(serde_json::json!({
+        "resource": base_url,
+        "authorization_servers": [format!("{}/oauth", base_url)],
+        "jwks_uri": format!("{}/oauth/jwks", base_url),
+        "scopes_supported": ["mcp:read:*", "mcp:write:*", "mcp:admin:*"],
+        "bearer_methods_supported": ["header"],
+        "resource_documentation": "https://docs.dockpanel.dev/mcp"
+    }))
+}
+
+/// Validate authorization request parameters
+async fn validate_authorize_request(
+    state: &AppState,
+    params: &AuthorizeParams,
+) -> Result<OAuthClient, ApiError> {
+    if params.response_type != "code" {
+        return Err(err(StatusCode::BAD_REQUEST, "Unsupported response_type. Only 'code' is supported."));
+    }
+
+    let client_id = params.client_id.as_deref().ok_or_else(|| err(StatusCode::BAD_REQUEST, "Missing client_id"))?;
+
+    let client = sqlx::query_as!(
+        OAuthClient,
+        "SELECT id, client_id, client_secret_hash, client_name, redirect_uris, scope, token_endpoint_auth_method, require_pkce, allowed_origins
+         FROM oauth_clients WHERE client_id = $1",
+        client_id
+    )
+    .fetch_optional(&state.db)
+    .await
+    .map_err(|e| internal_error("lookup client", e))?
+    .ok_or_else(|| err(StatusCode::BAD_REQUEST, "Invalid client_id"))?;
+
+    // Validate redirect_uri against client's allowlist
+    let redirect_uri = params.redirect_uri.as_deref().ok_or_else(|| err(StatusCode::BAD_REQUEST, "Missing redirect_uri"))?;
+    if !client.redirect_uris.iter().any(|u| u == redirect_uri) {
+        return Err(err(StatusCode::BAD_REQUEST, "Redirect URI not registered for this client"));
+    }
+
+    // Validate scope (subset of client's allowed scopes)
+    if let Some(req_scope) = &params.scope {
+        let client_scopes: std::collections::HashSet<&str> = client.scope.split_whitespace().collect();
+        for s in req_scope.split_whitespace() {
+            if !client_scopes.contains(s) {
+                return Err(err(StatusCode::BAD_REQUEST, &format!("Scope not allowed: {}", s)));
+            }
+        }
+    }
+
+    // Validate resource indicator (RFC 8707) - optional but recommended
+    if let Some(resource) = &params.resource {
+        // For DockPanel, the resource is the panel's base URL
+        let base_url = get_base_url(state).await?;
+        if resource != &base_url && resource != &format!("{}/", base_url) {
+            return Err(err(StatusCode::BAD_REQUEST, "Invalid resource indicator"));
+        }
+    }
+
+    Ok(client)
+}
+
+/// Build consent page HTML
+fn build_consent_page(params: &AuthorizeParams, client: &OAuthClient, user_email: &str) -> String {
+    let redirect_uri = params.redirect_uri.as_deref().unwrap_or("");
+    let scope = params.scope.as_deref().unwrap_or("");
+    let state = params.state.as_deref().unwrap_or("");
+    let client_id = &client.client_id;
+
+    format!(
+        r#"<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Authorize Application</title>
+    <style>
+        body {{ font-family: system-ui, sans-serif; max-width: 480px; margin: 2rem auto; padding: 1rem; }}
+        .card {{ border: 1px solid #e5e7eb; border-radius: 8px; padding: 1.5rem; }}
+        h1 {{ font-size: 1.25rem; margin-bottom: 1rem; }}
+        .info {{ background: #f9fafb; padding: 1rem; border-radius: 6px; margin: 1rem 0; font-size: 0.875rem; }}
+        .btn-group {{ display: flex; gap: 0.5rem; margin-top: 1.5rem; }}
+        button {{ padding: 0.625rem 1.25rem; border-radius: 6px; font-size: 0.875rem; font-weight: 500; cursor: pointer; border: none; }}
+        .btn-allow {{ background: #16a34a; color: white; }}
+        .btn-deny {{ background: #dc2626; color: white; }}
+        input[type="hidden"] {{ display: none; }}
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>Authorize Application</h1>
+        <p><strong>{}</strong> wants to access your DockPanel account.</p>
+        <div class="info">
+            <p><strong>Email:</strong> {}</p>
+            <p><strong>Application:</strong> {} ({})</p>
+            <p><strong>Requested scopes:</strong> {}</p>
+        </div>
+        <form method="POST" action="/oauth/authorize">
+            <input type="hidden" name="response_type" value="code">
+            <input type="hidden" name="client_id" value="{}">
+            <input type="hidden" name="redirect_uri" value="{}">
+            <input type="hidden" name="scope" value="{}">
+            <input type="hidden" name="state" value="{}">
+            <input type="hidden" name="code_challenge" value="{}">
+            <input type="hidden" name="code_challenge_method" value="{}">
+            <input type="hidden" name="resource" value="{}">
+            <div class="btn-group">
+                <button type="submit" name="consent" value="allow" class="btn-allow">Allow</button>
+                <button type="submit" name="consent" value="deny" class="btn-deny">Deny</button>
+            </div>
+        </form>
+    </div>
+</body>
+</html>"#,
+        client.client_name,
+        user_email,
+        client.client_name,
+        client_id,
+        if scope.is_empty() { "mcp:read:* (default)" } else { scope },
+        client_id,
+        redirect_uri,
+        scope,
+        state,
+        params.code_challenge.as_deref().unwrap_or(""),
+        params.code_challenge_method.as_deref().unwrap_or(""),
+        params.resource.as_deref().unwrap_or("")
+    )
+}
+
+/// Build error redirect
+fn redirect_error(redirect_uri: &str, error: &str, description: &str, state: Option<&str>) -> ApiError {
+    let mut url = redirect_uri.to_string();
+    url.push_str("?error=");
+    url.push_str(&urlencoding::encode(error));
+    url.push_str("&error_description=");
+    url.push_str(&urlencoding::encode(description));
+    if let Some(s) = state {
+        url.push_str("&state=");
+        url.push_str(&urlencoding::encode(s));
+    }
+    err(StatusCode::FOUND, &url) // Using FOUND (302) for redirect
+}
+
+// Request/Response types
+
+#[derive(Debug, Deserialize)]
+struct AuthorizeParams {
+    response_type: String,
+    client_id: Option<String>,
+    redirect_uri: Option<String>,
+    scope: Option<String>,
+    state: Option<String>,
+    code_challenge: Option<String>,
+    code_challenge_method: Option<String>,
+    resource: Option<String>, // RFC 8707 Resource Indicators
+}
+
+#[derive(Debug, Deserialize)]
+struct AuthorizeForm {
+    response_type: String,
+    client_id: String,
+    redirect_uri: String,
+    scope: Option<String>,
+    state: Option<String>,
+    code_challenge: Option<String>,
+    code_challenge_method: Option<String>,
+    resource: Option<String>,
+    consent: String, // "allow" or "deny"
+}
+
+#[derive(Debug, Deserialize)]
+struct TokenRequest {
+    grant_type: String,
+    code: Option<String>,
+    redirect_uri: Option<String>,
+    client_id: Option<String>,
+    client_secret: Option<String>,
+    code_verifier: Option<String>,
+    refresh_token: Option<String>,
+    scope: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+struct TokenResponse {
+    access_token: String,
+    token_type: String,
+    expires_in: i64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    scope: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    refresh_token: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct IntrospectRequest {
+    token: Option<String>,
+    token_type_hint: Option<String>,
+    client_id: Option<String>,
+    client_secret: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+struct IntrospectResponse {
+    active: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    scope: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    client_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    exp: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    iat: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    sub: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    token_type: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    api_key_id: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct RevokeRequest {
+    token: Option<String>,
+    token_type_hint: Option<String>,
+    client_id: Option<String>,
+    client_secret: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct RegisterClientRequest {
+    redirect_uris: Vec<String>,
+    client_name: Option<String>,
+    client_uri: Option<String>,
+    logo_uri: Option<String>,
+    grant_types: Option<Vec<String>>,
+    response_types: Option<Vec<String>>,
+    scope: Option<String>,
+    token_endpoint_auth_method: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+struct RegisterClientResponse {
+    client_id: String,
+    client_id_issued_at: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    client_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    client_uri: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    logo_uri: Option<String>,
+    redirect_uris: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    grant_types: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    response_types: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    scope: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    token_endpoint_auth_method: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    client_secret: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    client_secret_expires_at: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    require_pkce: Option<bool>,
+}
+
+#[derive(Debug, Serialize, sqlx::FromRow)]
+struct OAuthClient {
+    id: Uuid,
+    client_id: String,
+    client_secret_hash: Option<String>,
+    client_name: String,
+    redirect_uris: Vec<String>,
+    scope: String,
+    token_endpoint_auth_method: String,
+    require_pkce: bool,
+    allowed_origins: Vec<String>,
+}
+
+// Helper functions
+
+fn hash_token(token: &str) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(token.as_bytes());
+    hex::encode(hasher.finalize())
+}
+
+async fn get_allowed_origins(state: &AppState) -> Result<Vec<String>, ApiError> {
+    // Get panel's base URL from settings
+    let base_url: Option<String> = sqlx::query_scalar("SELECT value FROM settings WHERE key = 'panel_url'")
+        .fetch_optional(&state.db)
+        .await
+        .map_err(|e| internal_error("get panel_url", e))?;
+
+    let mut origins = vec!["http://localhost:3081".to_string(), "http://127.0.0.1:3081".to_string()];
+    if let Some(url) = base_url {
+        origins.push(url);
+    }
+    Ok(origins)
+}
+
+fn is_redirect_uri_allowed(uri: &str, allowed_origins: &[String]) -> bool {
+    for origin in allowed_origins {
+        if uri.starts_with(origin) {
+            return true;
+        }
+    }
+    false
+}
+
+async fn get_base_url(state: &AppState) -> Result<String, ApiError> {
+    let base_url: Option<String> = sqlx::query_scalar("SELECT value FROM settings WHERE key = 'panel_url'")
+        .fetch_optional(&state.db)
+        .await
+        .map_err(|e| internal_error("get panel_url", e))?;
+
+    base_url.ok_or_else(|| err(StatusCode::INTERNAL_SERVER_ERROR, "panel_url not configured"))
 }

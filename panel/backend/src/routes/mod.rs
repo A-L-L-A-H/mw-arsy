@@ -1441,6 +1441,8 @@ pub fn router() -> Router<AppState> {
         .route("/api/branding/logo/{filename}", get(branding_assets::get_logo))
         .route("/api/auth/oauth/{provider}", get(oauth::authorize))
         .route("/api/auth/oauth/{provider}/callback", get(oauth::callback))
+        // OAuth 2.1 Authorization Server (for MCP and external clients)
+        .nest("/oauth", oauth::router())
         .route("/api/status-page", get(monitors::status_page))
         .route("/api/status-page/public", get(incidents::public_status_page))
         .route("/api/webhooks/gateway/{token}", post(webhook_gateway::receive_webhook))
