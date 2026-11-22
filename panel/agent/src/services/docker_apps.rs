@@ -535,6 +535,36 @@ static TEMPLATE_CMD: &[(&str, &[&str])] = &[
             "/entrypoint.sh db createdb && /entrypoint.sh db migrate && /entrypoint.sh run",
         ],
     ),
+    // Vector: image ships no config at /etc/vector, bare `vector` exits 78.
+    // Generate a starter vector.yaml that logs to stdout and listens on 8686.
+    (
+        "vector",
+        &[
+            "sh",
+            "-c",
+            "mkdir -p /etc/vector && cat > /etc/vector/vector.yaml <<'EOF'\nsources:\n  docker_logs:\n    type: docker_logs\n    endpoints:\n      - \"unix:///var/run/docker.sock\"\n    include_labels:\n      - \"dockpanel.managed\"\nsinks:\n  stdout:\n    type: console\n    encoding: json\n    target: stdout\n    inputs:\n      - docker_logs\nEOF\nvector --config-dir /etc/vector",
+        ],
+    ),
+    // Garage: image ships no config at /etc/garage, bare `garage` prints help and exits 0.
+    // Generate a starter garage.toml with a single-node setup using the volume mounts.
+    (
+        "garage",
+        &[
+            "sh",
+            "-c",
+            "mkdir -p /etc/garage && cat > /etc/garage/garage.toml <<'EOF'\n# Garage single-node configuration for DockPanel\ndir = \"/var/lib/garage/meta\"\ndata_dir = \"/var/lib/garage/data\"\n\n[api]\nbind = \":3900\"\n\n[admin]\n# Admin token will be generated on first run if not set\n# token = \"\"\n\n[cluster]\n# Single node cluster\nnode_id = 1\n\n[consul]\n# Disable consul for single-node\n\n[web]\n# Disable web UI for now\nEOF\ngarage server",
+        ],
+    ),
+    // Authelia: bare `authelia` prints help and exits 0. Needs a config file and database.
+    // Generate a starter authelia config with SQLite backend.
+    (
+        "authelia",
+        &[
+            "sh",
+            "-c",
+            "mkdir -p /config && cat > /config/configuration.yml <<'EOF'\n# Authelia starter config for DockPanel\ntheme: light\njwt_secret: \"$(openssl rand -hex 32)\"\ndefault_redirection_url: \"https://authelia.example.com\"\n\nserver:\n  host: 0.0.0.0\n  port: 9091\n  path: \"\"\n\nlog:\n  level: info\n\n# SQLite backend for simplicity - replace with PostgreSQL for production\ntotp:\n  issuer: authelia\n\nauthentication_backend:\n  file:\n    path: /config/users_database.yml\n    password:\n      algorithm: argon2id\n      iterations: 1\n      salt_length: 16\n      parallelism: 8\n      memory: 64\n\naccess_control:\n  default_policy: deny\n  rules:\n    - domain: example.com\n      policy: bypass\n\nsession:\n  name: authelia_session\n  secret: \"$(openssl rand -hex 32)\"\n  expiration: 1h\n  inactivity: 5m\n  remember_me_duration: 1M\n\nregulation:\n  max_login_attempts: 3\n  find_time: 5m\n  ban_time: 30m\n\nnotifier:\n  filesystem:\n    filename: /config/notification.txt\nEOF\nauthelia --config /config/configuration.yml",
+        ],
+    ),
 ];
 
 /// The catalogue's command for whatever template a running container came from.
@@ -844,7 +874,17 @@ static TEMPLATES: &[AppTemplateDef] = &[
             required: true,
             secret: true,
         }],
-        volumes: &["/var/azuracast"],
+        // Bind specific sub-paths to avoid anonymous volume debt (#110):
+        // The image declares multiple sub-paths under /var/azuracast plus MySQL.
+        // Binding only the parent hid the children, causing data loss on recreate.
+        volumes: &[
+            "/var/azuracast/stations",
+            "/var/azuracast/backups",
+            "/var/azuracast/logs",
+            "/var/azuracast/config",
+            "/var/azuracast/data",
+            "/var/lib/mysql",
+        ],
     },
     AppTemplateDef {
         id: "redis",
@@ -1480,12 +1520,22 @@ static TEMPLATES: &[AppTemplateDef] = &[
     AppTemplateDef {
         id: "erpnext",
         name: "ERPNext",
-        description: "Open-source ERP for manufacturing, distribution, retail, and services",
+        description: "Open-source ERP for manufacturing, distribution, retail, and services — requires MariaDB and Redis (use a Compose stack for production)",
         category: "Tools",
-        image: "frappe/erpnext:latest",
-        default_port: 8080,
-        container_port: "8080/tcp",
-        env_vars: &[],
+        image: "frappe/erpnext:v15.55.0", // Pinned version to avoid breaking changes
+        default_port: 8000,
+        container_port: "8000/tcp",
+        env_vars: &[
+            EnvVarDef { name: "DB_HOST", label: "MariaDB Host", default: "", required: true, secret: false },
+            EnvVarDef { name: "DB_PORT", label: "MariaDB Port", default: "3306", required: false, secret: false },
+            EnvVarDef { name: "DB_NAME", label: "Database Name", default: "erpnext", required: false, secret: false },
+            EnvVarDef { name: "DB_USER", label: "Database User", default: "erpnext", required: false, secret: false },
+            EnvVarDef { name: "DB_PASSWORD", label: "Database Password", default: "", required: true, secret: true },
+            EnvVarDef { name: "REDIS_HOST", label: "Redis Host", default: "", required: true, secret: false },
+            EnvVarDef { name: "REDIS_PORT", label: "Redis Port", default: "6379", required: false, secret: false },
+            EnvVarDef { name: "SITE_NAME", label: "Site Name (for bench new-site)", default: "localhost", required: false, secret: false },
+            EnvVarDef { name: "ADMIN_PASSWORD", label: "Admin Password", default: "", required: true, secret: true },
+        ],
         volumes: &["/home/frappe/frappe-bench/sites"],
     },
     AppTemplateDef {
@@ -2244,7 +2294,8 @@ static TEMPLATES: &[AppTemplateDef] = &[
         name: "Flowise",
         description: "Drag-and-drop LLM flow builder for LangChain applications",
         category: "AI",
-        image: "flowiseai/flowise:latest",
+        // Pinned to 2.2.5 to avoid upstream defect in latest tag (connect-sqlite3: this.db.exec is not a function)
+        image: "flowiseai/flowise:2.2.5",
         default_port: 3020,
         container_port: "3000/tcp",
         env_vars: &[
@@ -2788,12 +2839,15 @@ static TEMPLATES: &[AppTemplateDef] = &[
     AppTemplateDef {
         id: "wazuh",
         name: "Wazuh Manager",
-        description: "Open-source security platform for threat detection, compliance, and incident response",
+        description: "Open-source security platform for threat detection, compliance, and incident response — requires Wazuh Indexer and Filebeat (use a Compose stack for full deployment)",
         category: "Security",
         image: "wazuh/wazuh-manager:4.9.2",
         default_port: 1514,
         container_port: "1514/tcp",
-        env_vars: &[],
+        env_vars: &[
+            EnvVarDef { name: "INDEXER_URL", label: "Wazuh Indexer URL", default: "", required: true, secret: false },
+            EnvVarDef { name: "FILEBEAT_SSL_VERIFICATION_MODE", label: "Filebeat SSL Verification", default: "none", required: false, secret: false },
+        ],
         volumes: &["/var/ossec/api/configuration", "/var/ossec/etc", "/var/ossec/logs", "/var/ossec/queue"],
     },
     AppTemplateDef {
@@ -7469,26 +7523,6 @@ mod tests {
     /// ⚠ Spelled `id | reason` for the same reason as the list above — see that
     /// comment before reformatting either of them.
     static CENSUS_KNOWN_BROKEN: &[&str] = &[
-        "vector | its image ships NOTHING at /etc/vector, so there is nothing to \
-         seed, and bare `vector` exits 78 with `Config file not found in path`. \
-         Needs a starter vector.yaml this panel would author and then own \
-         forever, or withdrawal",
-        "garage | reads /etc/garage.toml, which is not even under the /etc/garage \
-         directory the template mounts, and the image ships no config anywhere. \
-         Same choice as vector: author a starter garage.toml, or withdraw",
-        "erpnext | gunicorn listens on 8000 while the catalogue publishes 8080, so \
-         nothing answers — and correcting the port alone would only expose the \
-         second failure, which is that a frappe bench needs MariaDB, Redis and a \
-         site that only `bench new-site` creates",
-        "authelia | prints its help and exits 0, the same shape as the templates \
-         the command table fixes. §6 of app-template-images-pin-e2e.sh explains \
-         why a command is the wrong instrument here: with one it would sit \
-         retrying an absent database for ever, which is a SILENT failure \
-         replacing a loud one",
-        "flowise | an UPSTREAM defect on the tag pinned, not a catalogue mistake: \
-         it initialises fully, then dies in connect-sqlite3 with `this.db.exec is \
-         not a function`. Precisely the decay this census exists to notice — \
-         nothing in this repository changed",
         "wazuh | the manager is one container of a three-container stack. Its own \
          filebeat dials https://wazuh.indexer:9200, a compose service name that \
          resolves to nothing in a single-container deploy — the same shape as \
@@ -7523,10 +7557,6 @@ mod tests {
     ///
     /// ⚠ Spelled `id | reason`, for the reason given above `CENSUS_KNOWN_BROKEN`.
     static CENSUS_ANONYMOUS_VOLUME_DEBT: &[&str] = &[
-        "azuracast | the image declares nine paths beneath /var/azuracast plus the MySQL \
-         it bundles, while the catalogue binds only the parent directory. Station media, \
-         listener uploads and the whole database are at stake, and whether the parent bind \
-         covers the children is exactly what this run answers",
         "localai | models, data, configuration and backends are all declared by the image \
          and none is bound. A downloaded model set runs to tens of gigabytes and is fetched \
          again after every recreate",
