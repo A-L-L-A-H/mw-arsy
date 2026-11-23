@@ -1,0 +1,73 @@
+name: Release Tag
+
+# Part 2 of the release ladder: when the release PR (labelled "release")
+# merges into main, this workflow fires and pushes the version tag.
+# The tag triggers the existing Release pipeline (release.yml).
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  tag:
+    name: Tag the release merge
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true && contains(github.event.pull_request.labels.*.name, 'release')
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Read version from the merge commit
+        id: version
+        run: |
+          # The merge commit is the head SHA of the PR (the squash commit).
+          # It carries the version in its message: "chore(release): vX.Y.Z [release-train]"
+          MSG=$(git log -1 --format=%s "${{ github.event.pull_request.merge_commit_sha }}" 2>/dev/null || echo "")
+          if [[ "$MSG" =~ chore\(release\):\ v([0-9]+\.[0-9]+\.[0-9]+)\ \[release-train\] ]]; then
+            VERSION="${BASH_REMATCH[1]}"
+            echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+            echo "Found release version: $VERSION"
+          else
+            echo "Could not extract version from merge commit message: $MSG"
+            exit 1
+          fi
+
+      - name: Tag the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.version.outputs.version }}"
+          TAG="v${VERSION}"
+          if git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null 2>&1; then
+            echo "tag ${TAG} already exists — nothing to do"
+            exit 0
+          fi
+          # The merge commit SHA is the PR's merge_commit_sha
+          MERGE_SHA="${{ github.event.pull_request.merge_commit_sha }}"
+          git tag "${TAG}" "${MERGE_SHA}"
+          git push origin "${TAG}"
+          echo "tagged ${TAG} at ${MERGE_SHA}"
+
+      - name: Tagging failed — open issue
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TITLE="automation/release-tag-failure: PR #${{ github.event.pull_request.number }}"
+          BODY=$(cat <<EOF
+          The release tag workflow failed for PR #${{ github.event.pull_request.number }}.
+
+          - Run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
+          - PR: ${{ github.event.pull_request.html_url }}
+          - Merge commit: ${{ github.event.pull_request.merge_commit_sha }}
+
+          Check the failed step's log for the cause.
+          EOF
+          )
+          gh issue create --title "$TITLE" --body "$BODY" || true

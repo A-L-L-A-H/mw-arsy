@@ -1,30 +1,19 @@
 name: Release Train
 
-# dev → main release automation. The ladder:
+# dev → main release automation (part 1).
 #
-#   push to dev  ──▶ compute next version (conventional commits since last tag)
-#                ──▶ write 4×Cargo.toml + package.json + 2 doc stamps + CHANGELOG
-#                ──▶ commit on dev ──▶ PR dev→main ──▶ auto-merge (squash)
-#   PR merges    ──▶ push to main ──▶ this workflow again ──▶ tag vX.Y.Z
-#                ──▶ the existing tag-triggered Release pipeline publishes
+# Triggers on HUMAN push to dev. Computes the next version from the commit
+# history since the last tag (conventional commits: `!:` → major, `feat:` → minor,
+# else → patch), writes the 5 version files + 2 doc stamps + CHANGELOG section,
+# commits that on dev, and opens the release PR dev→main with auto-merge (squash).
 #
-# So `main` only ever moves through the release PR, and every merge into
-# `main` IS a release — which is the owner's chosen cadence. The tag step
-# fires only when the run's ref is `main` itself, and only when the version
-# the merge carried has no tag yet; a re-run or an unrelated main push finds
-# the tag present and does nothing.
-#
-# The train obeys the main-gate ruleset: its PR carries the same required
-# checks as any human PR, so a red release never ships. Its own merge
-# commits carry `[release-train]` so the apply steps skip themselves on the
-# tag-cutting run (the compute script's noop guard is the second defence).
-#
-# Kill switch: disable this workflow in the Actions UI; `docs/automation.md`
-# documents the manual release ladder that replaces it.
+# The PR carries the `release` label. When it merges (auto-merge waits for the
+# full CI matrix via main-gate), the "Release Tag" workflow picks it up and
+# pushes the tag — which fires the existing Release pipeline.
 
 on:
   push:
-    branches: [main, dev]
+    branches: [dev]
     paths-ignore:
       - '.github/**'
 
@@ -39,25 +28,11 @@ concurrency:
 
 jobs:
   train:
-    name: Cut release
+    name: Cut release PR
     runs-on: ubuntu-latest
     steps:
-      # The trigger is a push to main or dev. A push to main whose head commit
-      # is the train's own squash merge must NOT cut another release — it is
-      # the signal to TAG instead. Everything downstream keys off this guard.
-      - name: Is this the train's own merge?
-        id: guard
-        run: |
-          if [[ "${{ github.event.head_commit.message }}" == *"[release-train]"* ]]; then
-            echo "own=own-commit" >> "$GITHUB_OUTPUT"
-          else
-            echo "own=fresh-commits" >> "$GITHUB_OUTPUT"
-          fi
-
       - uses: actions/checkout@v6
         with:
-          # fetch-depth 0: the version compute walks the log back to the last
-          # tag, and `git describe` needs the tags themselves.
           fetch-depth: 0
 
       - name: Set up Node
@@ -65,11 +40,7 @@ jobs:
         with:
           node-version: '20'
 
-      # The release files are written on TOP of dev, whatever ref the event
-      # carried, so compute runs against dev's tip. main's newest commit is
-      # the squash of dev's own commits, so dev's log classifies identically.
       - name: Compute the next version on dev
-        if: steps.guard.outputs.own == 'fresh-commits'
         id: version
         run: |
           git config user.name "release-train[bot]"
@@ -87,15 +58,14 @@ jobs:
           fi
 
       - name: Apply the release files
-        if: steps.guard.outputs.own == 'fresh-commits' && steps.version.outputs.noop == 'false'
+        if: steps.version.outputs.noop == 'false'
         run: |
           TARGET="${{ steps.version.outputs.version }}" node scripts/release-train/apply-release.mjs
 
       - name: Commit the release on dev
-        if: steps.guard.outputs.own == 'fresh-commits' && steps.version.outputs.noop == 'false'
+        if: steps.version.outputs.noop == 'false'
         id: commit
         run: |
-          # Rule 4: add by explicit path — the tree may carry the owner's WIP.
           git add panel/agent/Cargo.toml panel/backend/Cargo.toml panel/cli/Cargo.toml \
                   panel/mcp/Cargo.toml panel/frontend/package.json FEATURES.md docs/testing.md \
                   CHANGELOG.md
@@ -109,52 +79,31 @@ jobs:
           fi
 
       - name: Open the release PR and engage auto-merge
-        if: steps.guard.outputs.own == 'fresh-commits' && steps.commit.outputs.sha != ''
+        if: steps.commit.outputs.sha != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ steps.version.outputs.version }}
         run: |
           set -euo pipefail
-          # Idempotent: when a release PR is already open, this run's commit
-          # simply rides along — never a second PR for the same ladder.
           PR=$(gh pr list --base main --head dev --state open --json number \
                --jq '.[0].number' 2>/dev/null || true)
           if [ -z "$PR" ]; then
             PR=$(gh pr create \
               --base main --head dev \
               --title "chore(release): v${VERSION} [release-train]" \
+              --label "release" \
               --body "Automated release PR cut by the release train from \`dev\`.
 
           Version: **v${VERSION}**
 
-          Merging publishes v${VERSION} through the tag-triggered Release
-          pipeline (changelog → regression pins → static musl builds →
-          Sigstore signing → publish → install smoke test).")
+          Merging publishes v${VERSION} through the tag-triggered Release pipeline
+          (changelog → regression pins → static musl builds → Sigstore signing
+          → publish → install smoke test).")
           fi
-          # --auto defers to the main-gate ruleset: GitHub merges when the
-          # required checks pass, and not one second earlier.
           gh pr merge "$PR" --auto --squash
 
-      # Runs on EVERY train run, but does something only on main: the release
-      # merge just landed here carrying a version whose tag does not exist.
-      # On a dev run, or on a main push whose version is already tagged, this
-      # exits 0 without touching anything.
-      - name: Tag the release when main carries an untagged version
-        if: github.ref == 'refs/heads/main'
-        run: |
-          set -euo pipefail
-          VERSION=$(grep -m1 '^version = ' panel/agent/Cargo.toml | sed 's/.*"\(.*\)".*/\1/')
-          TAG="v${VERSION}"
-          if git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null 2>&1; then
-            echo "tag ${TAG} already exists — nothing to do"
-            exit 0
-          fi
-          git tag "${TAG}"
-          git push origin "${TAG}"
-          echo "tagged ${TAG} at $(git rev-parse HEAD)"
-
       - name: Release succeeded — close any open failure issue
-        if: github.ref == 'refs/heads/main' && success()
+        if: success()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -176,11 +125,10 @@ jobs:
 
           - Run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
           - Job: ${GITHUB_JOB}
-          - Ref: ${GITHUB_REF}
           - Trigger commit: ${GITHUB_SHA}
 
           Check the failed step's log for the cause. This issue is closed
-          automatically by the next successful run that reaches main.
+          automatically by the next successful run.
           EOF
           )
           ISSUE=$(gh issue list --search "automation/release-failure in:title state:open" \
