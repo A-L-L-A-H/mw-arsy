@@ -88,6 +88,14 @@ pub fn wal_g_env(config: &WalGConfig) -> Vec<(String, String)> {
     env
 }
 
+/// Generate WAL-G environment variables and archive_command for PostgreSQL container
+/// Returns (archive_command, env_vars) to be used when creating the container
+pub fn wal_g_container_config(config: &WalGConfig) -> (String, Vec<(String, String)>) {
+    let env_vars = wal_g_env(config);
+    let archive_command = format!("wal-g wal-push %p");
+    (archive_command, env_vars)
+}
+
 /// Generate PostgreSQL configuration for WAL archiving
 pub fn pg_wal_archive_config(config: &WalGConfig) -> String {
     let env_vars = wal_g_env(config);
@@ -230,6 +238,39 @@ pub async fn delete_retain(config: &WalGConfig, container_name: &str, retain_cou
     }
 
     Ok(stdout)
+}
+
+/// Start WAL-G wal-push as a continuous background process for WAL archiving
+/// This runs `wal-g wal-push %p` continuously, pushing WAL files to S3 as they are generated
+pub async fn start_wal_push(config: &WalGConfig, container_name: &str) -> Result<(), String> {
+    let env_vars = wal_g_env(config);
+    let mut cmd = safe_command("docker");
+    cmd.args([
+        "exec",
+        "-d", // detached mode
+        container_name,
+        "sh",
+        "-c",
+        "exec wal-g wal-push %p",
+    ]);
+
+    for (k, v) in env_vars {
+        cmd.env(k, v);
+    }
+
+    // Start the process in background
+    let mut child = cmd
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .map_err(|e| format!("Failed to start wal-g wal-push: {e}"))?;
+
+    // Don't wait for the process - it runs in background
+    // The child process will be adopted by init (PID 1) if the parent exits
+    std::mem::forget(child);
+
+    Ok(())
 }
 
 /// Verify WAL-G backup integrity

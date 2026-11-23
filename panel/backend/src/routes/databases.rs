@@ -329,6 +329,15 @@ pub async fn create(
         "password": password,
         "port": port,
         "stack_id": body.stack_id.map(|id| id.to_string()),
+        "pitr_config": {
+            "enabled": body.pitr_enabled.unwrap_or(false),
+            "s3_bucket": body.s3_bucket,
+            "s3_region": body.s3_region,
+            "s3_endpoint": body.s3_endpoint,
+            "aws_access_key_id": body.aws_access_key_id,
+            "aws_secret_access_key": body.aws_secret_access_key,
+            "retention_hours": body.retention_hours,
+        },
     });
 
     let result = match agent.post("/databases", Some(agent_body)).await {

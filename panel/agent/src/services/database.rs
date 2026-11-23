@@ -32,12 +32,55 @@ pub struct DbContainer {
 /// network membership too. A stack's network is single-tenant by construction
 /// (one `user_id` owns the stack), so this introduces no new cross-tenant
 /// exposure — it simply swaps one single-purpose bridge for another.
+/// WAL-G PITR configuration for a database
+#[derive(Debug, Clone, Default)]
+pub struct PitrConfig {
+    pub enabled: bool,
+    pub s3_bucket: Option<String>,
+    pub s3_region: Option<String>,
+    pub s3_endpoint: Option<String>,
+    pub aws_access_key_id: Option<String>,
+    pub aws_secret_access_key: Option<String>,
+    pub retention_hours: Option<i32>,
+}
+
+impl Default for PitrConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            s3_bucket: None,
+            s3_region: None,
+            s3_endpoint: None,
+            aws_access_key_id: None,
+            aws_secret_access_key: None,
+            retention_hours: Some(24),
+        }
+    }
+}
+
+/// Create a database container (MySQL or PostgreSQL).
+///
+/// `stack_id`, when set (GH #64: standalone DB provisioning for a Docker Stack
+/// instead of a Site), puts the container on that stack's OWN private bridge
+/// network — the same one `compose::deploy_stack` already gives the stack's other
+/// containers, which is how they reach each other by name — instead of the shared,
+/// ICC-disabled `arsy-db` bridge every site-owned database joins. Mirrors
+/// `app_sidecar.rs`'s own design: host-port publishing does not care which
+/// bridge-driver network a container is on, so the existing `127.0.0.1:{port}`
+/// publish below keeps working unchanged either way, and every panel-side
+/// query/backup/credential operation reaches the container via `docker exec`
+/// (unaffected by which bridge-driver network the container is on), so the same
+/// semantics hold.
+///
+/// If `pitr_config.enabled` is true and engine is postgres, WAL-G continuous
+/// archiving will be configured with the provided S3 credentials.
 pub async fn create_database(
     name: &str,
     engine: &str,
     password: &str,
     port: u16,
     stack_id: Option<&str>,
+    pitr_config: Option<PitrConfig>,
 ) -> Result<DbContainer, String> {
     let docker =
         Docker::connect_with_local_defaults().map_err(|e| format!("Docker connect failed: {e}"))?;
@@ -63,7 +106,7 @@ pub async fn create_database(
     // after start. Unused for MariaDB (which is already DB-scoped/non-root).
     let admin_password = uuid::Uuid::new_v4().to_string().replace('-', "");
 
-    let (image, env, container_port) = match engine {
+    let (image, mut env, container_port) = match engine {
         "mysql" | "mariadb" => (
             "mariadb:11",
             vec![
@@ -74,9 +117,8 @@ pub async fn create_database(
             ],
             "3306/tcp",
         ),
-        _ => (
-            "postgres:16-alpine",
-            vec![
+        _ => {
+            let mut env = vec![
                 format!("POSTGRES_DB={name}"),
                 // NOTE: POSTGRES_USER is deliberately NOT set to {name} anymore — that
                 // bootstrapped the tenant as the cluster SUPERUSER (M1: COPY..TO PROGRAM
@@ -84,9 +126,33 @@ pub async fn create_database(
                 // kept with this random, discarded password; the real tenant role is
                 // created NON-superuser by provision_postgres_tenant_role() below.
                 format!("POSTGRES_PASSWORD={admin_password}"),
-            ],
-            "5432/tcp",
-        ),
+            ];
+            // Add WAL-G configuration if PITR is enabled for PostgreSQL
+            if let Some(ref pitr) = pitr_config {
+                if pitr.enabled && engine == "postgres" {
+                    let wal_g_config = crate::services::wal_g::WalGConfig {
+                        database_name: name.to_string(),
+                        s3_bucket: pitr.s3_bucket.clone().unwrap_or_default(),
+                        s3_region: pitr.s3_region.clone().unwrap_or_else(|| "us-east-1".to_string()),
+                        s3_endpoint: pitr.s3_endpoint.clone(),
+                        aws_access_key_id: pitr.aws_access_key_id.clone().unwrap_or_default(),
+                        aws_secret_access_key: pitr.aws_secret_access_key.clone().unwrap_or_default(),
+                        pg_data_dir: "/var/lib/postgresql/data".to_string(),
+                        wal_level: "replica".to_string(),
+                        archive_mode: "on".to_string(),
+                        archive_command: "wal-g wal-push %p".to_string(),
+                    };
+                    let (archive_command, wal_g_env_vars) = crate::services::wal_g::wal_g_container_config(&wal_g_config);
+                    env.extend(wal_g_env_vars);
+                    env.push(("POSTGRES_ARCHIVE_COMMAND".to_string(), archive_command));
+                }
+            }
+            (
+                "postgres:16-alpine",
+                env,
+                "5432/tcp",
+            )
+        },
     };
 
     // Pull image if needed
@@ -214,6 +280,28 @@ pub async fn create_database(
                 )
                 .await;
             return Err(e);
+        }
+    }
+
+    // Start WAL-G wal-push for continuous WAL archiving if PITR is enabled
+    if let Some(ref pitr) = pitr_config {
+        if pitr.enabled && engine == "postgres" {
+            let wal_g_config = crate::services::wal_g::WalGConfig {
+                database_name: name.to_string(),
+                s3_bucket: pitr.s3_bucket.clone().unwrap_or_default(),
+                s3_region: pitr.s3_region.clone().unwrap_or_else(|| "us-east-1".to_string()),
+                s3_endpoint: pitr.s3_endpoint.clone(),
+                aws_access_key_id: pitr.aws_access_key_id.clone().unwrap_or_default(),
+                aws_secret_access_key: pitr.aws_secret_access_key.clone().unwrap_or_default(),
+                pg_data_dir: "/var/lib/postgresql/data".to_string(),
+                wal_level: "replica".to_string(),
+                archive_mode: "on".to_string(),
+                archive_command: "wal-g wal-push %p".to_string(),
+            };
+            if let Err(e) = crate::services::wal_g::start_wal_push(&wal_g_config, &container_name).await {
+                tracing::warn!("Failed to start WAL-G wal-push for {}: {}", container_name, e);
+                // Don't fail the deployment, just warn
+            }
         }
     }
 
