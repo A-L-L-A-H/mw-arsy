@@ -75,6 +75,7 @@ async fn main() {
     std::fs::create_dir_all("/var/backups/arsy").ok();
     std::fs::create_dir_all("/var/backups/arsy/databases").ok();
     std::fs::create_dir_all("/var/backups/arsy/volumes").ok();
+    std::fs::create_dir_all(services::git_repos::GIT_REPOS_ROOT).ok();
 
     // The backup tree is root-only, and this repairs what is already on disk.
     // `create_dir_all` above made these 0755 and every writer's redirect made
@@ -208,6 +209,8 @@ async fn main() {
         .merge(routes::backup_drill::router())
         .merge(routes::deploy::router())
         .merge(routes::git_build::router())
+        .merge(routes::git_repos::router())
+        .merge(services::git_http::router())
         .merge(routes::smtp::router())
         .merge(routes::wordpress::router())
         .merge(routes::cms::router())

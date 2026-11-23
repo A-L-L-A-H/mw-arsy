@@ -693,6 +693,62 @@ impl AgentClient {
 
         Ok(())
     }
+
+    /// Stream an HTTP request/response directly over the local agent Unix socket
+    /// without buffering the body in memory (used by smart-HTTP git pack transport).
+    pub async fn stream_http(
+        &self,
+        method: &str,
+        path: &str,
+        content_type: Option<&str>,
+        git_token: Option<&str>,
+        body: axum::body::Body,
+    ) -> Result<axum::response::Response, AgentError> {
+        self.cb.check()?;
+        let stream = UnixStream::connect(&self.socket_path)
+            .await
+            .map_err(|e| {
+                self.cb.record_failure();
+                AgentError::Connection(e.to_string())
+            })?;
+
+        let io = TokioIo::new(stream);
+        let (mut sender, conn) = http1::handshake(io).await.map_err(|e| {
+            self.cb.record_failure();
+            AgentError::Connection(e.to_string())
+        })?;
+
+        tokio::spawn(async move {
+            if let Err(e) = conn.await {
+                tracing::warn!("agent stream connection error: {e}");
+            }
+        });
+
+        let token = self.token.read().await;
+        let mut builder = Request::builder()
+            .method(method)
+            .uri(format!("http://localhost{path}"))
+            .header("authorization", format!("Bearer {token}"));
+
+        if let Some(ct) = content_type {
+            builder = builder.header("content-type", ct);
+        }
+        if let Some(gt) = git_token {
+            builder = builder.header("x-git-token", gt);
+        }
+
+        let req = builder
+            .body(body)
+            .map_err(|e| AgentError::Request(e.to_string()))?;
+
+        let resp = sender
+            .send_request(req)
+            .await
+            .map_err(|e| AgentError::Request(e.to_string()))?;
+
+        self.cb.record_success();
+        Ok(resp.map(axum::body::Body::new))
+    }
 }
 
 // ---------------------------------------------------------------------------

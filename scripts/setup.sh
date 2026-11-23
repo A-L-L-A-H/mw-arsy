@@ -1455,6 +1455,21 @@ ${PANEL_TLS_BLOCK}
         proxy_read_timeout 300s;
     }
 
+    # Built-in Git Server smart-HTTP transport (streaming, no pack size limit)
+    location /git/ {
+        proxy_pass http://127.0.0.1:3080;
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        client_max_body_size 0;
+        proxy_request_buffering off;
+        proxy_buffering off;
+        proxy_read_timeout 600s;
+        proxy_send_timeout 600s;
+    }
+
     # Agent proxy (for frontend /agent/* calls)
     location /agent/ {
         proxy_pass http://unix:/var/run/arsy/agent.sock:/;
