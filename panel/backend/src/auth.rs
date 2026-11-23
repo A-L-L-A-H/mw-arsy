@@ -74,6 +74,20 @@ impl FromRequestParts<AppState> for AuthUser {
             return authenticate_api_key(state, key).await.map(AuthUser);
         }
 
+        // A `arsygit_`-prefixed credential (either Bearer or HTTP Basic password)
+        // authenticates against `git_tokens` directly using the same constant-time
+        // SHA-256 hash comparison and revocation/suspension parity.
+        if let Some(git_tok) = bearer_token.as_deref().filter(|t| t.starts_with("arsygit_")) {
+            return authenticate_git_token(state, git_tok).await.map(AuthUser);
+        }
+        if bearer_token.is_none() {
+            if let Some(basic_secret) = extract_basic_git_token(&parts.headers) {
+                return authenticate_git_token(state, &basic_secret)
+                    .await
+                    .map(AuthUser);
+            }
+        }
+
         let token = bearer_token.clone().or_else(|| {
                 // Fall back to cookie
                 parts
@@ -222,6 +236,92 @@ async fn authenticate_api_key(state: &AppState, key: &str) -> Result<Claims, Api
         // re-validated against a signature, so this is not a forgeable
         // expiry, just a field every consumer of `Claims` expects.
         exp: now + 315_360_000, // ~10 years
+        iat: now,
+        jti: None,
+    })
+}
+
+/// Extract a `arsygit_`-prefixed credential from an HTTP `Authorization: Basic` header.
+/// Standard git clients send `username:token` base64-encoded. We accept either the
+/// password starting with `arsygit_` (standard `git` credential helper) or a bare
+/// `arsygit_` token with empty password.
+pub fn extract_basic_git_token(headers: &axum::http::HeaderMap) -> Option<String> {
+    use base64::{engine::general_purpose::STANDARD, Engine};
+    let raw_hdr = headers
+        .get(header::AUTHORIZATION)
+        .and_then(|v| v.to_str().ok())?;
+    let encoded = raw_hdr
+        .strip_prefix("Basic ")
+        .or_else(|| raw_hdr.strip_prefix("basic "))?;
+    let decoded_bytes = STANDARD.decode(encoded.trim()).ok()?;
+    let decoded = String::from_utf8(decoded_bytes).ok()?;
+    if let Some((_user, pass)) = decoded.split_once(':') {
+        if pass.starts_with(crate::services::git_tokens::GIT_TOKEN_PREFIX) {
+            return Some(pass.to_string());
+        }
+    }
+    if decoded.starts_with(crate::services::git_tokens::GIT_TOKEN_PREFIX) {
+        return Some(decoded);
+    }
+    None
+}
+
+/// Authenticate a `arsygit_`-prefixed personal git token against `git_tokens`,
+/// enforcing global session revocation and account suspension parity.
+pub async fn authenticate_git_token(state: &AppState, raw_token: &str) -> Result<Claims, ApiError> {
+    if !raw_token.starts_with(crate::services::git_tokens::GIT_TOKEN_PREFIX) {
+        return Err(err(StatusCode::UNAUTHORIZED, "Invalid git token"));
+    }
+
+    let token_hash = crate::services::git_tokens::hash_token(raw_token);
+    let row: Option<(Uuid, Uuid, String, chrono::DateTime<chrono::Utc>)> = sqlx::query_as(
+        "SELECT id, user_id, token_hash, created_at FROM git_tokens WHERE token_hash = $1",
+    )
+    .bind(&token_hash)
+    .fetch_optional(&state.db)
+    .await
+    .map_err(|e| crate::error::internal_error("git_token lookup", e))?;
+
+    let (token_id, user_id, stored_hash, created_at) =
+        row.ok_or_else(|| err(StatusCode::UNAUTHORIZED, "Invalid git token"))?;
+
+    if !crate::services::git_tokens::ct_hash_eq(&stored_hash, &token_hash) {
+        return Err(err(StatusCode::UNAUTHORIZED, "Invalid git token"));
+    }
+
+    {
+        let revoked_at = state.sessions_revoked_at.read().await;
+        if revoked_at.is_some_and(|ts| created_at.timestamp() < ts) {
+            return Err(err(StatusCode::UNAUTHORIZED, "Git token revoked. Mint a new one."));
+        }
+    }
+
+    let user: Option<(String, String)> =
+        sqlx::query_as("SELECT email, role FROM users WHERE id = $1")
+            .bind(user_id)
+            .fetch_optional(&state.db)
+            .await
+            .map_err(|e| crate::error::internal_error("git_token user lookup", e))?;
+
+    let (email, role) =
+        user.ok_or_else(|| err(StatusCode::UNAUTHORIZED, "Invalid git token"))?;
+
+    if role == "suspended" {
+        return Err(err(StatusCode::FORBIDDEN, "Account suspended"));
+    }
+
+    let _ = sqlx::query("UPDATE git_tokens SET last_used_at = NOW() WHERE id = $1")
+        .bind(token_id)
+        .execute(&state.db)
+        .await;
+
+    let now = chrono::Utc::now().timestamp() as usize;
+    Ok(Claims {
+        sub: user_id,
+        email,
+        role,
+        key_id: Some(token_id),
+        exp: now + 315_360_000,
         iat: now,
         jti: None,
     })

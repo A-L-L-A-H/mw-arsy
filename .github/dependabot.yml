@@ -19,6 +19,15 @@ updates:
       interval: "weekly"
     open-pull-requests-limit: 5
 
+  # The MCP server ships its own crate and is audited by ci.yml's `Audit MCP`
+  # step, but had no dependabot entry — its dependencies only ever moved when
+  # a lockfile bump was copied by hand.
+  - package-ecosystem: "cargo"
+    directory: "/panel/mcp"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+
   # Frontend dependencies
   - package-ecosystem: "npm"
     directory: "/panel/frontend"
