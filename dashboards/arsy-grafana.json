@@ -3,7 +3,7 @@
     {
       "name": "DS_PROMETHEUS",
       "label": "Prometheus",
-      "description": "Prometheus instance scraping DockPanel's /api/metrics endpoint.",
+      "description": "Prometheus instance scraping ARSY's /api/metrics endpoint.",
       "type": "datasource",
       "pluginId": "prometheus",
       "pluginName": "Prometheus"
@@ -30,14 +30,14 @@
       }
     ]
   },
-  "description": "Fleet-wide overview of DockPanel-managed servers, sites, GPUs, and alerts. Backed by the /api/metrics scrape endpoint. See docs/guides/prometheus.md for setup.",
+  "description": "Fleet-wide overview of ARSY-managed servers, sites, GPUs, and alerts. Backed by the /api/metrics scrape endpoint. See docs/guides/prometheus.md for setup.",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
   "id": null,
   "links": [
     {
-      "title": "DockPanel",
+      "title": "ARSY",
       "url": "https://moonwitness.dev",
       "type": "link",
       "icon": "external link",
@@ -767,7 +767,7 @@
   "time": { "from": "now-1h", "to": "now" },
   "timepicker": {},
   "timezone": "browser",
-  "title": "DockPanel — Fleet Overview",
+  "title": "ARSY — Fleet Overview",
   "uid": "arsy-fleet",
   "version": 1,
   "weekStart": ""

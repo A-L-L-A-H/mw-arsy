@@ -1,5 +1,5 @@
 [Unit]
-Description=DockPanel MCP Server
+Description=ARSY MCP Server
 # Wants=, not Requires=: arsy-mcp calls the API over loopback HTTP exactly
 # like the CLI does, so it can start (and fail its own health checks cleanly)
 # even on a box where the API unit is momentarily down, same tolerance the

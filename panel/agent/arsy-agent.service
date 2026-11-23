@@ -1,5 +1,5 @@
 [Unit]
-Description=DockPanel Agent
+Description=ARSY Agent
 # Both roles this binary is installed in are covered here, because there is only
 # one unit: the panel box (setup.sh/update.sh) and a fleet member
 # (install-agent.sh). `Wants=` is a WEAK dependency — naming a unit that is not
@@ -14,7 +14,7 @@ StartLimitIntervalSec=60
 
 [Service]
 Type=simple
-# Fleet members keep AGENT_TOKEN / AGENT_LISTEN_TCP / DOCKPANEL_CENTRAL_URL here;
+# Fleet members keep AGENT_TOKEN / AGENT_LISTEN_TCP / ARSY_CENTRAL_URL here;
 # the panel box has no such file and does not need one. The `-` prefix means
 # "read it if it exists" — the same semantics the ReadWritePaths list below
 # leans on, and the reason ONE unit can serve both roles. Without the prefix a
