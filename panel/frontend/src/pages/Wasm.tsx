@@ -3,10 +3,10 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Card, Button, Input, Select, Table, Modal, Form, message, Upload, Tag, Divider, Space, Tabs, Badge } from "antd";
 import { UploadOutlined, DeleteOutlined, PlayCircleOutlined, StopOutlined, ReloadOutlined, SettingOutlined, EyeOutlined, DownloadOutlined, CodeOutlined } from "@ant-design/icons";
 import { usePageTitle } from "@/hooks/usePageTitle";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/context/AuthContext";
 import type { ColumnsType } from "antd/es/table";
 import { formatDistanceToNow } from "date-fns";
-import { formatBytes } from "@/utils/format";
+import { formatSize } from "@/utils/format";
 
 const { Option } = Select;
 const { TabPane } = Tabs;
@@ -43,8 +43,7 @@ interface WasmExecutionResult {
 
 const Wasm: React.FC = () => {
   const navigate = useNavigate();
-  const { t } = useAuth();
-  usePageTitle(t("wasm.title"));
+    usePageTitle("WASM Components");
   const [components, setComponents] = useState<WasmComponent[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
@@ -79,10 +78,10 @@ const Wasm: React.FC = () => {
         const data = await res.json();
         setComponents(data);
       } else {
-        message.error(t("wasm.fetchError"));
+        message.error("Failed to fetch WASM components");
       }
     } catch {
-      message.error(t("wasm.fetchError"));
+      message.error("Failed to fetch WASM components");
     } finally {
       setLoading(false);
     }
@@ -110,15 +109,15 @@ const Wasm: React.FC = () => {
         body: formData,
       });
       if (res.ok) {
-        message.success(t("wasm.uploadSuccess"));
+        message.success("WASM component uploaded successfully");
         fetchComponents();
         setModalVisible(false);
       } else {
         const err = await res.json();
-        message.error(err.error || t("wasm.uploadError"));
+        message.error(err.error || "Failed to upload WASM component");
       }
     } catch {
-      message.error(t("wasm.uploadError"));
+      message.error("Failed to upload WASM component");
     }
   };
 
@@ -146,90 +145,90 @@ const Wasm: React.FC = () => {
       const data = await res.json();
       if (res.ok) {
         setExecResult(data);
-        message.success(t("wasm.execSuccess"));
+        message.success("WASM component executed successfully");
       } else {
-        message.error(data.error || t("wasm.execError"));
+        message.error(data.error || "Failed to execute WASM component");
       }
     } catch {
-      message.error(t("wasm.execError"));
+      message.error("Failed to execute WASM component");
     } finally {
       setExecLoading(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm(t("wasm.confirmDelete"))) return;
+    if (!window.confirm("wasm.confirmDelete")) return;
     try {
       const res = await fetch(`/api/wasm/components/${id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       });
       if (res.ok) {
-        message.success(t("wasm.deleteSuccess"));
+        message.success("wasm.deleteSuccess");
         fetchComponents();
       } else {
-        message.error(t("wasm.deleteError"));
+        message.error("wasm.deleteError");
       }
     } catch {
-      message.error(t("wasm.deleteError"));
+      message.error("wasm.deleteError");
     }
   };
 
   const columns: ColumnsType<WasmComponent> = [
     {
-      title: t("wasm.columns.name"),
+      title: "wasm.columns.name",
       dataIndex: "name",
       key: "name",
       width: 150,
     },
     {
-      title: t("wasm.columns.version"),
+      title: "wasm.columns.version",
       dataIndex: "version",
       key: "version",
       width: 100,
     },
     {
-      title: t("wasm.columns.description"),
+      title: "wasm.columns.description",
       dataIndex: "description",
       key: "description",
       ellipsis: true,
       width: 200,
     },
     {
-      title: t("wasm.columns.memory"),
+      title: "wasm.columns.memory",
       dataIndex: "resource_limits",
       key: "memory",
       width: 100,
       render: (limits: WasmResourceLimits) => `${limits.max_memory_mb} MB`,
     },
     {
-      title: t("wasm.columns.fuel"),
+      title: "wasm.columns.fuel",
       dataIndex: "resource_limits",
       key: "fuel",
       width: 100,
       render: (limits: WasmResourceLimits) => limits.max_fuel.toLocaleString(),
     },
     {
-      title: t("wasm.columns.created"),
+      title: "wasm.columns.created",
       dataIndex: "created_at",
       key: "created_at",
       width: 150,
       render: (date: string) => formatDistanceToNow(new Date(date), { addSuffix: true }),
     },
     {
-      title: t("wasm.columns.actions"),
+      title: "wasm.columns.actions",
       key: "actions",
       width: 200,
       render: (_: any, record: WasmComponent) => (
         <Space>
           <Button type="link" icon={<PlayCircleOutlined />} onClick={() => openExecModal(record)}>
-            {t("wasm.execute")}
+            {"Execute"}
           </Button>
           <Button type="link" icon={<SettingOutlined />} onClick={() => openEditModal(record)}>
-            {t("wasm.edit")}
+            {"wasm.edit"}
           </Button>
           <Button type="link" danger icon={<DeleteOutlined />} onClick={() => handleDelete(record.id)}>
-            {t("wasm.delete")}
+            {"wasm.delete"}
           </Button>
         </Space>
       ),
@@ -276,33 +275,33 @@ const Wasm: React.FC = () => {
         .then((res) => res.json())
         .then((data) => {
           if (data.id) {
-            message.success(t("wasm.uploadSuccess"));
+            message.success("WASM component uploaded successfully");
             fetchComponents();
             setModalVisible(false);
           } else {
-            message.error(data.error || t("wasm.uploadError"));
+            message.error(data.error || "Failed to upload WASM component");
           }
         })
-        .catch(() => message.error(t("wasm.uploadError")));
+        .catch(() => message.error("Failed to upload WASM component"));
     }
   };
 
   return (
     <div className="wasm-page">
       <div className="page-header">
-        <h1>{t("wasm.title")}</h1>
-        <p className="description">{t("wasm.description")}</p>
+        <h1>{"WASM Components"}</h1>
+        <p className="description">{"wasm.description"}</p>
       </div>
 
       <Tabs activeKey={activeTab} onChange={setActiveTab}>
-        <TabPane tab={t("wasm.tabs.list")} key="list">
+        <TabPane tab={"wasm.tabs.list"} key="list">
           <Card>
             <div className="card-actions">
               <Button type="primary" icon={<UploadOutlined />} onClick={() => setModalVisible(true)}>
-                {t("wasm.uploadNew")}
+                {"wasm.uploadNew"}
               </Button>
               <Button icon={<ReloadOutlined />} onClick={fetchComponents}>
-                {t("wasm.refresh")}
+                {"wasm.refresh"}
               </Button>
             </div>
             <Table
@@ -314,9 +313,9 @@ const Wasm: React.FC = () => {
             />
           </Card>
         </TabPane>
-        <TabPane tab={t("wasm.tabs.resources")} key="resources">
+        <TabPane tab={"wasm.tabs.resources"} key="resources">
           <Card>
-            <h3>{t("wasm.defaultLimits")}</h3>
+            <h3>{"wasm.defaultLimits"}</h3>
             <DefaultResourceLimits />
           </Card>
         </TabPane>
@@ -324,7 +323,7 @@ const Wasm: React.FC = () => {
 
       {/* Upload Modal */}
       <Modal
-        title={t("wasm.uploadNew")}
+        title={"wasm.uploadNew"}
         open={modalVisible}
         onCancel={() => setModalVisible(false)}
         footer={null}
@@ -336,33 +335,33 @@ const Wasm: React.FC = () => {
             // Handled by upload component
           }}
         >
-          <Form.Item name="name" label={t("wasm.fields.name")} rules={[{ required: true }]}>
-            <Input placeholder={t("wasm.fields.namePlaceholder")} />
+          <Form.Item name="name" label={"wasm.fields.name"} rules={[{ required: true }]}>
+            <Input placeholder={"wasm.fields.namePlaceholder"} />
           </Form.Item>
-          <Form.Item name="version" label={t("wasm.fields.version")} rules={[{ required: true }]}>
+          <Form.Item name="version" label={"wasm.fields.version"} rules={[{ required: true }]}>
             <Input placeholder="1.0.0" />
           </Form.Item>
-          <Form.Item name="description" label={t("wasm.fields.description")}>
-            <Input.TextArea rows={3} placeholder={t("wasm.fields.descriptionPlaceholder")} />
+          <Form.Item name="description" label={"wasm.fields.description"}>
+            <Input.TextArea rows={3} placeholder={"wasm.fields.descriptionPlaceholder"} />
           </Form.Item>
-          <Form.Item name="wit" label={t("wasm.fields.wit")}>
-            <Input.TextArea rows={5} placeholder={t("wasm.fields.witPlaceholder")} />
+          <Form.Item name="wit" label={"wasm.fields.wit"}>
+            <Input.TextArea rows={5} placeholder={"wasm.fields.witPlaceholder"} />
           </Form.Item>
-          <Divider>{t("wasm.resourceLimits")}</Divider>
-          <Form.Item name="resource_limits.max_memory_mb" label={t("wasm.fields.maxMemory")}>
+          <Divider>{"wasm.resourceLimits"}</Divider>
+          <Form.Item name="resource_limits.max_memory_mb" label={"Max Memory (MB)"}>
             <Input type="number" min={1} max={1024} defaultValue={64} style={{ width: 100 }} />
           </Form.Item>
-          <Form.Item name="resource_limits.max_fuel" label={t("wasm.fields.maxFuel")}>
+          <Form.Item name="resource_limits.max_fuel" label={"Max Fuel"}>
             <Input type="number" min={1000} defaultValue={10000000} style={{ width: 150 }} />
           </Form.Item>
-          <Form.Item name="resource_limits.epoch_deadline" label={t("wasm.fields.epochDeadline")}>
+          <Form.Item name="resource_limits.epoch_deadline" label={"Epoch Deadline"}>
             <Input type="number" min={1} defaultValue={1000} style={{ width: 100 }} />
           </Form.Item>
-          <Form.Item name="resource_limits.max_table_elements" label={t("wasm.fields.maxTableElements")}>
+          <Form.Item name="resource_limits.max_table_elements" label={"Max Table Elements"}>
             <Input type="number" min={1} defaultValue={1024} style={{ width: 100 }} />
           </Form.Item>
-          <Form.Item name="resource_limits.allowed_hosts" label={t("wasm.fields.allowedHosts")}>
-            <Input placeholder={t("wasm.fields.allowedHostsPlaceholder")} />
+          <Form.Item name="resource_limits.allowed_hosts" label={"Allowed Hosts"}>
+            <Input placeholder={"wasm.fields.allowedHostsPlaceholder"} />
           </Form.Item>
           <Divider />
           <Dragger
@@ -374,10 +373,10 @@ const Wasm: React.FC = () => {
               <UploadOutlined />
             </p>
             <p className="ant-upload-text">
-              {t("wasm.dragDrop")} <span>{t("wasm.orClick")}</span>
+              {"wasm.dragDrop"} <span>{"wasm.orClick"}</span>
             </p>
             <p className="ant-upload-hint">
-              {t("wasm.wasmOnly")}
+              {"WASM components only"}
             </p>
           </Dragger>
         </Form>
@@ -385,7 +384,7 @@ const Wasm: React.FC = () => {
 
       {/* Execution Modal */}
       <Modal
-        title={`${t("wasm.execute")} - {execComponent?.name}`}
+        title={`${"Execute"} - {execComponent?.name}`}
         open={execModalVisible}
         onCancel={() => setExecModalVisible(false)}
         footer={null}
@@ -393,39 +392,41 @@ const Wasm: React.FC = () => {
       >
         <div className="exec-modal">
           <div className="exec-args">
-            <label>{t("wasm.execArgs")}</label>
+            <label>{"Execution Arguments"}</label>
             <Input.TextArea
               rows={3}
               value={execArgs}
               onChange={(e) => setExecArgs(e.target.value)}
-              placeholder={t("wasm.execArgsPlaceholder")}
+              placeholder={"Enter command-line arguments for the WASM component"}
             />
             <Space>
               <Button type="primary" loading={execLoading} icon={<PlayCircleOutlined />} onClick={handleExecute}>
-                {t("wasm.execute")}
+                {"Execute"}
               </Button>
-              <Button onClick={() => setExecModalVisible(false)}>{t("common.cancel")}</Button>
+              <Button onClick={() => setExecModalVisible(false)}>{"Cancel"}</Button>
             </Space>
           </div>
           {execResult && (
-            <Divider />
-            <div className="exec-result">
-              <h4>{t("wasm.result")}</h4>
+            <>
+              <Divider />
+              <div className="exec-result">
+              <h4>{"Result"}</h4>
               <div className="result-meta">
                 <Badge status={execResult.success ? "success" : "error"}>
-                  {execResult.success ? t("wasm.success") : t("wasm.failed")}
+                  {execResult.success ? "Success" : "Failed"}
                 </Badge>
-                <span>{t("wasm.exitCode")}: {execResult.exit_code}</span>
-                <span>{t("wasm.executionTime")}: {execResult.execution_time_ms}ms</span>
-                <span>{t("wasm.fuelConsumed")}: {execResult.fuel_consumed.toLocaleString()}</span>
+                <span>{"Exit Code"}: {execResult.exit_code}</span>
+                <span>{"Execution Time"}: {execResult.execution_time_ms}ms</span>
+                <span>{"Fuel Consumed"}: {execResult.fuel_consumed.toLocaleString()}</span>
               </div>
               <div className="result-output">
-                <h5>{t("wasm.stdout")}</h5>
-                <pre>{execResult.stdout || t("wasm.empty")}</pre>
-                <h5>{t("wasm.stderr")}</h5>
-                <pre>{execResult.stderr || t("wasm.empty")}</pre>
+                <h5>{"Standard Output"}</h5>
+                <pre>{execResult.stdout || "(empty)"}</pre>
+                <h5>{"Standard Error"}</h5>
+                <pre>{execResult.stderr || "(empty)"}</pre>
               </div>
             </div>
+            </>
           )}
         </div>
       </Modal>
@@ -434,16 +435,15 @@ const Wasm: React.FC = () => {
 };
 
 const DefaultResourceLimits: React.FC = () => {
-  const { t } = useAuth();
-  return (
+    return (
     <div className="default-limits">
       <Table
         columns={[
-          { title: t("wasm.fields.maxMemory"), dataIndex: "key", render: () => "64 MB" },
-          { title: t("wasm.fields.maxFuel"), dataIndex: "key", render: () => "10,000,000" },
-          { title: t("wasm.fields.epochDeadline"), dataIndex: "key", render: () => "1000" },
-          { title: t("wasm.fields.maxTableElements"), dataIndex: "key", render: () => "1024" },
-          { title: t("wasm.fields.allowedHosts"), dataIndex: "key", render: () => t("wasm.none") },
+          { title: "Max Memory (MB)", dataIndex: "key", render: () => "64 MB" },
+          { title: "Max Fuel", dataIndex: "key", render: () => "10,000,000" },
+          { title: "Epoch Deadline", dataIndex: "key", render: () => "1000" },
+          { title: "Max Table Elements", dataIndex: "key", render: () => "1024" },
+          { title: "Allowed Hosts", dataIndex: "key", render: () => "None" },
         ]}
         dataSource={[{ key: "default" }]}
       />

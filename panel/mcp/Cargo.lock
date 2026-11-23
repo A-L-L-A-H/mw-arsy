@@ -21,6 +21,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "arsy-mcp"
+version = "2.242.1"
+dependencies = [
+ "axum",
+ "reqwest",
+ "rmcp",
+ "schemars",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "urlencoding",
+]
+
+[[package]]
 name = "async-trait"
 version = "0.1.92"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -228,22 +244,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 3.0.5",
-]
-
-[[package]]
-name = "dockpanel-mcp"
-version = "2.242.1"
-dependencies = [
- "axum",
- "reqwest",
- "rmcp",
- "schemars",
- "serde",
- "serde_json",
- "tokio",
- "tracing",
- "tracing-subscriber",
- "urlencoding",
 ]
 
 [[package]]
