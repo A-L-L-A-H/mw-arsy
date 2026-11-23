@@ -61,7 +61,7 @@ const Wasm: React.FC = () => {
       max_table_elements: 1024,
       allowed_hosts: [],
     },
-    wit: "",
+    wit_path: "",
   });
   const [execArgs, setExecArgs] = useState("");
   const [execResult, setExecResult] = useState<WasmExecutionResult | null>(null);
@@ -242,7 +242,7 @@ const Wasm: React.FC = () => {
       version: component.version,
       description: component.description,
       resource_limits: component.resource_limits,
-      wit: component.wit_path ? "" : "",
+      wit_path: "",
     });
     setModalVisible(true);
   };
