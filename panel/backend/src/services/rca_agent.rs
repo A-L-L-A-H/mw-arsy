@@ -557,6 +557,208 @@ Be specific and actionable. Reference specific evidence items."#,
 
         Ok((root_cause, actions, confidence, tokens))
     }
+
+    async fn call_anthropic(
+        &self,
+        client: &reqwest::Client,
+        model: &str,
+        api_key: &str,
+        prompt: &str,
+    ) -> Result<(String, Vec<RecommendedAction>, f32, u32), String> {
+        let response = client
+            .post("https://api.anthropic.com/v1/messages")
+            .header("x-api-key", api_key)
+            .header("anthropic-version", "2023-06-01")
+            .json(&serde_json::json!({
+                "model": model,
+                "max_tokens": 2048,
+                "messages": [{"role": "user", "content": prompt}]
+            }))
+            .send()
+            .await
+            .map_err(|e| format!("Failed to call Anthropic: {}", e))?;
+
+        let status = response.status();
+        let body: serde_json::Value = response.json().await
+            .map_err(|e| format!("Failed to parse Anthropic response: {}", e))?;
+
+        if !status.is_success() {
+            return Err(format!("Anthropic API error: {}", body));
+        }
+
+        let text = body.get("content")
+            .and_then(|c| c.get(0))
+            .and_then(|c| c.get("text"))
+            .and_then(|t| t.as_str())
+            .ok_or("No text in Anthropic response")?;
+
+        self.parse_llm_response(text)
+    }
+
+    async fn call_openai(
+        &self,
+        client: &reqwest::Client,
+        model: &str,
+        api_key: &str,
+        prompt: &str,
+    ) -> Result<(String, Vec<RecommendedAction>, f32, u32), String> {
+        let response = client
+            .post("https://api.openai.com/v1/chat/completions")
+            .bearer_auth(api_key)
+            .json(&serde_json::json!({
+                "model": model,
+                "max_tokens": 2048,
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.1
+            }))
+            .send()
+            .await
+            .map_err(|e| format!("Failed to call OpenAI: {}", e))?;
+
+        let status = response.status();
+        let body: serde_json::Value = response.json().await
+            .map_err(|e| format!("Failed to parse OpenAI response: {}", e))?;
+
+        if !status.is_success() {
+            return Err(format!("OpenAI API error: {}", body));
+        }
+
+        let text = body.get("choices")
+            .and_then(|c| c.get(0))
+            .and_then(|c| c.get("message"))
+            .and_then(|m| m.get("content"))
+            .and_then(|t| t.as_str())
+            .ok_or("No text in OpenAI response")?;
+
+        self.parse_llm_response(text)
+    }
+
+    async fn call_gemini(
+        &self,
+        client: &reqwest::Client,
+        model: &str,
+        api_key: &str,
+        prompt: &str,
+    ) -> Result<(String, Vec<RecommendedAction>, f32, u32), String> {
+        let url = format!("https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent", model);
+        let response = client
+            .post(&url)
+            .header("x-goog-api-key", api_key)
+            .json(&serde_json::json!({
+                "contents": [{"parts": [{"text": prompt}]}]
+            }))
+            .send()
+            .await
+            .map_err(|e| format!("Failed to call Gemini: {}", e))?;
+
+        let status = response.status();
+        let body: serde_json::Value = response.json().await
+            .map_err(|e| format!("Failed to parse Gemini response: {}", e))?;
+
+        if !status.is_success() {
+            return Err(format!("Gemini API error: {}", body));
+        }
+
+        let text = body.get("candidates")
+            .and_then(|c| c.get(0))
+            .and_then(|c| c.get("content"))
+            .and_then(|c| c.get("parts"))
+            .and_then(|p| p.get(0))
+            .and_then(|p| p.get("text"))
+            .and_then(|t| t.as_str())
+            .ok_or("No text in Gemini response")?;
+
+        self.parse_llm_response(text)
+    }
+
+    async fn call_grok(
+        &self,
+        client: &reqwest::Client,
+        model: &str,
+        api_key: &str,
+        prompt: &str,
+    ) -> Result<(String, Vec<RecommendedAction>, f32, u32), String> {
+        let response = client
+            .post("https://api.x.ai/v1/chat/completions")
+            .bearer_auth(api_key)
+            .json(&serde_json::json!({
+                "model": model,
+                "max_tokens": 2048,
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.1
+            }))
+            .send()
+            .await
+            .map_err(|e| format!("Failed to call Grok: {}", e))?;
+
+        let status = response.status();
+        let body: serde_json::Value = response.json().await
+            .map_err(|e| format!("Failed to parse Grok response: {}", e))?;
+
+        if !status.is_success() {
+            return Err(format!("Grok API error: {}", body));
+        }
+
+        let text = body.get("choices")
+            .and_then(|c| c.get(0))
+            .and_then(|c| c.get("message"))
+            .and_then(|m| m.get("content"))
+            .and_then(|t| t.as_str())
+            .ok_or("No text in Grok response")?;
+
+        self.parse_llm_response(text)
+    }
+
+    fn parse_llm_response(&self, text: &str) -> Result<(String, Vec<RecommendedAction>, f32, u32), String> {
+        // Try to parse as JSON first
+        if let Ok(json) = serde_json::from_str::<serde_json::Value>(text) {
+            let root_cause = json.get("root_cause")
+                .and_then(|v| v.as_str())
+                .unwrap_or("Unable to determine root cause")
+                .to_string();
+            
+            let actions = json.get("actions")
+                .and_then(|v| v.as_array())
+                .map(|arr| arr.iter().filter_map(|a| {
+                    let action_type = a.get("action_type").and_then(|v| v.as_str()).unwrap_or("CheckLogs");
+                    let description = a.get("description").and_then(|v| v.as_str()).unwrap_or("");
+                    let command = a.get("command").and_then(|v| v.as_str()).map(String::from);
+                    let mcp_tool = a.get("mcp_tool").and_then(|v| v.as_str()).map(String::from);
+                    let mcp_args = a.get("mcp_args").cloned();
+                    let priority = a.get("priority").and_then(|v| v.as_u64()).unwrap_or(1) as u8;
+                    let estimated_impact = a.get("estimated_impact").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                    
+                    Some(RecommendedAction {
+                        action_type: match action_type {
+                            "RestartService" => ActionType::RestartService,
+                            "ScaleService" => ActionType::ScaleService,
+                            "CheckLogs" => ActionType::CheckLogs,
+                            "CheckMetrics" => ActionType::CheckMetrics,
+                            "RunCommand" => ActionType::RunCommand,
+                            "CallMcpTool" => ActionType::CallMcpTool,
+                            "UpdateConfig" => ActionType::UpdateConfig,
+                            "ContactSupport" => ActionType::ContactSupport,
+                            _ => ActionType::CheckLogs,
+                        },
+                        description: description.to_string(),
+                        command,
+                        mcp_tool,
+                        mcp_args,
+                        priority,
+                        estimated_impact,
+                    })
+                }).collect())
+                .unwrap_or_default();
+            
+            let confidence = json.get("confidence").and_then(|v| v.as_f64()).unwrap_or(0.5) as f32;
+            let tokens = json.get("tokens_used").and_then(|v| v.as_u64()).unwrap_or(1000) as u32;
+            
+            return Ok((root_cause, actions, confidence, tokens));
+        }
+
+        // Fallback: simple pattern matching on plain text
+        let evidence = text;
+        let (root_cause, actions, confidence) = if evidence.contains("disk") || evidence.contains("space") {
             (
                 "Disk space exhaustion detected on one or more servers".to_string(),
                 vec![
@@ -658,7 +860,7 @@ Be specific and actionable. Reference specific evidence items."#,
             )
         };
 
-        Ok((root_cause, actions, confidence, 1000)) // Mock token count
+        Ok((root_cause, actions, confidence, 1000))
     }
 
     /// Get diagnosis history

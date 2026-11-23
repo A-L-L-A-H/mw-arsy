@@ -1,0 +1,67 @@
+name: Dependabot Auto-Merge
+
+# Auto-merge for dependabot PRs once CI is green. Owner decision
+# (2026-11-23): ALL semver levels auto-merge, majors included — the guard
+# rail is the full required check matrix on the PR (main-gate), not a
+# version cap. A dependency in DENY_LIST never merges automatically.
+#
+# `gh pr merge --auto` defers to the branch ruleset: GitHub merges the PR
+# when the required checks pass, and not one second earlier. This workflow
+# only presses the button.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  automerge:
+    name: Auto-merge dependabot PRs
+    runs-on: ubuntu-latest
+    if: github.actor == 'dependabot[bot]'
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Fetch dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      # The gate is a deny list, not a version cap. Keep entries as
+      # `name@ecosystem` strings, e.g. "openssl@cargo". An empty list means
+      # everything merges when green.
+      - name: Decide
+        id: decide
+        env:
+          DENY_LIST: ""
+          DEP_NAME: ${{ steps.metadata.outputs.dependency-names }}
+        run: |
+          decision="merge"
+          IFS=',' read -ra deny <<< "$DENY_LIST"
+          for d in "${deny[@]}"; do
+            if [ -n "$d" ] && [ "$d" = "$DEP_NAME" ]; then
+              decision="skip: $DEP_NAME is on the auto-merge deny list"
+            fi
+          done
+          echo "decision=$decision" >> "$GITHUB_OUTPUT"
+
+      - name: Auto-merge
+        if: steps.decide.outputs.decision == 'merge'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr merge "${{ github.event.pull_request.number }}" --auto --squash
+
+      - name: Explain a skipped merge on the PR
+        if: steps.decide.outputs.decision != 'merge'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr comment "${{ github.event.pull_request.number }}" \
+            --body "Auto-merge skipped: ${{ steps.decide.outputs.decision }}."
+          gh pr edit "${{ github.event.pull_request.number }}" \
+            --add-label "automerge-skipped"
