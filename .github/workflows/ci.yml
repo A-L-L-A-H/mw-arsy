@@ -14,7 +14,7 @@ jobs:
     name: Lint (Rust)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -52,7 +52,7 @@ jobs:
     name: Lint (Frontend)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -71,7 +71,7 @@ jobs:
     name: Build (Rust)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -116,7 +116,7 @@ jobs:
     name: Build (Frontend)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -140,7 +140,7 @@ jobs:
     name: Unit Tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -169,7 +169,7 @@ jobs:
     name: Security Audit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -238,7 +238,7 @@ jobs:
     name: Documentation Claims
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Published claims match the source
         run: bash tests/docs-claims-pin-e2e.sh
@@ -260,7 +260,7 @@ jobs:
     name: Nginx Response Contract
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Install nginx
         run: sudo apt-get update && sudo apt-get install -y nginx
@@ -278,7 +278,7 @@ jobs:
     name: Update & Rollback Contract
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       # Drives restore-snapshot.sh end to end against a scratch tree with
       # stubbed systemctl/docker/curl. It needs no box and no build, but it must
@@ -292,7 +292,7 @@ jobs:
     name: Agent Error Propagation Contract
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       # Pure source analysis — no box, no build. Guards the boundary where an
       # agent's deliberate 4xx ("Path must be within /var/backups/ or /tmp/")
@@ -306,7 +306,7 @@ jobs:
     name: Destination + Deploy Env Contracts
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       # Pure source analysis — no box, no build. Two contracts across the same
       # seam: what the panel sends the agent, and whether a screen exists for
@@ -323,7 +323,7 @@ jobs:
     name: Agent Sandbox Paths
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       # Pure source analysis. The agent runs ProtectSystem=strict, so a path it
       # writes but does not declare in ReadWritePaths fails at the KERNEL with
@@ -338,7 +338,7 @@ jobs:
     name: Backups Actually Land
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       # Pure source analysis. s288 fixed the backup credential path and proved
       # Test Connection; s289 drove a backup all the way to the destination and
@@ -355,7 +355,7 @@ jobs:
     name: Migration Analysis Is Accepted, Not Performed
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       # Pure source analysis. Analysing a cPanel archive ran inline in the HTTP
       # request while every gateway in front of the panel gives up sooner than
@@ -373,7 +373,7 @@ jobs:
     name: The PHP Version Picker Can Install A Version
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       # Pure source analysis. The version-specific PHP installer has existed end
       # to end since v2.8 — agent route, third-party repos, RHEL module streams,
@@ -389,7 +389,7 @@ jobs:
     name: A Provisioning Log Belongs To Somebody
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       # Pure source analysis. `provision_logs` is one flat keyspace shared by
       # nine features, so an endpoint that looks a caller-supplied uuid up in it
@@ -410,7 +410,7 @@ jobs:
     name: A Backup Says What Actually Happened
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       # Pure source analysis. The backup subsystem reported confidently on work
       # it had not done: two SLA queries read a column `backups` has never had,
@@ -432,7 +432,7 @@ jobs:
     name: The Panel Serves What It Says It Serves
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       # Pure source analysis. Two families of the same mistake: two ends of the
       # panel disagreeing about something each of them already knew.
@@ -460,7 +460,7 @@ jobs:
     name: One Door Owns A Domain
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       # Pure source analysis. Two questions nothing owned.
       #
@@ -489,7 +489,7 @@ jobs:
     name: A Delete Proves It Owns What It Deletes
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       # Pure source analysis. v2.52.0 pinned "may this domain be CLAIMED?".
       # This pins the question after it: "is the thing I am about to DESTROY
@@ -524,7 +524,7 @@ jobs:
     name: A Container Name Is Not A Key Anybody Owns
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       # Pure source analysis. `arsy-git-{X}` was the container of a git
       # deployment called X AND of a preview of config C on branch B whenever
@@ -571,7 +571,7 @@ jobs:
     name: An Unattended Service Must Name The Host It Acts On
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       # Pure source analysis. ARSY's multi-server migration reached every
       # HTTP route and NOT ONE background service: all twelve were spawned with
@@ -614,7 +614,7 @@ jobs:
     name: A Stack Is A Network, A Namespace, And An Honest Status
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       # Pure source analysis. GitHub #50: a reporter took the Compose stack
       # package shipped for him in v2.52.0 and got "always crashing apps, ssl
@@ -687,7 +687,7 @@ jobs:
           --health-timeout 5s
           --health-retries 12
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
