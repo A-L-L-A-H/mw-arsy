@@ -33,7 +33,7 @@ pub struct DbContainer {
 /// (one `user_id` owns the stack), so this introduces no new cross-tenant
 /// exposure — it simply swaps one single-purpose bridge for another.
 /// WAL-G PITR configuration for a database
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct PitrConfig {
     pub enabled: bool,
     pub s3_bucket: Option<String>,

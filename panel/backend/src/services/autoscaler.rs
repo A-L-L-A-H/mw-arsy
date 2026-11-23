@@ -610,6 +610,125 @@ impl Autoscaler {
         }
     }
 
+    /// Generate KEDA ScaledObject YAML for a rule (for KEDA integration)
+    pub fn generate_keda_scaledobject(&self, rule: &AutoscalingRule) -> Result<String, String> {
+        use serde::Serialize;
+        use serde_yaml::to_string;
+
+        #[derive(Serialize)]
+        struct KedaScaledObject {
+            api_version: String,
+            kind: String,
+            metadata: KedaMetadata,
+            spec: KedaSpec,
+        }
+
+        #[derive(Serialize)]
+        struct KedaMetadata {
+            name: String,
+            namespace: String,
+            labels: HashMap<String, String>,
+        }
+
+        #[derive(Serialize)]
+        struct KedaSpec {
+            scale_target_ref: ScaleTargetRef,
+            polling_interval: u32,
+            cooldown_period: u32,
+            min_replica_count: u32,
+            max_replica_count: u32,
+            triggers: Vec<KedaTrigger>,
+        }
+
+        #[derive(Serialize)]
+        struct ScaleTargetRef {
+            api_version: String,
+            kind: String,
+            name: String,
+        }
+
+        #[derive(Serialize)]
+        struct KedaTrigger {
+            #[serde(rename = "type")]
+            trigger_type: String,
+            metadata: HashMap<String, String>,
+        }
+
+        let trigger_list: Vec<KedaTrigger> = rule.triggers.iter().map(|t| {
+            match t {
+                ScaleTriggerType::Cpu { threshold_percent } => KedaTrigger {
+                    trigger_type: "cpu".to_string(),
+                    metadata: [
+                        ("type".to_string(), "Utilization".to_string()),
+                        ("value".to_string(), threshold_percent.to_string()),
+                    ].into_iter().collect(),
+                },
+                ScaleTriggerType::Memory { threshold_percent } => KedaTrigger {
+                    trigger_type: "memory".to_string(),
+                    metadata: [
+                        ("type".to_string(), "Utilization".to_string()),
+                        ("value".to_string(), threshold_percent.to_string()),
+                    ].into_iter().collect(),
+                },
+                ScaleTriggerType::Rps { threshold } => KedaTrigger {
+                    trigger_type: "http".to_string(),
+                    metadata: [
+                        ("value".to_string(), threshold.to_string()),
+                    ].into_iter().collect(),
+                },
+                ScaleTriggerType::Custom { metric_name, threshold } => KedaTrigger {
+                    trigger_type: "prometheus".to_string(),
+                    metadata: [
+                        ("metricName".to_string(), metric_name.clone()),
+                        ("threshold".to_string(), threshold.to_string()),
+                        ("query".to_string(), format!("{}{{container=~\".*{}.*\"}}", metric_name, rule.resource_id)),
+                    ].into_iter().collect(),
+                },
+            }
+        }).collect();
+
+        let keda_obj = KedaScaledObject {
+            api_version: "keda.sh/v1alpha1".to_string(),
+            kind: "ScaledObject".to_string(),
+            metadata: KedaMetadata {
+                name: format!("arsy-autoscaler-{}", rule.id),
+                namespace: "default".to_string(),
+                labels: [
+                    ("app.kubernetes.io/managed-by".to_string(), "arsy".to_string()),
+                    ("arsy.io/autoscaler-rule".to_string(), rule.id.to_string()),
+                ].into_iter().collect(),
+            },
+            spec: KedaSpec {
+                scale_target_ref: ScaleTargetRef {
+                    api_version: "apps/v1".to_string(),
+                    kind: match rule.resource_type {
+                        ResourceType::App => "Deployment".to_string(),
+                        ResourceType::Stack => "StatefulSet".to_string(),
+                        ResourceType::Database => "StatefulSet".to_string(),
+                    },
+                    name: rule.resource_id.to_string(),
+                },
+                polling_interval: 30,
+                cooldown_period: rule.cooldown_seconds as u32,
+                min_replica_count: rule.min_replicas,
+                max_replica_count: rule.max_replicas,
+                triggers: trigger_list,
+            },
+        };
+
+        to_string(&keda_obj).map_err(|e| format!("Failed to serialize KEDA ScaledObject: {}", e))
+    }
+
+    /// Record a scale action
+    async fn record_action(&self, action: ScaleAction) {
+        let mut history = self.history.lock().await;
+        history.push(action);
+        if history.len() > 1000 {
+            let excess = history.len() - 1000;
+            history.drain(0..excess);
+        }
+    }
+
     /// Stop the autoscaler loop
     pub async fn stop(&self) {
         *self.running.lock().await = false;

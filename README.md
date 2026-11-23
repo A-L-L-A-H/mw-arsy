@@ -279,6 +279,14 @@ cd panel/frontend && npm install && npx vite build
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for full development setup.
 
+## Automation
+
+Releases run themselves: work lands on the `dev` branch (the default), and every
+merge back to `main` is versioned, changelogged, tagged, built, signed and
+published automatically — with the full CI matrix gating every step. See
+[docs/automation.md](docs/automation.md) for the ladder, the manual override for
+each piece, and the kill switches.
+
 ## CLI
 
 ```bash

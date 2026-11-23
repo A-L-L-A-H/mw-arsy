@@ -613,6 +613,220 @@ impl GitOpsController {
                 && a.get("kind").and_then(|k| k.as_str()) == Some(kind)
         }).cloned()
     }
+    
+    /// Export desired state as ArgoCD Application YAML
+    pub fn export_argocd_application(&self, resource: &DesiredResource, namespace: &str) -> Result<String, String> {
+        use serde::Serialize;
+        use serde_yaml::to_string;
+        
+        #[derive(Serialize)]
+        struct ArgoCDApplication {
+            api_version: String,
+            kind: String,
+            metadata: ArgoCDMetadata,
+            spec: ArgoCDSpec,
+        }
+        
+        #[derive(Serialize)]
+        struct ArgoCDMetadata {
+            name: String,
+            namespace: String,
+            labels: HashMap<String, String>,
+        }
+        
+        #[derive(Serialize)]
+        struct ArgoCDSpec {
+            project: String,
+            source: ArgoCDSource,
+            destination: ArgoCDDestination,
+            sync_policy: ArgoCDSyncPolicy,
+        }
+        
+        #[derive(Serialize)]
+        struct ArgoCDSource {
+            repo_url: String,
+            target_revision: String,
+            path: String,
+        }
+        
+        #[derive(Serialize)]
+        struct ArgoCDDestination {
+            server: String,
+            namespace: String,
+        }
+        
+        #[derive(Serialize)]
+        struct ArgoCDSyncPolicy {
+            automated: ArgoCDAutomated,
+            retry: ArgoCDRetry,
+        }
+        
+        #[derive(Serialize)]
+        struct ArgoCDAutomated {
+            prune: bool,
+            self_heal: bool,
+        }
+        
+        #[derive(Serialize)]
+        struct ArgoCDRetry {
+            limit: u32,
+            backoff: ArgoCDBackoff,
+        }
+        
+        #[derive(Serialize)]
+        struct ArgoCDBackoff {
+            duration: String,
+            factor: f32,
+            max_duration: String,
+        }
+        
+        let (name, path, kind) = match resource {
+            DesiredResource::Site(s) => (s.metadata.name.clone(), format!("sites/{}", s.metadata.name), "Site"),
+            DesiredResource::Database(d) => (d.metadata.name.clone(), format!("databases/{}", d.metadata.name), "Database"),
+            DesiredResource::DockerApp(a) => (a.metadata.name.clone(), format!("apps/{}", a.metadata.name), "DockerApp"),
+            DesiredResource::DockerStack(s) => (s.metadata.name.clone(), format!("stacks/{}", s.metadata.name), "DockerStack"),
+            DesiredResource::Server(s) => (s.metadata.name.clone(), format!("servers/{}", s.metadata.name), "Server"),
+        };
+        
+        let app = ArgoCDApplication {
+            api_version: "argoproj.io/v1alpha1".to_string(),
+            kind: "Application".to_string(),
+            metadata: ArgoCDMetadata {
+                name: name.clone(),
+                namespace: namespace.to_string(),
+                labels: [
+                    ("app.kubernetes.io/managed-by".to_string(), "arsy-gitops".to_string()),
+                    ("arsy.io/resource-kind".to_string(), kind.to_string()),
+                ].into_iter().collect(),
+            },
+            spec: ArgoCDSpec {
+                project: "default".to_string(),
+                source: ArgoCDSource {
+                    repo_url: self.config.git_repo_url.clone(),
+                    target_revision: self.config.git_branch.clone(),
+                    path: format!("desired/{}", path),
+                },
+                destination: ArgoCDDestination {
+                    server: "https://kubernetes.default.svc".to_string(),
+                    namespace: namespace.to_string(),
+                },
+                sync_policy: ArgoCDSyncPolicy {
+                    automated: ArgoCDAutomated { prune: true, self_heal: true },
+                    retry: ArgoCDRetry {
+                        limit: 5,
+                        backoff: ArgoCDBackoff {
+                            duration: "5s".to_string(),
+                            factor: 2.0,
+                            max_duration: "3m".to_string(),
+                        },
+                    },
+                },
+            };
+        
+        to_string(&app).map_err(|e| format!("Failed to serialize ArgoCD Application: {}", e))
+    }
+    
+    /// Export desired state as Flux Kustomization YAML
+    pub fn export_flux_kustomization(&self, resource: &DesiredResource, namespace: &str) -> Result<String, String> {
+        use serde::Serialize;
+        use serde_yaml::to_string;
+        
+        #[derive(Serialize)]
+        struct FluxKustomization {
+            api_version: String,
+            kind: String,
+            metadata: FluxMetadata,
+            spec: FluxSpec,
+        }
+        
+        #[derive(Serialize)]
+        struct FluxMetadata {
+            name: String,
+            namespace: String,
+        }
+        
+        #[derive(Serialize)]
+        struct FluxSpec {
+            interval: String,
+            path: String,
+            prune: bool,
+            source_ref: FluxSourceRef,
+            patches: Option<Vec<FluxPatch>>,
+        }
+        
+        #[derive(Serialize)]
+        struct FluxSourceRef {
+            kind: String,
+            name: String,
+            namespace: String,
+        }
+        
+        #[derive(Serialize)]
+        struct FluxPatch {
+            patch: String,
+            target: FluxPatchTarget,
+        }
+        
+        #[derive(Serialize)]
+        struct FluxPatchTarget {
+            kind: String,
+            name: String,
+            namespace: String,
+        }
+        
+        let (name, path, _kind) = match resource {
+            DesiredResource::Site(s) => (s.metadata.name.clone(), format!("sites/{}", s.metadata.name), "Site"),
+            DesiredResource::Database(d) => (d.metadata.name.clone(), format!("databases/{}", d.metadata.name), "Database"),
+            DesiredResource::DockerApp(a) => (a.metadata.name.clone(), format!("apps/{}", a.metadata.name), "DockerApp"),
+            DesiredResource::DockerStack(s) => (s.metadata.name.clone(), format!("stacks/{}", s.metadata.name), "DockerStack"),
+            DesiredResource::Server(s) => (s.metadata.name.clone(), format!("servers/{}", s.metadata.name), "Server"),
+        };
+        
+        let kustomization = FluxKustomization {
+            api_version: "kustomize.toolkit.fluxcd.io/v1".to_string(),
+            kind: "Kustomization".to_string(),
+            metadata: FluxMetadata {
+                name: format!("arsy-{}", resource.metadata().name),
+                namespace: namespace.to_string(),
+            },
+            spec: FluxSpec {
+                interval: "10m".to_string(),
+                path: format!("./desired/{}", path),
+                prune: true,
+                source_ref: FluxSourceRef {
+                    kind: "GitRepository".to_string(),
+                    name: "arsy-gitops".to_string(),
+                    namespace: "flux-system".to_string(),
+                },
+                patches: None,
+            };
+        
+        to_string(&kustomization).map_err(|e| format!("Failed to serialize Flux Kustomization: {}", e))
+    }
+    
+    /// Export all desired state as ArgoCD Applications
+    pub fn export_all_argocd(&self, namespace: &str) -> Result<Vec<String>, String> {
+        let resources = self.load_desired_state(&format!("/var/lib/arsy/gitops/{}", 
+            self.config.git_repo_url.split('/').last().unwrap_or("repo").replace(".git", "")))?;
+        
+        let mut apps = Vec::new();
+        for resource in resources {
+            apps.push(self.export_argocd_application(&resource, namespace)?);
+        }
+        Ok(apps)
+    }
+    
+    /// Export all desired state as Flux Kustomizations
+    pub fn export_all_flux(&self, namespace: &str) -> Result<Vec<String>, String> {
+        let resources = self.load_desired_state(&format!("/var/lib/arsy/gitops/{}", 
+            self.config.git_repo_url.split('/').last().unwrap_or("repo").replace(".git", "")))?;
+        
+        let mut kustomizations = Vec::new();
+        for resource in resources {
+            kustomizations.push(self.export_flux_kustomization(&resource, namespace)?);
+        }
+        Ok(kustomizations)
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

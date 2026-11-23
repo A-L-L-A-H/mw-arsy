@@ -267,6 +267,9 @@ pub fn router() -> Router<AppState> {
 pub use wasm_impl::router;
 
 #[cfg(not(feature = "wasm"))]
+use axum::Router;
+
+#[cfg(not(feature = "wasm"))]
 pub fn router() -> Router<AppState> {
     Router::new()
 }

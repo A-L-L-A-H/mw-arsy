@@ -105,10 +105,14 @@ function changelogSection(v, subjects) {
 
 function setChangelog(p, v, subjects) {
   const text = read(p);
-  const header = text.startsWith("# Changelog") ? text.split("\n").slice(0, 4).join("\n") : "";
-  const rest = header ? text.slice(header.length) : text;
+  // Keep the preamble (title + format note) above the newest section: split
+  // at the FIRST `## [` heading, insert the new section right after it.
+  const idx = text.indexOf("\n## [");
   const section = changelogSection(v, subjects);
-  return header ? header + "\n" + section + rest.replace(/^\n+/, "\n") : section + "\n" + rest;
+  if (idx === -1) return section + "\n" + text;
+  const head = text.slice(0, idx + 1); // ...up to and incl. the newline before "## ["
+  const tail = text.slice(idx + 1);    // starts at the OLD first section heading
+  return head + section + tail;
 }
 
 // ---- Idempotence guard ----------------------------------------------------
