@@ -30,6 +30,47 @@ dependencies = [
 ]
 
 [[package]]
+name = "arsy-agent"
+version = "2.242.1"
+dependencies = [
+ "async-trait",
+ "axum",
+ "axum-server",
+ "base64",
+ "bollard",
+ "chrono",
+ "hex",
+ "hmac",
+ "instant-acme",
+ "jsonwebtoken",
+ "libc",
+ "rand 0.9.5",
+ "rcgen",
+ "reqwest",
+ "rustix",
+ "rustls",
+ "rustls-pemfile",
+ "serde",
+ "serde_json",
+ "serde_yaml_ng",
+ "sha-crypt",
+ "sha2 0.10.9",
+ "subtle",
+ "sysinfo",
+ "tera",
+ "tikv-jemallocator",
+ "time",
+ "tokio",
+ "tokio-stream",
+ "tokio-util",
+ "tracing",
+ "tracing-subscriber",
+ "url",
+ "uuid",
+ "x509-parser 0.16.0",
+]
+
+[[package]]
 name = "asn1-rs"
 version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -639,47 +680,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 3.0.3",
-]
-
-[[package]]
-name = "dockpanel-agent"
-version = "2.242.1"
-dependencies = [
- "async-trait",
- "axum",
- "axum-server",
- "base64",
- "bollard",
- "chrono",
- "hex",
- "hmac",
- "instant-acme",
- "jsonwebtoken",
- "libc",
- "rand 0.9.5",
- "rcgen",
- "reqwest",
- "rustix",
- "rustls",
- "rustls-pemfile",
- "serde",
- "serde_json",
- "serde_yaml_ng",
- "sha-crypt",
- "sha2 0.10.9",
- "subtle",
- "sysinfo",
- "tera",
- "tikv-jemallocator",
- "time",
- "tokio",
- "tokio-stream",
- "tokio-util",
- "tracing",
- "tracing-subscriber",
- "url",
- "uuid",
- "x509-parser 0.16.0",
 ]
 
 [[package]]

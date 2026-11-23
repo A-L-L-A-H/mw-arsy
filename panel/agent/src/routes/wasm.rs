@@ -1,31 +1,33 @@
 // Wasm Component Model routes for agent
 // Provides component upload, execution, and management
 
-use axum::{
-    extract::{Multipart, State},
-    http::StatusCode,
-    routing::{delete, get, post},
-    Json, Router,
-};
-use serde::{Deserialize, Serialize};
-use std::sync::Arc;
-use tokio::sync::Mutex;
+#[cfg(feature = "wasm")]
+mod wasm_impl {
+    use axum::{
+        extract::{Multipart, State},
+        http::StatusCode,
+        routing::{delete, get, post},
+        Json, Router,
+    };
+    use serde::{Deserialize, Serialize};
+    use std::sync::Arc;
+    use tokio::sync::Mutex;
 
-use super::AppState;
-use crate::services::wasm_runtime::{
-    ComponentExecuteRequest, ComponentUploadRequest, WasmComponentMeta, WasmExecutionResult,
-    WasmResourceLimits, WasmRuntime,
-};
+    use super::AppState;
+    use crate::services::wasm_runtime::{
+        ComponentExecuteRequest, ComponentUploadRequest, WasmComponentMeta, WasmExecutionResult,
+        WasmResourceLimits, WasmRuntime,
+    };
 
-/// Global Wasm runtime instance
-static WASM_RUNTIME: std::sync::OnceLock<Arc<Mutex<Option<WasmRuntime>>>> = std::sync::OnceLock::new();
+    /// Global Wasm runtime instance
+    static WASM_RUNTIME: std::sync::OnceLock<Arc<Mutex<Option<WasmRuntime>>>> = std::sync::OnceLock::new();
 
-/// Get or initialize the Wasm runtime
-async fn get_runtime() -> Arc<Mutex<Option<WasmRuntime>>> {
-    WASM_RUNTIME
-        .get_or_init(|| Arc::new(Mutex::new(None)))
-        .clone()
-}
+    /// Get or initialize the Wasm runtime
+    async fn get_runtime() -> Arc<Mutex<Option<WasmRuntime>>> {
+        WASM_RUNTIME
+            .get_or_init(|| Arc::new(Mutex::new(None)))
+            .clone()
+    }
 
 /// Ensure runtime is initialized
 async fn ensure_runtime_initialized() -> Result<(), String> {
@@ -258,4 +260,13 @@ pub fn router() -> Router<AppState> {
         .route("/wasm/components/{id}", delete(unload_component))
         .route("/wasm/execute", post(execute_component))
         .route("/wasm/resource-limits/default", get(default_resource_limits))
+}
+}
+
+#[cfg(feature = "wasm")]
+pub use wasm_impl::router;
+
+#[cfg(not(feature = "wasm"))]
+pub fn router() -> Router<AppState> {
+    Router::new()
 }

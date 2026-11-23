@@ -42,9 +42,15 @@ rand = "0.9"
 rustix = { version = "1", features = ["termios", "pty", "fs", "process"] }
 libc = "0.2"
 url = "2"
-tikv-jemallocator = { version = "0.6", features = ["background_threads"] }
+tikv-jemallocator = { version = "0.6", features = ["background_threads"], optional = true }
 sha-crypt = { version = "0.6.0", features = ["getrandom"] }
 async-trait = "0.1"
-# Wasm Component Model runtime
-wasmtime = { version = "25", features = ["component-model-async", "async", "wasi-preview2", "cranelift"] }
-wasmtime-wasi = { version = "25", features = ["preview2"] }
+
+[features]
+default = ["jemalloc"]
+jemalloc = ["tikv-jemallocator"]
+wasm = []
+
+# Wasm Component Model runtime (optional, enabled via `wasm` feature)
+# wasmtime = { version = "25", optional = true, features = ["component-model", "async", "cranelift"] }
+# wasmtime-wasi = { version = "25", optional = true, features = ["preview1"] }

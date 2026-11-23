@@ -9,6 +9,7 @@ use crate::AppState;
 use axum::extract::{Path, State};
 use axum::Json;
 use chrono::{DateTime, Utc};
+use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -345,62 +346,258 @@ impl Autoscaler {
         }
     }
 
+    /// Prometheus query response
+    #[derive(Debug, Deserialize)]
+    struct PrometheusResponse {
+        status: String,
+        data: PrometheusData,
+    }
+
+    #[derive(Debug, Deserialize)]
+    struct PrometheusData {
+        result_type: String,
+        result: Vec<PrometheusResult>,
+    }
+
+    #[derive(Debug, Deserialize)]
+    struct PrometheusResult {
+        metric: HashMap<String, String>,
+        value: (f64, String), // (timestamp, value)
+    }
+
+    /// Query Prometheus for a metric
+    async fn query_prometheus(&self, state: &crate::AppState, query: &str) -> Result<f64, String> {
+        // Get the metrics endpoint from state config or use default
+        let metrics_url = state.config.prometheus_url.as_deref().unwrap_or("http://127.0.0.1:9090");
+        let url = format!("{}/api/v1/query", metrics_url.trim_end_matches('/'));
+        
+        let client = Client::new();
+        let response = client
+            .get(&url)
+            .query(&[("query", query)])
+            .send()
+            .await
+            .map_err(|e| format!("Failed to query Prometheus: {}", e))?;
+
+        let status = response.status();
+        let body: PrometheusResponse = response.json().await
+            .map_err(|e| format!("Failed to parse Prometheus response: {}", e))?;
+
+        if !status.is_success() || body.status != "success" {
+            return Err(format!("Prometheus query failed: {:?}", body));
+        }
+
+        // Extract the first result's value
+        if let Some(result) = body.data.result.first() {
+            if let Some(value_str) = result.value.get(1) {
+                value_str.parse::<f64>()
+                    .map_err(|e| format!("Failed to parse metric value: {}", e))
+            } else {
+                Err("No value in Prometheus result".to_string())
+            }
+        } else {
+            Err("No results from Prometheus query".to_string())
+        }
+    }
+
     /// Get CPU metric from Prometheus
     async fn get_cpu_metric(&self, state: &crate::AppState, rule: &AutoscalingRule) -> Result<f64, String> {
-        // Query Prometheus for CPU usage
-        // This is a placeholder - actual implementation would query the panel's metrics endpoint
-        Ok(50.0) // Mock value
+        // Query for CPU usage percentage of the specific resource
+        // Using container_cpu_usage_seconds_total or similar
+        let query = match rule.resource_type {
+            ResourceType::App => {
+                format!(
+                    "sum(rate(container_cpu_usage_seconds_total{{container=~\".*{}.*\",id=~\"/docker/.*\"}}[1m])) by (container) * 100",
+                    rule.resource_id
+                )
+            }
+            ResourceType::Stack => {
+                format!(
+                    "sum(rate(container_cpu_usage_seconds_total{{container=~\".*{}.*\",id=~\"/docker/.*\"}}[1m])) by (container) * 100",
+                    rule.resource_id
+                )
+            }
+            ResourceType::Database => {
+                format!(
+                    "sum(rate(container_cpu_usage_seconds_total{{container=~\".*arsy-db-{}.*,id=~\"/docker/.*\"}}[1m])) by (container) * 100",
+                    rule.resource_id
+                )
+            }
+        };
+
+        self.query_prometheus(state, &query).await
     }
 
     /// Get memory metric from Prometheus
     async fn get_memory_metric(&self, state: &crate::AppState, rule: &AutoscalingRule) -> Result<f64, String> {
-        Ok(60.0) // Mock value
+        let query = match rule.resource_type {
+            ResourceType::App => {
+                format!(
+                    "(sum(container_memory_usage_bytes{{container=~\".*{}.*\",id=~\"/docker/.*\"}}) by (container) / sum(container_spec_memory_limit_bytes{{container=~\".*{}.*\"}}) by (container)) * 100",
+                    rule.resource_id
+                )
+            }
+            ResourceType::Stack => {
+                format!(
+                    "(sum(container_memory_usage_bytes{{container=~\".*{}.*\",id=~\"/docker/.*\"}}) by (container) / sum(container_spec_memory_limit_bytes{{container=~\".*{}.*\"}}) by (container)) * 100",
+                    rule.resource_id
+                )
+            }
+            ResourceType::Database => {
+                format!(
+                    "(sum(container_memory_usage_bytes{{container=~\".*arsy-db-{}.*,id=~\"/docker/.*\"}}) by (container) / sum(container_spec_memory_limit_bytes{{container=~\".*arsy-db-{}.*,id=~\"/docker/.*\"}}) by (container)) * 100",
+                    rule.resource_id, rule.resource_id
+                )
+            }
+        };
+
+        self.query_prometheus(state, &query).await
     }
 
     /// Get RPS metric from Prometheus
     async fn get_rps_metric(&self, state: &crate::AppState, rule: &AutoscalingRule) -> Result<f64, String> {
-        Ok(100.0) // Mock value
+        // Query nginx access logs or application metrics for RPS
+        let query = match rule.resource_type {
+            ResourceType::App => {
+                format!(
+                    "sum(rate(nginx_http_requests_total{{container=~\".*{}.*\"}}[1m])) by (container)",
+                    rule.resource_id
+                )
+            }
+            ResourceType::Stack => {
+                format!(
+                    "sum(rate(nginx_http_requests_total{{container=~\".*{}.*\"}}[1m])) by (container)",
+                    rule.resource_id
+                )
+            }
+            ResourceType::Database => {
+                format!(
+                    "sum(rate(pg_stat_database_xact_commit{{datname=~\".*{}\"}}[1m])) by (datname)",
+                    rule.resource_id
+                )
+            }
+        };
+
+        self.query_prometheus(state, &query).await
     }
 
     /// Get custom metric
     async fn get_custom_metric(&self, state: &crate::AppState, rule: &AutoscalingRule, metric_name: &str) -> Result<f64, String> {
-        Ok(0.0) // Mock value
+        let query = format!("{}{{container=~\".*{}.*\"}}", metric_name, rule.resource_id);
+        self.query_prometheus(state, metric_name).await
     }
 
-    /// Get current replicas for a resource
+    /// Get current replicas for a resource by querying the panel's API
     async fn get_current_replicas(&self, state: &crate::AppState, rule: &AutoscalingRule) -> Result<u32, String> {
-        match rule.resource_type {
+        let client = Client::new();
+        let base_url = state.config.api_base_url.as_deref().unwrap_or("http://127.0.0.1:3080");
+        let token = state.config.autoscaler_api_token.as_deref().unwrap_or("");
+
+        let url = match rule.resource_type {
             ResourceType::App => {
-                // Get Docker service replicas
-                Ok(1) // Mock
+                format!("{}/api/apps", base_url)
             }
             ResourceType::Stack => {
-                Ok(1) // Mock
+                format!("{}/api/stacks", base_url)
             }
             ResourceType::Database => {
-                Ok(1) // Mock
+                format!("{}/api/databases", base_url)
             }
+        };
+
+        let response = client
+            .get(&url)
+            .bearer_auth(&token)
+            .send()
+            .await
+            .map_err(|e| format!("Failed to query API: {}", e))?;
+
+        let status = response.status();
+        let body: serde_json::Value = response.json().await
+            .map_err(|e| format!("Failed to parse API response: {}", e))?;
+
+        if !status.is_success() {
+            return Err(format!("API request failed: {}", body));
         }
+
+        // Count replicas based on resource type
+        let replicas = match rule.resource_type {
+            ResourceType::App => {
+                if let Some(arr) = body.as_array() {
+                    arr.iter()
+                        .filter(|app| {
+                            app.get("labels")
+                                .and_then(|l| l.get("dockpanel.app.name"))
+                                .and_then(|v| v.as_str()) == Some(&rule.resource_id.to_string())
+                        })
+                        .count() as u32
+                } else { 0 }
+            }
+            ResourceType::Stack => {
+                if let Some(arr) = body.as_array() {
+                    arr.iter()
+                        .filter(|stack| {
+                            stack.get("labels")
+                                .and_then(|l| l.get("dockpanel.stack.name"))
+                                .and_then(|v| v.as_str()) == Some(&rule.resource_id.to_string())
+                        })
+                        .count() as u32
+                } else { 0 }
+            }
+            ResourceType::Database => {
+                if let Some(arr) = body.as_array() {
+                    arr.iter()
+                        .filter(|db| db.get("id").and_then(|v| v.as_str()) == Some(&rule.resource_id.to_string()))
+                        .count() as u32
+                } else { 0 }
+            }
+        };
+
+        Ok(replicas.max(1)) // At least 1
     }
 
-    /// Execute scale action
+    /// Execute scale action by calling the panel API
     async fn execute_scale(&self, state: &crate::AppState, rule: &AutoscalingRule, desired: u32) -> Result<(), String> {
-        match rule.resource_type {
+        let client = Client::new();
+        let base_url = state.config.api_base_url.as_deref().unwrap_or("http://127.0.0.1:3080");
+        let token = state.config.autoscaler_api_token.as_deref().unwrap_or("");
+
+        let (url, body) = match rule.resource_type {
             ResourceType::App => {
-                // Scale Docker service
-                // This would call the agent to scale the Docker service
-                info!("Scaling app {} to {} replicas", rule.resource_id, desired);
-                Ok(())
+                let url = format!("{}/api/apps/{}/scale", state.config.api_base_url.as_deref().unwrap_or("http://127.0.0.1:3080"), rule.resource_id);
+                let body = serde_json::json!({ "replicas": desired });
+                (url, body)
             }
             ResourceType::Stack => {
-                // Scale Docker stack services
-                Ok(())
+                let url = format!("{}/api/stacks/{}/scale", state.config.api_base_url.as_deref().unwrap_or("http://127.0.0.1:3080"), rule.resource_id);
+                let body = serde_json::json!({ "replicas": desired });
+                (url, body)
             }
             ResourceType::Database => {
-                // Scale database (read replicas, etc.)
-                Ok(())
+                // Database scaling typically means read replicas
+                let url = format!("{}/api/databases/{}/scale", state.config.api_base_url.as_deref().unwrap_or("http://127.0.0.1:3080"), rule.resource_id);
+                let body = serde_json::json!({ "replicas": desired });
+                (url, body)
             }
+        };
+
+        let response = client
+            .post(&url)
+            .bearer_auth(&token)
+            .json(&body)
+            .send()
+            .await
+            .map_err(|e| format!("Failed to call scale API: {}", e))?;
+
+        let status = response.status();
+        let body: serde_json::Value = response.json().await
+            .map_err(|e| format!("Failed to parse scale response: {}", e))?;
+
+        if !status.is_success() {
+            return Err(format!("Scale failed: {}", body));
         }
+
+        Ok(())
     }
 
     /// Record a scale action
